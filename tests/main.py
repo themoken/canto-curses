@@ -38,6 +38,7 @@ class Tests(unittest.TestCase):
 
         b.args(["-D", d])
         pid = b.start_daemon()
+        print "Forked: %d" % pid
 
         # Actually connect to the socket. If
         # there isn't a daemon running on it,
@@ -45,4 +46,5 @@ class Tests(unittest.TestCase):
         CantoClient.__init__(b, s)
 
         # Don't leave it hanging around for no reason.
-        # os.kill(pid, signal.SIGKILL)
+        b.write("DIE", "")
+        while not b.hupped: b.read()
