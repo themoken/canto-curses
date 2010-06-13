@@ -9,6 +9,9 @@
 
 from canto.client import CantoClient
 from canto.encoding import decoder
+from gui import CantoCursesGui
+
+from threading import Thread
 
 import logging
 
@@ -55,9 +58,24 @@ class CantoCurses(CantoClient):
 
         self.set_log()
 
+    def response_thread(self):
+        while self.response_alive:
+            r = self.read(1)
+
+            # HUP
+            if r == 16:
+                break
+            if r:
+                self.responses.append(r)
+
     def run(self):
+        self.response_alive = True
+        self.responses = []
+        self.gui = CantoCursesGui(self.responses)
+
+        thread = Thread(target=self.response_thread)
         while True:
-            time.sleep(0.01)
+            self.gui.run()
 
     def args(self, args):
         if not args:
