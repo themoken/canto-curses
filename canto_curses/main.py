@@ -71,9 +71,14 @@ class CantoCurses(CantoClient):
     def run(self):
         self.response_alive = True
         self.responses = []
-        self.gui = CantoCursesGui(self.responses)
 
+        # Thead *must* be running before gui instantiated
+        # so the __init__ can ram some discovery requests through.
         thread = Thread(target=self.response_thread)
+        thread.start()
+
+        self.gui = CantoCursesGui(self)
+
         while True:
             self.gui.run()
 
