@@ -100,6 +100,7 @@ class CantoCurses(CantoClient):
     def start_daemon(self):
         pid = os.fork()
         if not pid:
+            os.setpgid(os.getpid(), os.getpid())
             os.execve("/bin/sh",
                      ["/bin/sh", "-c", "canto-daemon -D " + self.conf_dir],
                      os.environ)
