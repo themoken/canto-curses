@@ -27,7 +27,8 @@ all_modules = {
 
 all_tests = {
         "test_args" : tests.main.Tests,
-        "test_start_daemon" : tests.main.Tests
+        "test_start_daemon" : tests.main.Tests,
+        "test_ensure_files" : tests.main.Tests
 }
 
 if __name__ == "__main__":

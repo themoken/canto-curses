@@ -50,6 +50,11 @@ class CantoCurses(CantoClient):
             log.error("Error: %s" % e)
             sys.exit(-1)
 
+        if self.ensure_files():
+            sys.exit(-1)
+
+        self.set_log()
+
     def run(self):
         while True:
             time.sleep(0.01)
@@ -88,6 +93,26 @@ class CantoCurses(CantoClient):
             time.sleep(0.1)
 
         return pid
+
+    def ensure_files(self):
+        for f in [ "curses-log" ] :
+            p = self.conf_dir + "/" + f
+            if os.path.exists(p):
+                if not os.path.isfile(p):
+                    log.error("Error: %s is not a file." % p)
+                    return -1
+                if not os.access(p, os.R_OK):
+                    log.error("Error: %s is not readable." % p)
+                    return -1
+                if not os.access(p, os.W_OK):
+                    log.error("Error: %s is not writable." % p)
+                    return -1
+
+        self.log_path = self.conf_dir + "/curses-log"
+
+    def set_log(self):
+        f = open(self.log_path, "w")
+        os.dup2(f.fileno(), sys.stderr.fileno())
 
     def start(self, args=None):
         try:

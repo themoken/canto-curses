@@ -48,3 +48,15 @@ class Tests(unittest.TestCase):
         # Don't leave it hanging around for no reason.
         b.write("DIE", "")
         while not b.hupped: b.read()
+
+    def test_ensure_files(self):
+        b = CantoCurses()
+        good = os.getenv("PWD") + "/tests/perms/good"
+        bad = os.getenv("PWD") + "/tests/perms/bad"
+
+        b.args(["-D", good])
+        self.assertEqual(b.ensure_files(), None)
+
+        b = CantoCurses()
+        b.args(["-D", bad])
+        self.assertEqual(b.ensure_files(), -1)
