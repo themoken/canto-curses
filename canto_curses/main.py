@@ -105,6 +105,13 @@ class CantoCurses(CantoClient):
     def start_daemon(self):
         pid = os.fork()
         if not pid:
+            # Shutup any log output before canto-daemon
+            # sets up it's log (particularly the error that
+            # one is already running)
+
+            fd = os.open("/dev/null", os.O_RDWR)
+            os.dup2(fd, sys.stderr.fileno())
+
             os.setpgid(os.getpid(), os.getpid())
             os.execve("/bin/sh",
                      ["/bin/sh", "-c", "canto-daemon -D " + self.conf_dir],
