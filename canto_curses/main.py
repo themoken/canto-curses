@@ -11,7 +11,7 @@ from canto.client import CantoClient
 from canto.encoding import decoder
 from gui import CantoCursesGui
 
-from threading import Thread
+from threading import Thread, Lock
 
 import logging
 
@@ -58,15 +58,24 @@ class CantoCurses(CantoClient):
 
         self.set_log()
 
-    def response_thread(self):
-        while self.response_alive:
-            r = self.read(1)
+        self.response_lock = Lock()
 
-            # HUP
-            if r == 16:
-                break
-            if r:
-                self.responses.append(r)
+    def response_thread(self):
+        try:
+            while self.response_alive:
+                r = self.read(1)
+
+                # HUP
+                if r == 16:
+                    break
+                if r:
+                    self.response_lock.acquire()
+                    self.responses.append(r)
+                    self.response_lock.release()
+        except Exception, e:
+            log.error("Response thread exception: %s" % (e,))
+
+        log.debug("Response thread exiting.")
 
     def run(self):
         self.response_alive = True
