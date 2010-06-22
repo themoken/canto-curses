@@ -85,3 +85,24 @@ class Tests(unittest.TestCase):
             return
 
         print "WARNING: No race with badlock"
+
+    def test_wait_response(self):
+        c = CantoCurses()
+        g = CantoCursesGui()
+
+        # Miniature init
+        c.response_lock = Lock()
+        g.backend = c
+        g.backend.responses = [("RESP1", "a"),("RESP2", "b"),("RESP3", "c")]
+
+        # Ensure if it's the first response, others are undisturbed.
+        g.wait_response("RESP1")
+        self.assertTrue(g.backend.responses == [("RESP1", "a"),
+                                                ("RESP2", "b"),
+                                                ("RESP3", "c")])
+
+        # Ensure one gets discarded, other is untouched.
+        g.wait_response("RESP2")
+        self.assertTrue(g.backend.responses == [("RESP2", "b"),
+                                                ("RESP3", "c")])
+

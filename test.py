@@ -33,6 +33,7 @@ all_tests = {
         "test_ensure_files" : tests.main.Tests,
         "test_next_response_goodlock" : tests.gui.Tests,
         "test_next_response_badlock" : tests.gui.Tests,
+        "test_wait_response" : tests.gui.Tests
 }
 
 if __name__ == "__main__":
