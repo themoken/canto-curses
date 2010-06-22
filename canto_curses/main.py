@@ -25,6 +25,7 @@ logging.basicConfig(
 log = logging.getLogger("CANTO-CURSES")
 
 import traceback
+import locale
 import getopt
 import errno
 import fcntl
@@ -39,6 +40,10 @@ class CantoCurses(CantoClient):
         pass
 
     def init(self, args=None):
+
+        # For good curses behavior.
+        locale.setlocale(locale.LC_ALL, '')
+
         if self.args(args):
             sys.exit(-1)
 
