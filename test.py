@@ -9,6 +9,7 @@
 #   published by the Free Software Foundation.
 
 import tests.main
+import tests.gui
 
 import logging
 
@@ -23,12 +24,15 @@ import unittest
 import sys
 
 all_modules = {
-        "main" : tests.main.Tests }
+        "main" : tests.main.Tests ,
+        "gui" : tests.gui.Tests }
 
 all_tests = {
         "test_args" : tests.main.Tests,
         "test_start_daemon" : tests.main.Tests,
-        "test_ensure_files" : tests.main.Tests
+        "test_ensure_files" : tests.main.Tests,
+        "test_next_response_goodlock" : tests.gui.Tests,
+        "test_next_response_badlock" : tests.gui.Tests,
 }
 
 if __name__ == "__main__":

@@ -213,8 +213,11 @@ class CantoCursesGui():
         if self.backend.responses:
             log.debug("DISCARD: %s" % (self.backend.responses[0],))
             self.backend.response_lock.acquire()
+            r = self.backend.responses[0]
             self.backend.responses = self.backend.responses[1:]
             self.backend.response_lock.release()
+            return r
+        return None
 
     def wait_response(self, cmd):
         log.debug("waiting on %s" % cmd)
