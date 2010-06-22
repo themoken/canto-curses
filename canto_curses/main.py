@@ -91,7 +91,8 @@ class CantoCurses(CantoClient):
         thread = Thread(target=self.response_thread)
         thread.start()
 
-        self.gui = CantoCursesGui(self)
+        self.gui = CantoCursesGui()
+        self.gui.init(self)
 
         while True:
             self.gui.run()
