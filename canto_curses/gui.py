@@ -199,7 +199,7 @@ class Screen():
         curses.doupdate()
 
 class CantoCursesGui():
-    def init(self, backend):
+    def init(self, backend, do_curses=True):
         self.backend = backend
 
         self.backend.write("LISTFEEDS", u"")
@@ -241,9 +241,11 @@ class CantoCursesGui():
                     story.content[k] =\
                         self.backend.responses[0][1][story.id][k]
 
-        log.debug("Starting curses.")
-        self.screen = Screen()
-        self.screen.init()
+        # Short circuit for testing the above setup.
+        if do_curses:
+            log.debug("Starting curses.")
+            self.screen = Screen()
+            self.screen.init()
 
     def next_response(self):
         if self.backend.responses:

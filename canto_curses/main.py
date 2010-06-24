@@ -39,7 +39,7 @@ class CantoCurses(CantoClient):
     def __init__(self):
         pass
 
-    def init(self, args=None):
+    def init(self, args=None, do_log=True):
 
         # For good curses behavior.
         locale.setlocale(locale.LC_ALL, '')
@@ -61,7 +61,8 @@ class CantoCurses(CantoClient):
         if self.ensure_files():
             sys.exit(-1)
 
-        self.set_log()
+        if do_log:
+            self.set_log()
 
         self.response_lock = Lock()
 
@@ -82,7 +83,7 @@ class CantoCurses(CantoClient):
 
         log.debug("Response thread exiting.")
 
-    def run(self):
+    def start_thread(self):
         self.response_alive = True
         self.responses = []
 
@@ -90,6 +91,9 @@ class CantoCurses(CantoClient):
         # so the __init__ can ram some discovery requests through.
         thread = Thread(target=self.response_thread)
         thread.start()
+
+    def run(self):
+        self.start_thread()
 
         self.gui = CantoCursesGui()
         self.gui.init(self)
