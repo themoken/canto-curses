@@ -209,6 +209,42 @@ class CantoCursesGui():
         self.tracked_feeds = backend.responses[0][1]
         self.next_response()
 
+        # Initial tag populate.
+
+        item_tags = []
+        for tag, URL in self.tracked_feeds:
+            log.info("Tracking [%s] (%s)" % (tag, URL))
+            t = Tag(tag)
+            item_tags.append(tag)
+
+        self.backend.write("ITEMS", item_tags)
+        self.wait_response("ITEMS")
+
+        for tag in alltags:
+            for item in self.backend.responses[0][1][tag.tag]:
+                tag.add(item)
+
+        # Initial story attribute populate.
+
+        attribute_stories = {}
+
+        for tag in alltags:
+            for story in tag:
+                attribute_stories[story.id] = story.needed_attributes()
+
+        self.backend.write("ATTRIBUTES", attribute_stories)
+        self.wait_response("ATTRIBUTES")
+
+        for tag in alltags:
+            for story in tag:
+                for k in self.backend.responses[0][1][story.id]:
+                    story.content[k] =\
+                        self.backend.responses[0][1][story.id][k]
+
+        log.debug("Starting curses.")
+        self.screen = Screen()
+        self.screen.init()
+
     def next_response(self):
         if self.backend.responses:
             log.debug("DISCARD: %s" % (self.backend.responses[0],))
