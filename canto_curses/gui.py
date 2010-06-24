@@ -8,7 +8,7 @@
 #   published by the Free Software Foundation.
 
 from canto.encoding import encoder
-#from theme import theme_print, theme_len
+from theme import theme_print, theme_len
 
 import logging
 
