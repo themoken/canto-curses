@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 #Canto-curses - ncurses RSS reader
 #   Copyright (C) 2010 Jack Miller <jack@codezen.org>
@@ -177,7 +176,3 @@ class CantoCurses(CantoClient):
             log.error("\n" + "".join(tb))
 
         sys.exit(0)
-
-if __name__ == "__main__":
-    c = CantoCurses()
-    c.start()

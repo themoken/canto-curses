@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 #Canto-curses - ncurses RSS reader
 #   Copyright (C) 2010 Jack Miller <jack@codezen.org>
