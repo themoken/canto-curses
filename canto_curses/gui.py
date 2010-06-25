@@ -9,6 +9,7 @@
 from canto.encoding import encoder
 from theme import theme_print, theme_len
 from input import InputBox
+from consts import *
 
 import logging
 
@@ -266,6 +267,9 @@ class Screen():
                 user_queue.put(r)
                 self.input_box.reset()
 
+    def exit(self):
+        curses.endwin()
+
 class CantoCursesGui():
     def init(self, backend, do_curses=True):
         self.backend = backend
@@ -334,5 +338,10 @@ class CantoCursesGui():
 
     def run(self):
         if not self.user_queue.empty():
-            log.debug("From User Queue: %s" % (self.user_queue.get(),))
+            cmd = self.user_queue.get()
+            log.debug("CMD: %s" % cmd)
+            if cmd in ["quit", "exit"]:
+                self.screen.exit()
+                return GUI_EXIT
+
         self.screen.refresh()

@@ -9,6 +9,7 @@
 from canto.client import CantoClient
 from canto.encoding import decoder
 from gui import CantoCursesGui
+from consts import *
 
 from threading import Thread
 from Queue import Queue
@@ -87,6 +88,7 @@ class CantoCurses(CantoClient):
         # Thead *must* be running before gui instantiated
         # so the __init__ can ram some discovery requests through.
         thread = Thread(target=self.response_thread)
+        thread.daemon = True
         thread.start()
 
     def run(self):
@@ -96,7 +98,9 @@ class CantoCurses(CantoClient):
         self.gui.init(self)
 
         while True:
-            self.gui.run()
+            r = self.gui.run()
+            if r == GUI_EXIT:
+                break
 
     def args(self, args):
         if not args:
@@ -173,4 +177,5 @@ class CantoCurses(CantoClient):
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
 
+        log.info("Exiting.")
         sys.exit(0)
