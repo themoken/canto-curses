@@ -31,9 +31,6 @@ all_tests = {
         "test_args" : tests.main.Tests,
         "test_start_daemon" : tests.main.Tests,
         "test_ensure_files" : tests.main.Tests,
-        "test_next_response_goodlock" : tests.gui.Tests,
-        "test_next_response_badlock" : tests.gui.Tests,
-        "test_wait_response" : tests.gui.Tests,
         "test_init_gui" : tests.gui.Tests
 }
 

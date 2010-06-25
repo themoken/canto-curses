@@ -10,7 +10,8 @@ from canto.client import CantoClient
 from canto.encoding import decoder
 from gui import CantoCursesGui
 
-from threading import Thread, Lock
+from threading import Thread
+from Queue import Queue
 
 import logging
 
@@ -63,8 +64,6 @@ class CantoCurses(CantoClient):
         if do_log:
             self.set_log()
 
-        self.response_lock = Lock()
-
     def response_thread(self):
         try:
             while self.response_alive:
@@ -74,9 +73,8 @@ class CantoCurses(CantoClient):
                 if r == 16:
                     break
                 if r:
-                    self.response_lock.acquire()
-                    self.responses.append(r)
-                    self.response_lock.release()
+                    self.responses.put(r)
+
         except Exception, e:
             log.error("Response thread exception: %s" % (e,))
 
@@ -84,7 +82,7 @@ class CantoCurses(CantoClient):
 
     def start_thread(self):
         self.response_alive = True
-        self.responses = []
+        self.responses = Queue()
 
         # Thead *must* be running before gui instantiated
         # so the __init__ can ram some discovery requests through.

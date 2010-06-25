@@ -8,11 +8,14 @@
 
 from canto.encoding import encoder
 from theme import theme_print, theme_len
+from input import InputBox
 
 import logging
 
 log = logging.getLogger("GUI")
 
+from threading import Thread
+from Queue import Queue
 import curses
 import time
 
@@ -54,7 +57,6 @@ class Tag(set):
 
         header = self.tag + u"\n"
         lheader = theme_len(header)
-        log.debug("header: %s (%d)" % (header, lheader))
         theme_print(pad, header, lheader)
 
         for item in self:
@@ -101,36 +103,42 @@ class Tag(set):
 # panel. It defers to the Tag class for the actual individual tag rendering.
 
 class TagList():
-    def __init__(self, pad):
+    def init(self, pad, refresh_callback, coords):
         self.pad = pad
+        self.refresh_callback = refresh_callback
 
         if not curtags:
             self.tags = alltags
         else:
             self.tags = curtags
 
+        self.coords = coords
+
+    def key_pad(self):
+        return False
+
     def refresh(self):
         self.pad.erase()
         for i, tag in enumerate(self.tags):
             tag.refresh(self.pad)
+        self.refresh_callback(self.coords)
 
 # The Screen class handles the layout of multiple sub-windows on the 
 # main curses window. It's also the top-level gui object, so call to refresh the
 # screen and get input should come through it.
 
 class Screen():
-    def init(self, layout = [[],[TagList],[]]):
+    def init(self, layout = [[],[TagList],[InputBox]]):
         self.layout = layout
 
         if self.curses_setup() < 0:
             return -1
 
+        self.input_box = None
         self.subwindows()
-        self.refresh()
 
     def curses_setup(self):
         self.stdscr = curses.initscr()
-        self.stdscr.nodelay(1)
 
         # This can throw an exception, but we shouldn't care.
         try:
@@ -153,16 +161,42 @@ class Screen():
 
         return 0
 
+    # Translate the layout into a set of curses pads given
+    # a set of coordinates relating to how they're mapped to the screen.
+
+    # XXX : This code can probably be expressed much more concisely
+
     def subwindows(self):
         top = self.layout[0]
         top_h = 0
         tops = []
+
         # XXX : top stuff
 
         bot = self.layout[2]
+        bot_w = self.width / len(bot)
         bot_h = 0
         bots = []
-        # XXX : bot stuff
+
+        for i, c, in enumerate(bot):
+            ci = c()
+            if c == InputBox:
+                self.input_box = ci
+
+            bot_h = max(bot_h, ci.get_height())
+
+            pad = curses.newpad(bot_h + 1, bot_w)
+            coords =\
+            (
+                ci,                         # class
+                (self.height - bot_h),      # top
+                bot_w * i,                  # left
+                self.height - 1,            # bottom
+                (bot_w * (i + 1)) - 1       # right
+            )
+
+            bots.append(coords)
+            ci.init(pad, self.refresh_callback, coords)
 
         mid = self.layout[1]
         mid_w = self.width / len(mid)
@@ -180,33 +214,65 @@ class Screen():
             # That is, controlling class and main screen coordinates
             # for noutrefresh()
 
-            mids.append((
-                c(pad),                     # class
+            ci = c()
+            if c == InputBox:
+                self.input_box = ci
+
+            coords =\
+            (
+                ci,                         # class
                 top_h,                      # top
                 mid_w * i,                  # left
                 self.height - bot_h - 1,    # bottom
                 (mid_w * (i + 1)) - 1       # right
-                ))
+            )
+
+            mids.append(coords)
+            ci.init(pad, self.refresh_callback, coords)
 
         self.windows = ( tops, mids, bots )
+
+    # We make this a callback because
+    #   a ) the subwindow knows best when its content
+    #       actually needs to be re-rendered
+    #
+    #   b ) it's advantageous for thing like InputBox
+    #       to be able to redraw and curses.doupdate()
+    #       itself without breaking back into the main
+    #       control loop.
+
+    def refresh_callback(self, coords):
+        c, t, l, b, r = coords
+        c.pad.noutrefresh(0, 0, t, l, b, r)
+
+    # Call refresh for all windows from
+    # top to bottom, left to right.
 
     def refresh(self):
         for region in self.windows:
             for c, t, l, b, r in region:
                 c.refresh()
-                c.pad.noutrefresh(0, 0, t, l, b, r)
         curses.doupdate()
+
+    # Thread to put fully formed commands on the user_queue.
+
+    def input_thread(self, user_queue, binds = {}):
+        while self.input_box:
+            r = self.input_box.pad.getch()
+            if chr(r) in binds:
+                r = binds[chr(r)]
+                if r == "command":
+                    r = self.input_box.edit()
+                user_queue.put(r)
+                self.input_box.reset()
 
 class CantoCursesGui():
     def init(self, backend, do_curses=True):
         self.backend = backend
 
         self.backend.write("LISTFEEDS", u"")
-        self.wait_response("LISTFEEDS")
-
-        log.debug("RESPONSES: %s" % backend.responses)
-        self.tracked_feeds = backend.responses[0][1]
-        self.next_response()
+        r = self.wait_response("LISTFEEDS")
+        self.tracked_feeds = r[1]
 
         # Initial tag populate.
 
@@ -217,10 +283,10 @@ class CantoCursesGui():
             item_tags.append(tag)
 
         self.backend.write("ITEMS", item_tags)
-        self.wait_response("ITEMS")
+        r = self.wait_response("ITEMS")
 
         for tag in alltags:
-            for item in self.backend.responses[0][1][tag.tag]:
+            for item in r[1][tag.tag]:
                 tag.add(item)
 
         # Initial story attribute populate.
@@ -232,13 +298,13 @@ class CantoCursesGui():
                 attribute_stories[story.id] = story.needed_attributes()
 
         self.backend.write("ATTRIBUTES", attribute_stories)
-        self.wait_response("ATTRIBUTES")
+        r = self.wait_response("ATTRIBUTES")
 
         for tag in alltags:
             for story in tag:
-                for k in self.backend.responses[0][1][story.id]:
+                for k in r[1][story.id]:
                     story.content[k] =\
-                        self.backend.responses[0][1][story.id][k]
+                        r[1][story.id][k]
 
         # Short circuit for testing the above setup.
         if do_curses:
@@ -246,28 +312,27 @@ class CantoCursesGui():
             self.screen = Screen()
             self.screen.init()
 
-    def next_response(self):
-        if self.backend.responses:
-            log.debug("DISCARD: %s" % (self.backend.responses[0],))
-            self.backend.response_lock.acquire()
-            r = self.backend.responses[0]
-            self.backend.responses = self.backend.responses[1:]
-            self.backend.response_lock.release()
-            return r
-        return None
+            self.user_queue = Queue()
+            self.input_thread =\
+                    Thread(target = self.screen.input_thread,
+                           args = (self.user_queue, { ":" : "command",
+                                                      "q" : "quit" }))
+            self.input_thread.daemon = True
+            self.input_thread.start()
+
+    def next_response(self, timeout=0):
+        return self.backend.responses.get()
 
     def wait_response(self, cmd):
         log.debug("waiting on %s" % cmd)
         while True:
-            if self.backend.responses:
-                if self.backend.responses[0][0] == cmd:
-                    break
-                log.debug("waiting: %s != %s" % 
-                        (self.backend.responses[0][0], cmd))
-
-                # Ignore other output.
-                self.next_response()
-        log.debug("not waiting on %s anymore" % cmd)
+            r = self.next_response()
+            if r[0] == cmd:
+                return r
+            else:
+                log.debug("waiting: %s != %s" % (r[0], cmd))
 
     def run(self):
-        time.sleep(0.01)
+        if not self.user_queue.empty():
+            log.debug("From User Queue: %s" % (self.user_queue.get(),))
+        self.screen.refresh()
