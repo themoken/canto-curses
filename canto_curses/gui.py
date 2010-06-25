@@ -267,7 +267,7 @@ class Screen():
                 r = binds[r]
                 if r == "command":
                     r = self.input_box.edit()
-                user_queue.put(r)
+                user_queue.put(("CMD", r))
                 self.input_box.reset()
 
     def exit(self):
@@ -319,11 +319,12 @@ class CantoCursesGui():
             self.screen = Screen()
             self.screen.init()
 
-            self.user_queue = Queue()
             self.input_thread =\
                     Thread(target = self.screen.input_thread,
-                           args = (self.user_queue, { ":" : "command",
-                                                      "q" : "quit" }))
+                           args = (self.backend.responses,
+                               { ":" : "command",
+                                 "q" : "quit" }))
+
             self.input_thread.daemon = True
             self.input_thread.start()
 
@@ -340,11 +341,11 @@ class CantoCursesGui():
                 log.debug("waiting: %s != %s" % (r[0], cmd))
 
     def run(self):
-        if not self.user_queue.empty():
-            cmd = self.user_queue.get()
-            log.debug("CMD: %s" % cmd)
-            if cmd in ["quit", "exit"]:
+        self.screen.refresh()
+
+        cmd = self.backend.responses.get()
+        if cmd[0] == "CMD":
+            log.debug("CMD: %s" % cmd[1])
+            if cmd[1] in ["quit", "exit"]:
                 self.screen.exit()
                 return GUI_EXIT
-
-        self.screen.refresh()

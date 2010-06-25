@@ -23,6 +23,8 @@
 # the same functionality on a single line basis, but the design is still
 # based on Textbox.
 
+from canto.encoding import encoder
+
 import logging
 log = logging.getLogger("INPUT")
 
@@ -52,8 +54,7 @@ class InputBox:
         self.pad.move(0, self.minx)
         maxx = self.pad.getmaxyx()[1]
         try:
-            self.pad.addstr(self.result[-1 * (maxx - self.minx):]\
-                    .encode("UTF-8", "replace"))
+            self.pad.addstr(encoder(self.result[-1 * (maxx - self.minx):]))
         except:
             pass
         self.pad.clrtoeol()
@@ -90,12 +91,14 @@ class InputBox:
         return 1
 
     def edit(self):
+        # Render initial prompt
         self.reset(":")
+        self.refresh()
+        curses.doupdate()
+
+        # Get user input.
         while 1:
-            ch = self.pad.getch()
-            if ch <= 0:
-                continue
-            r = self.key(ch)
+            r = self.key(self.pad.getch())
             if not r:
                 break
             if r < 0:

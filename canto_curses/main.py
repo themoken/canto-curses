@@ -68,7 +68,7 @@ class CantoCurses(CantoClient):
     def response_thread(self):
         try:
             while self.response_alive:
-                r = self.read(1)
+                r = self.read()
 
                 # HUP
                 if r == 16:
