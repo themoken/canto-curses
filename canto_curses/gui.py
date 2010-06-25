@@ -260,8 +260,11 @@ class Screen():
     def input_thread(self, user_queue, binds = {}):
         while self.input_box:
             r = self.input_box.pad.getch()
-            if chr(r) in binds:
-                r = binds[chr(r)]
+            if r < 256:
+                r = chr(r)
+
+            if r in binds:
+                r = binds[r]
                 if r == "command":
                     r = self.input_box.edit()
                 user_queue.put(r)
