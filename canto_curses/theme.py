@@ -21,14 +21,23 @@ log = logging.getLogger("WIDECURSE")
 
 color_stack = []
 
+# Return length of next string of non-space characters
+# or 0 if next character *is* a space.
+
+def len_next_word(uni):
+    if ' ' in uni:
+        return theme_len(uni.split(' ', 1)[0])
+    return theme_len(uni)
+
 def theme_print(pad, uni, width):
     global color_stack
 
+    max_width = width
     escaped = False
     code = False
 
     for i, c in enumerate(uni):
-	ec = encoder(c)
+        ec = encoder(c)
         if escaped:
             # No room
             cwidth = wcwidth(ec)
@@ -57,10 +66,20 @@ def theme_print(pad, uni, width):
         elif c == "%":
             code = True
         else:
-            # No room
+            if c == " ":
+                # Word too long
+                wwidth = len_next_word(uni[i + 1:])
+
+                # >= to account for current character
+                if wwidth <= max_width and wwidth >= width:
+                    return uni[i:]
+
             cwidth = wcwidth(ec)
+
+            # Character too long (should be handled above).
             if cwidth > width:
                 return uni[i:]
+
             waddch(pad, ec)
             width -= cwidth
 
