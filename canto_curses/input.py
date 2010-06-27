@@ -61,6 +61,9 @@ class InputBox:
         self.pad.move(0, min(self.x, maxx - 1))
         self.refresh_callback(self.coords)
 
+    def redraw(self):
+        self.refresh()
+
     def key(self, ch):
         if ch in (ascii.STX, curses.KEY_LEFT):
             if self.x > self.minx:

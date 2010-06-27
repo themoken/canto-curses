@@ -29,6 +29,33 @@ def len_next_word(uni):
         return theme_len(uni.split(' ', 1)[0])
     return theme_len(uni)
 
+class FakePad():
+    def __init__(self):
+        self.x = 0
+
+    def attron(self, attr):
+        pass
+
+    def waddch(self, ch):
+        self.x += wcwidth(ch)
+
+    def getyx(self):
+        return (0, self.x)
+
+
+class WrapPad():
+    def __init__(self, pad):
+        self.pad = pad
+
+    def attron(self, attr):
+        self.pad.attron(attr)
+
+    def waddch(self, ch):
+        waddch(self.pad, ch)
+
+    def getyx(self):
+        return self.pad.getyx()
+
 def theme_print(pad, uni, width):
     global color_stack
 
@@ -44,7 +71,7 @@ def theme_print(pad, uni, width):
             if cwidth > width:
                 return "\\" + uni[i:]
 
-            waddch(pad, ec)
+            pad.waddch(ec)
             width -= cwidth
             escaped = False
         elif code:
@@ -80,7 +107,7 @@ def theme_print(pad, uni, width):
             if cwidth > width:
                 return uni[i:]
 
-            waddch(pad, ec)
+            pad.waddch(ec)
             width -= cwidth
 
     return None
