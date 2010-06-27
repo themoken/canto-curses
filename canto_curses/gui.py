@@ -86,6 +86,7 @@ class Tag(set):
         header = self.tag + u"\n"
         lheader = theme_len(header)
         theme_print(pad, header, lheader)
+        tag_lines = 1
         tag_lines = 0
 
         for i, item in enumerate(self):
@@ -174,6 +175,7 @@ class TagList():
 
     def refresh(self):
 
+        self.max_offset = -1 * self.height
         self.max_offset = -self.height
         idx = 0
         for tag in self.tags:
