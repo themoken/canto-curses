@@ -143,21 +143,29 @@ class Tag(set):
 # panel. It defers to the Tag class for the actual individual tag rendering.
 
 class TagList():
-    def init(self, pad, refresh_callback, coords):
+    def init(self, pad, callbacks):
         # Drawing information
         self.pad = pad
         self.height, self.width = self.pad.getmaxyx()
         self.offset = 0
 
         # Callback information
-        self.coords = coords
-        self.refresh_callback = refresh_callback
+        self.callbacks = callbacks
 
         # Tags to be displayed.
         if not curtags:
             self.tags = alltags
         else:
             self.tags = curtags
+
+    def lookup_by_idx(self, idx):
+        spent = 0
+        for tag in self.tags:
+            ltag = len(tag)
+            if spent + ltag > idx:
+                return list(tag)[ idx - spent ]
+            spent += ltag
+        return None
 
     def command(self, cmd):
         global needs_redraw
@@ -169,13 +177,27 @@ class TagList():
         elif cmd == "page-up":
             self.offset = max(self.offset - (self.height - 1), 0)
             needs_redraw = True
+        elif cmd.startswith("goto"):
+            if " " in cmd:
+                target = cmd.split(" ", 1)[1]
+                try:
+                    target = int(target)
+                except:
+                    log.error("Can't parse %s as integer" % target)
+                    return
+
+                item = self.lookup_by_idx(target)
+                if not item:
+                    log.debug("No item with idx %d found." % target)
+                    return
+
+                log.debug("Would go to %s" % item.content["link"])
 
     # Render all 
 
     def refresh(self):
 
         self.max_offset = -1 * self.height
-        self.max_offset = -self.height
         idx = 0
         for tag in self.tags:
             idx, lines = tag.refresh(self.width, idx)
@@ -227,7 +249,7 @@ class TagList():
 
             spent_lines += taglines
 
-        self.refresh_callback(self.coords)
+        self.callbacks["refresh"]()
 
 # The Screen class handles the layout of multiple sub-windows on the 
 # main curses window. It's also the top-level gui object, so call to refresh the
@@ -274,101 +296,99 @@ class Screen():
     # Translate the layout into a set of curses pads given
     # a set of coordinates relating to how they're mapped to the screen.
 
-    # XXX : This code can probably be expressed much more concisely
+    def subwindow(self, ct, top, left, width, height = -1):
+        ci = ct()
+
+        # This will grab the last inputbox instantiated,
+        # though others seem pointless anyway.
+
+        if ct == InputBox:
+            self.input_box = ci
+
+        # Top and bottom windows specify an absolute height
+        # in their class (usually 1) and as such it doesn't
+        # need to be specified here.
+
+        if height < 0:
+            height = ci.get_height()
+
+        # Height - 1 because start + height = line after bottom.
+
+        bottom = top + (height - 1)
+        right = left + width
+
+        refcb = lambda : self.refresh_callback(ci, top, left, bottom, right)
+
+        # Height + 1 to account for the last curses pad line
+        # not being fully writable.
+
+        pad = curses.newpad(height + 1, width)
+
+        callbacks = {}
+        callbacks["refresh"] = refcb
+        callbacks["input"] = self.input_callback
+
+        # XXX build callbacks
+
+        ci.init(pad, callbacks)
+
+        return (ci, height)
 
     def subwindows(self):
         top = self.layout[0]
         top_h = 0
+        if top:
+            top_w = self.width / len(top)
         tops = []
 
-        # XXX : top stuff
+        for i, c in enumerate(top):
+            win_h, ci = self.subwindow(c, 0, i * top_w, top_w)
+            top_h = max(top_h, win_h)
+            tops.append((c, ci))
 
         bot = self.layout[2]
-        bot_w = self.width / len(bot)
         bot_h = 0
+        if bot:
+            bot_w = self.width / len(bot)
         bots = []
 
         for i, c, in enumerate(bot):
-            ci = c()
-            if c == InputBox:
-                self.input_box = ci
-
-            bot_h = max(bot_h, ci.get_height())
-
-            pad = curses.newpad(bot_h + 1, bot_w)
-            coords =\
-            (
-                c,                          # class type
-                ci,                         # class instance
-                (self.height - bot_h),      # top
-                bot_w * i,                  # left
-                self.height - 1,            # bottom
-                (bot_w * (i + 1)) - 1       # right
-            )
-
-            bots.append(coords)
-            ci.init(pad, self.refresh_callback, coords)
+            win_h = c().get_height()
+            ci, h = self.subwindow(c, self.height - win_h, i * bot_w, bot_w)
+            bot_h = max(bot_h, win_h)
+            bots.append((c, ci))
 
         mid = self.layout[1]
-        mid_w = self.width / len(mid)
-        mid_h = self.height - (top_h + bot_h)
+        if mid:
+            mid_w = self.width / len(mid)
 
         mids = []
         for i, c in enumerate(mid):
-
-            # height + 1 to workaround legacy curses windows' bottom right
-            # corner being unwritable.
-
-            pad = curses.newpad(mid_h + 1, mid_w)
-
-            # Add ( instantiated class, top, left, bottom, right )
-            # That is, controlling class and main screen coordinates
-            # for noutrefresh()
-
-            ci = c()
-            if c == InputBox:
-                self.input_box = ci
-
-            coords =\
-            (
-                c,                          # class type
-                ci,                         # class instance
-                top_h,                      # top
-                mid_w * i,                  # left
-                self.height - bot_h - 1,    # bottom
-                (mid_w * (i + 1)) - 1       # right
-            )
-
-            mids.append(coords)
-            ci.init(pad, self.refresh_callback, coords)
+            ci, h = self.subwindow(c, top_h, mid_w * i, \
+                    mid_w, self.height - bot_h)
+            mids.append((c, ci))
 
         self.windows = ( tops, mids, bots )
 
-    # We make this a callback because
-    #   a ) the subwindow knows best when its content
-    #       actually needs to be re-rendered
-    #
-    #   b ) it's advantageous for thing like InputBox
-    #       to be able to redraw and curses.doupdate()
-    #       itself without breaking back into the main
-    #       control loop.
-
-    def refresh_callback(self, coords):
-        ct, c, t, l, b, r = coords
+    def refresh_callback(self, c, t, l, b, r):
+        log.debug("t, l, b, r -> %d, %d, %d, %d" % (t, l, b, r))
         c.pad.noutrefresh(0, 0, t, l, b, r)
+
+    def input_callback(self, prompt):
+        return self.input_box.edit(prompt)
 
     # Call refresh for all windows from
     # top to bottom, left to right.
 
     def refresh(self):
         for region in self.windows:
-            for ct, c, t, l, b, r in region:
+            for ct, c in region:
                 c.refresh()
         curses.doupdate()
 
     def redraw(self):
         for region in self.windows:
-            for ct, c, t, l, b, r in region:
+            for ct, c in region:
                 c.redraw()
         curses.doupdate()
 
@@ -383,7 +403,7 @@ class Screen():
         curidx = 0
 
         for region in self.windows:
-            for ct, c, t, l, b, r in region:
+            for ct, c in region:
                 if ct == targetct:
                     if curidx == idx:
                         log.debug("Focusing %s %d" % (cls, idx))
@@ -421,6 +441,7 @@ class Screen():
     # Thread to put fully formed commands on the user_queue.
 
     def input_thread(self, user_queue, binds = {}):
+        global needs_redraw
         while self.input_box:
             r = self.input_box.pad.getch()
             if r < 256:

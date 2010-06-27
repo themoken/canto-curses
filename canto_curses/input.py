@@ -32,11 +32,12 @@ import curses
 from curses import ascii
 
 class InputBox:
-    def init(self, pad, refresh_callback, coords):
+    def init(self, pad, callbacks):
         self.pad = pad
         self.pad.keypad(1)
-        self.coords = coords
-        self.refresh_callback = refresh_callback
+
+        self.callbacks = callbacks
+
         self.reset()
 
     def reset(self, prompt_char=None):
@@ -59,7 +60,7 @@ class InputBox:
             pass
         self.pad.clrtoeol()
         self.pad.move(0, min(self.x, maxx - 1))
-        self.refresh_callback(self.coords)
+        self.callbacks["refresh"]()
 
     def redraw(self):
         self.refresh()
@@ -93,9 +94,9 @@ class InputBox:
             self.result = self.result[:idx] + unichr(ch) + self.result[idx:]
         return 1
 
-    def edit(self):
+    def edit(self, prompt=":"):
         # Render initial prompt
-        self.reset(":")
+        self.reset(prompt)
         self.refresh()
         curses.doupdate()
 
