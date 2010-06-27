@@ -87,7 +87,6 @@ class Tag(set):
         lheader = theme_len(header)
         theme_print(pad, header, lheader)
         tag_lines = 1
-        tag_lines = 0
 
         for i, item in enumerate(self):
             try:
