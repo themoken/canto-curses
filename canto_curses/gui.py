@@ -43,9 +43,9 @@ class Story():
         self.id = id
 
     def render(self, idx = 0):
-        body = "%3" + self.content["title"] + "%0"
+        body = "%2" + self.content["title"] + "%0"
         if tweakables["enumerated"]:
-            body = "%3[" + str(idx) + "]%0 " + body
+            body = "%2[" + str(idx) + "]%0 " + body
         return body
 
     # Return what attributes of this story are needed
@@ -79,9 +79,9 @@ class Tag(set):
 
     def render(self, mwidth, pad, idx_offset):
 
-        left = u"%8│%0 "
-        left_more = u"%8│%0     "
-        right = u" %8│%0"
+        left = u"%1│%0 "
+        left_more = u"%1│%0     "
+        right = u" %1│%0"
 
         header = self.tag + u"\n"
         lheader = theme_len(header)
@@ -265,8 +265,8 @@ class Screen():
 
         self.height, self.width = self.stdscr.getmaxyx()
 
-        for i in xrange(curses.COLORS):
-            curses.init_pair(i + 1, i, -1)
+        for i, c in enumerate([ 7, 4 ]):
+            curses.init_pair(i + 1, c, -1)
 
         return 0
 

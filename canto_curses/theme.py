@@ -78,12 +78,12 @@ def theme_print(pad, uni, width):
             # Turn on color 1 - 8
             if c in "12345678":
                 color_stack.append(ord(c) - ord('0'))
-                pad.attron(curses.color_pair(color_stack[-1] - 1))
+                pad.attron(curses.color_pair(color_stack[-1]))
 
             # Return to previous color
             elif c == '0':
                 if len(color_stack) >= 2:
-                    pad.attron(curses.color_pair(color_stack[-2] - 1))
+                    pad.attron(curses.color_pair(color_stack[-2]))
                     color_stack = color_stack[0:-1]
                 else:
                     pad.attron(curses.color_pair(0))
