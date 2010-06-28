@@ -15,7 +15,7 @@ import logging
 
 log = logging.getLogger("GUI")
 
-from threading import Thread
+from threading import Thread, Event
 from Queue import Queue
 import curses
 import time
@@ -178,25 +178,25 @@ class TagList():
             self.offset = max(self.offset - (self.height - 1), 0)
             needs_redraw = True
         elif cmd.startswith("goto"):
-            if " " in cmd:
+            if " " not in cmd:
+                target = self.callbacks["input"]("goto: ")
+            else:
                 target = cmd.split(" ", 1)[1]
-                try:
-                    target = int(target)
-                except:
-                    log.error("Can't parse %s as integer" % target)
-                    return
 
-                item = self.lookup_by_idx(target)
-                if not item:
-                    log.debug("No item with idx %d found." % target)
-                    return
+            try:
+                target = int(target)
+            except:
+                log.error("Can't parse %s as integer" % target)
+                return
 
-                log.debug("Would go to %s" % item.content["link"])
+            item = self.lookup_by_idx(target)
+            if not item:
+                log.debug("No item with idx %d found." % target)
+                return
 
-    # Render all 
+            log.debug("Would go to %s" % item.content["link"])
 
     def refresh(self):
-
         self.max_offset = -1 * self.height
         idx = 0
         for tag in self.tags:
@@ -256,7 +256,8 @@ class TagList():
 # screen and get input should come through it.
 
 class Screen():
-    def init(self, layout = [[],[TagList],[InputBox]]):
+    def init(self, user_queue, layout = [[],[TagList],[InputBox]]):
+        self.user_queue = user_queue
         self.layout = layout
         self.focused = None
 
@@ -264,10 +265,15 @@ class Screen():
             return -1
 
         self.input_box = None
+        self.sub_edit = False
+
         self.subwindows()
 
         # Default to giving first taglist focus.
         self.focus("taglist", 0)
+
+        # Start grabbing user input
+        self.start_input_thread()
 
     def curses_setup(self):
         self.stdscr = curses.initscr()
@@ -328,8 +334,6 @@ class Screen():
         callbacks["refresh"] = refcb
         callbacks["input"] = self.input_callback
 
-        # XXX build callbacks
-
         ci.init(pad, callbacks)
 
         return (ci, height)
@@ -371,11 +375,22 @@ class Screen():
         self.windows = ( tops, mids, bots )
 
     def refresh_callback(self, c, t, l, b, r):
-        log.debug("t, l, b, r -> %d, %d, %d, %d" % (t, l, b, r))
         c.pad.noutrefresh(0, 0, t, l, b, r)
 
     def input_callback(self, prompt):
-        return self.input_box.edit(prompt)
+        # Setup subedit
+        self.input_done.clear()
+        self.input_box.edit(prompt)
+        self.sub_edit = True
+
+        # Wait for finished input
+        self.input_done.wait()
+
+        # Grab the return and reset
+        r = self.input_box.result
+        self.input_box.reset()
+        self.redraw()
+        return r
 
     # Call refresh for all windows from
     # top to bottom, left to right.
@@ -440,25 +455,45 @@ class Screen():
 
     # Thread to put fully formed commands on the user_queue.
 
-    def input_thread(self, user_queue, binds = {}):
+    def input_thread(self, binds = {}):
         global needs_redraw
-        while self.input_box:
+        while True:
             r = self.input_box.pad.getch()
+
+            # We're in an edit box
+            if self.sub_edit:
+                # Feed the key to the input_box
+                rc = self.input_box.key(r)
+
+                # If rc == 1, need more keys
+                # If rc == 0, all done (result could still be "" though)
+                if not rc:
+                    self.sub_edit = False
+                    self.input_done.set()
+                continue
+
+            # We're not in an edit box.
+
+            # Convert to a writable character, if in the ASCII range
             if r < 256:
                 r = chr(r)
 
+            # Try to translate raw key to full command.
             if r in binds:
-                r = binds[r]
-                if r == "command":
-                    r = self.input_box.edit()
+                self.user_queue.put(("CMD", binds[r]))
 
-                    # Cancelled user input
-                    if not r:
-                        r = "noop"
+    def start_input_thread(self):
+        self.input_done = Event()
+        self.inthread =\
+                Thread(target = self.input_thread,
+                       args = [{ ":" : "command",
+                                "e" : "toggle enumerated",
+                                "q" : "quit",
+                                curses.KEY_NPAGE : "page-down",
+                                curses.KEY_PPAGE : "page-up" }])
 
-                user_queue.put(("CMD", r))
-                self.input_box.reset()
-                needs_redraw = True
+        self.inthread.daemon = True
+        self.inthread.start()
 
     def exit(self):
         curses.endwin()
@@ -507,20 +542,8 @@ class CantoCursesGui():
         if do_curses:
             log.debug("Starting curses.")
             self.screen = Screen()
-            self.screen.init()
+            self.screen.init(self.backend.responses)
             self.screen.refresh()
-
-            self.input_thread =\
-                    Thread(target = self.screen.input_thread,
-                           args = (self.backend.responses,
-                               { ":" : "command",
-                                 "e" : "toggle enumerated",
-                                 "q" : "quit",
-                                 curses.KEY_NPAGE : "page-down",
-                                 curses.KEY_PPAGE : "page-up"}))
-
-            self.input_thread.daemon = True
-            self.input_thread.start()
 
     def next_response(self, timeout=0):
         return self.backend.responses.get()
@@ -543,6 +566,11 @@ class CantoCursesGui():
         # User command
         if cmd[0] == "CMD":
             log.debug("CMD: %s" % cmd[1])
+
+            # Sub in a user command on the fly.
+            if cmd[1] == "command":
+                cmd = (cmd[0], self.screen.input_callback(":"))
+
             if cmd[1] in ["quit", "exit"]:
                 self.screen.exit()
                 return GUI_EXIT

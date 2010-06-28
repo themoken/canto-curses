@@ -16,7 +16,7 @@ import logging
 log = logging.getLogger("WIDECURSE")
 
 # theme_print handles attribute codes and escaping:
-#   %1 - %8 turns on color pairs 0 - 7
+#   %1 - %8 turns on color pairs 1 - 8
 #   %0      turns on the previously enabled color
 
 color_stack = []
@@ -41,7 +41,6 @@ class FakePad():
 
     def getyx(self):
         return (0, self.x)
-
 
 class WrapPad():
     def __init__(self, pad):

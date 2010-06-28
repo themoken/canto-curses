@@ -40,10 +40,10 @@ class InputBox:
 
         self.reset()
 
-    def reset(self, prompt_char=None):
+    def reset(self, prompt_str=None):
         self.pad.erase()
-        if prompt_char:
-            self.pad.addch(prompt_char)
+        if prompt_str:
+            self.pad.addstr(prompt_str)
         self.minx = self.pad.getyx()[1]
         self.x = self.minx
         self.result = ""
@@ -85,13 +85,15 @@ class InputBox:
         elif ch == ascii.NL: # C-j
             return 0
         elif ch == ascii.BEL: # C-g
-            return -1
-        elif ch == ascii.FF: # C-l
-            self.refresh()
+            self.result = ""
+            return 0
         else:
             self.x += 1
             idx = self.x - self.minx
             self.result = self.result[:idx] + unichr(ch) + self.result[idx:]
+
+        self.refresh()
+        curses.doupdate()
         return 1
 
     def edit(self, prompt=":"):
@@ -99,16 +101,3 @@ class InputBox:
         self.reset(prompt)
         self.refresh()
         curses.doupdate()
-
-        # Get user input.
-        while 1:
-            r = self.key(self.pad.getch())
-            if not r:
-                break
-            if r < 0:
-                self.result = None
-                break
-            self.refresh()
-            curses.doupdate()
-        return self.result
-
