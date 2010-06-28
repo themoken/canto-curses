@@ -7,6 +7,7 @@
 #   published by the Free Software Foundation.
 
 from canto.encoding import encoder
+from utility import silentfork
 from theme import theme_print, theme_len, WrapPad, FakePad
 from input import InputBox
 from consts import *
@@ -29,22 +30,19 @@ alltags = []
 needs_refresh = False
 needs_redraw = False
 
-# Tweakables represent the GUI
-# values that can be changed using
-# set/unset/toggle from the command line.
-
-tweakables = {
-    "enumerated" : False,
-}
-
 class Story():
-    def __init__(self, id):
+    def __init__(self, id, callbacks):
+        # Note that Story() is only given the top-level CantoCursesGui
+        # callbacks as it shouldn't be doing input / refreshing
+        # itself.
+
+        self.callbacks = callbacks
         self.content = {}
         self.id = id
 
     def render(self, idx = 0):
         body = "%2" + self.content["title"] + "%0"
-        if tweakables["enumerated"]:
+        if self.callbacks["get_tweakable"]("enumerated"):
             body = "%2[" + str(idx) + "]%0 " + body
         return body
 
@@ -56,14 +54,19 @@ class Story():
         return [ "title", "link" ]
 
 class Tag(set):
-    def __init__(self, tag):
+    def __init__(self, tag, callbacks):
+        # Note that Tag() is only given the top-level CantoCursesGui
+        # callbacks as it shouldn't be doing input / refreshing
+        # itself.
+
+        self.callbacks = callbacks
         self.tag = tag
         alltags.append(self)
 
     # Create Story from ID before adding to set.
 
     def add(self, id):
-        s = Story(id)
+        s = Story(id, self.callbacks)
         set.add(self, s)
 
     def refresh(self, mwidth, idx_offset):
@@ -179,7 +182,14 @@ class TagList():
             needs_redraw = True
         elif cmd.startswith("goto"):
             if " " not in cmd:
+                # Ensure the items are enumerated for goto
+                t = self.callbacks["get_tweakable"]("enumerated")
+                self.callbacks["set_tweakable"]("enumerated", True)
+
                 target = self.callbacks["input"]("goto: ")
+
+                # Reset enumerated to previous value
+                self.callbacks["set_tweakable"]("enumerated", t)
             else:
                 target = cmd.split(" ", 1)[1]
 
@@ -194,7 +204,7 @@ class TagList():
                 log.debug("No item with idx %d found." % target)
                 return
 
-            log.debug("Would go to %s" % item.content["link"])
+            silentfork(None, item.content["link"])
 
     def refresh(self):
         self.max_offset = -1 * self.height
@@ -256,8 +266,9 @@ class TagList():
 # screen and get input should come through it.
 
 class Screen():
-    def init(self, user_queue, layout = [[],[TagList],[InputBox]]):
+    def init(self, user_queue, callbacks, layout = [[],[TagList],[InputBox]]):
         self.user_queue = user_queue
+        self.callbacks = callbacks
         self.layout = layout
         self.focused = None
 
@@ -330,7 +341,10 @@ class Screen():
 
         pad = curses.newpad(height + 1, width)
 
-        callbacks = {}
+        # Pass on callbacks we were given from CantoCursesGui
+        # plus our own.
+
+        callbacks = self.callbacks.copy()
         callbacks["refresh"] = refcb
         callbacks["input"] = self.input_callback
 
@@ -389,7 +403,6 @@ class Screen():
         # Grab the return and reset
         r = self.input_box.result
         self.input_box.reset()
-        self.redraw()
         return r
 
     # Call refresh for all windows from
@@ -502,6 +515,16 @@ class CantoCursesGui():
     def init(self, backend, do_curses=True):
         self.backend = backend
 
+        # Tweakables that affect the overall operation.
+        self.tweakables = {
+            "enumerated" : False,
+        }
+
+        callbacks = {
+                "set_tweakable" : self.set_tweakable_callback,
+                "get_tweakable" : self.get_tweakable_callback
+        }
+
         self.backend.write("LISTFEEDS", u"")
         r = self.wait_response("LISTFEEDS")
         self.tracked_feeds = r[1]
@@ -511,7 +534,7 @@ class CantoCursesGui():
         item_tags = []
         for tag, URL in self.tracked_feeds:
             log.info("Tracking [%s] (%s)" % (tag, URL))
-            t = Tag(tag)
+            t = Tag(tag, callbacks)
             item_tags.append(tag)
 
         self.backend.write("ITEMS", item_tags)
@@ -542,7 +565,7 @@ class CantoCursesGui():
         if do_curses:
             log.debug("Starting curses.")
             self.screen = Screen()
-            self.screen.init(self.backend.responses)
+            self.screen.init(self.backend.responses, callbacks)
             self.screen.refresh()
 
     def next_response(self, timeout=0):
@@ -556,6 +579,31 @@ class CantoCursesGui():
                 return r
             else:
                 log.debug("waiting: %s != %s" % (r[0], cmd))
+
+    # Set a tweakable *only* if there is a value already.
+    # This means that every tweakable has to have a default
+    # (of course), but also that tweakables can't be randomly
+    # added by accident.
+
+    def set_tweakable_callback(self, tweak, value):
+        changed = False
+        if tweak in self.tweakables:
+            if self.tweakables[tweak] != value:
+                self.tweakables[tweak] = value
+                changed = True
+        else:
+            log.info("Unknown tweakable: %s" % tweak)
+            return
+
+        # Special actions on certain tweakables changed.
+        if changed:
+            if tweak == "enumerated":
+                self.screen.refresh()
+
+    def get_tweakable_callback(self, tweak):
+        if tweak in self.tweakables:
+            return self.tweakables[tweak]
+        return None
 
     def run(self):
         global needs_refresh
@@ -574,21 +622,19 @@ class CantoCursesGui():
             if cmd[1] in ["quit", "exit"]:
                 self.screen.exit()
                 return GUI_EXIT
+
+            # Tweakable Operations
             elif cmd[1].startswith("set "):
-                needs_refresh = True
                 rest = cmd[1][4:]
-                if rest in tweakables:
-                    tweakables[rest] = True
+                self.set_tweakable_callback(rest, True)
             elif cmd[1].startswith("unset "):
-                needs_refresh = True
                 rest = cmd[1][6:]
-                if rest in tweakables:
-                    tweakables[rest] = False
+                self.set_tweakable_callback(rest, False)
             elif cmd[1].startswith("toggle "):
-                needs_refresh = True
                 rest = cmd[1][7:]
-                if rest in tweakables:
-                    tweakables[rest] = not tweakables[rest]
+                t = self.get_tweakable_callback(rest)
+                self.set_tweakable_callback(rest, not t)
+
             # Propagate command to screen / subwindows
             elif cmd[1] != "noop":
                 self.screen.command(cmd[1])
