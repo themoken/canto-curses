@@ -231,9 +231,21 @@ class TagList():
             if spent_lines < self.offset and\
                     taglines > (self.offset - spent_lines):
                 start = (self.offset - spent_lines)
-                maxr = taglines - start
-                tag.pad.overwrite(self.pad, start, 0, 0, 0,\
-                        maxr - 1, self.width - 1)
+
+                # min() so we don't try to write too much if the
+                # first tag is also the only tag on screen.
+                maxr = min(taglines - start, self.height)
+
+                try:
+                    tag.pad.overwrite(self.pad, start, 0, 0, 0,\
+                            maxr - 1, self.width - 1)
+                except Exception, e:
+                    log.error("Partial top overwrite exception! %s" % (e,))
+                    log.error("particulars: start -> %d" % start)
+                    log.error("             maxr  -> %d" % maxr)
+                    log.error("             width -> %d" % self.width)
+                    log.error("             height-> %d" % self.height)
+                    log.error("             offset-> %d" % self.offset)
 
             # Elif we're possible visible
             elif spent_lines >= self.offset:
