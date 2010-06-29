@@ -514,6 +514,7 @@ class Screen():
                        args = [{ ":" : "command",
                                 "e" : "toggle enumerated",
                                 "q" : "quit",
+                                "g" : "goto",
                                 curses.KEY_NPAGE : "page-down",
                                 curses.KEY_PPAGE : "page-up" }])
 
