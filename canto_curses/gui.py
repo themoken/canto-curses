@@ -40,11 +40,11 @@ class Story():
         self.content = {}
         self.id = id
 
+    def enumeration_prefix(self, idx):
+        return "%2[" + str(idx) + "]%0 "
+
     def render(self, idx = 0):
-        body = "%2" + self.content["title"] + "%0"
-        if self.callbacks["get_tweakable"]("enumerated"):
-            body = "%2[" + str(idx) + "]%0 " + body
-        return body
+        return "%2" + self.content["title"] + "%0"
 
     # Return what attributes of this story are needed
     # to render it. Eventually this will be determined
@@ -71,16 +71,25 @@ class Tag(set):
 
     def refresh(self, mwidth, idx_offset):
         # Render once, doing no I/O to get proper dimensions
-        height = self.render(mwidth, FakePad(), idx_offset)[1]
+
+        # We force enumerated = 0 on this run so we know
+        # the correct number of lines to truncate enumerated lines
+        # on the next call, because the number of lines shouldn't
+        # be different ... although a future tweakable should let
+        # user initiated enumeration shift lines, but automatically
+        # initiated enumeration not.
+
+        height = self.render(mwidth, FakePad(mwidth), idx_offset, 0)[1]
 
         # Create a custom pad
         self.pad = curses.newpad(height, mwidth)
 
         # Render again, actually drawing to the screen,
         # return ( new idx_offset, display lines for tag)
-        return self.render(mwidth, WrapPad(self.pad), idx_offset)
+        enumerated = self.callbacks["get_tweakable"]("enumerated")
+        return self.render(mwidth, WrapPad(self.pad), idx_offset, enumerated)
 
-    def render(self, mwidth, pad, idx_offset):
+    def render(self, mwidth, pad, idx_offset, enumerated):
 
         left = u"%1│%0 "
         left_more = u"%1│%0     "
@@ -94,6 +103,9 @@ class Tag(set):
         for i, item in enumerate(self):
             try:
                 s = item.render(idx_offset)
+                if enumerated:
+                    s = item.enumeration_prefix(idx_offset) + s
+
                 lines = 0
                 while s:
                     width = mwidth
@@ -120,6 +132,26 @@ class Tag(set):
                         raise Exception, "theme_print didn't advance!"
                     s = t
 
+                    # Avoid line shifting when temporarily enumerating.
+                    if s and enumerated and\
+                            lines == (item.unenumerated_lines - 1):
+                        remaining = (mwidth - rlen) - pad.getyx()[1]
+
+                        # If we don't have enough room left in the line
+                        # for the ellipsis naturally (because of a word
+                        # break, etc), then we roll the cursor back and
+                        # overwrite those characters.
+
+                        if remaining < 3:
+                            pad.move(pad.getyx()[0], pad.getyx()[1] -\
+                                    (3 - remaining))
+
+                        for i in xrange(3):
+                            pad.waddch('.')
+
+                        # Render no more.
+                        s = None
+
                     # Spacer for right border
                     while pad.getyx()[1] < (mwidth - rlen):
                         pad.waddch(' ')
@@ -132,6 +164,9 @@ class Tag(set):
 
                     # Keep track of total lines for this tag
                     tag_lines += 1
+
+                if not enumerated:
+                    item.unenumerated_lines = lines
 
                 # Keep track of global index
                 idx_offset += 1

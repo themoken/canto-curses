@@ -30,17 +30,26 @@ def len_next_word(uni):
     return theme_len(uni)
 
 class FakePad():
-    def __init__(self):
+    def __init__(self, width):
         self.x = 0
+        self.y = 0
+        self.width = width
 
     def attron(self, attr):
         pass
 
     def waddch(self, ch):
         self.x += wcwidth(ch)
+        if self.x >= self.width:
+            self.y += 1
+            self.x -= self.width
 
     def getyx(self):
-        return (0, self.x)
+        return (self.y, self.x)
+
+    def move(self, y, x):
+        self.y = y
+        self.x = x
 
 class WrapPad():
     def __init__(self, pad):
@@ -54,6 +63,9 @@ class WrapPad():
 
     def getyx(self):
         return self.pad.getyx()
+
+    def move(self, x, y):
+        return self.pad.move(x, y)
 
 def theme_print(pad, uni, width):
     global color_stack
@@ -98,7 +110,7 @@ def theme_print(pad, uni, width):
 
                 # >= to account for current character
                 if wwidth <= max_width and wwidth >= width:
-                    return uni[i:]
+                    return uni[i + 1:]
 
             cwidth = wcwidth(ec)
 
