@@ -15,6 +15,12 @@ import logging
 
 log = logging.getLogger("WIDECURSE")
 
+attr_count = { "B" : 0,
+               "D" : 0,
+               "R" : 0,
+               "S" : 0,
+               "U" : 0 }
+
 # theme_print handles attribute codes and escaping:
 #   %1 - %8 turns on color pairs 1 - 8
 #   %0      turns on the previously enabled color
@@ -38,6 +44,9 @@ class FakePad():
     def attron(self, attr):
         pass
 
+    def attroff(self, attr):
+        pass
+
     def waddch(self, ch):
         self.x += wcwidth(ch)
         if self.x >= self.width:
@@ -58,6 +67,9 @@ class WrapPad():
     def attron(self, attr):
         self.pad.attron(attr)
 
+    def attroff(self, attr):
+        self.pad.attroff(attr)
+
     def waddch(self, ch):
         waddch(self.pad, ch)
 
@@ -69,6 +81,7 @@ class WrapPad():
 
 def theme_print(pad, uni, width):
     global color_stack
+    global attr_count
 
     max_width = width
     escaped = False
@@ -98,6 +111,29 @@ def theme_print(pad, uni, width):
                     color_stack = color_stack[0:-1]
                 else:
                     pad.attron(curses.color_pair(0))
+            elif c in "BbDdRrSsUu":
+                if c.isupper():
+                    attr_count[c] += 1
+                else:
+                    c = c.upper()
+                    attr_count[c] -= 1
+
+                if c == "B":
+                    a = curses.A_BOLD
+                elif c == "D":
+                    a = curses.A_DIM
+                elif c == "R":
+                    a = curses.A_REVERSE
+                elif c == "S":
+                    a = curses.A_STANDOUT
+                elif c == "U":
+                    a = curses.A_UNDERLINE
+
+                if attr_count[c]:
+                    pad.attron(a)
+                else:
+                    pad.attroff(a)
+
             code = False
         elif c == "\\":
             escaped = True
