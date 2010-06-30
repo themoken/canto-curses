@@ -42,6 +42,26 @@ class Story():
         self.content = {}
         self.id = id
 
+    # Add / remove state. Return True if an actual change, False otherwise.
+
+    def handle_state(self, attr):
+        if self.content["canto-state"] == "":
+            self.content["canto-state"] = []
+
+        # Negative attribute
+        if attr[0] == "-":
+            attr = attr[1:]
+            if attr in self.content["canto-state"]:
+                self.content["canto-state"].remove(attr)
+                return True
+
+        # Positive attribute
+        elif attr not in self.content["canto-state"]:
+            self.content["canto-state"].append(attr)
+            return True
+
+        return False
+
     def enumeration_prefix(self, idx):
         return "%1%B[" + str(idx) + "]%b%0 "
 
@@ -279,10 +299,7 @@ class TagList(CommandHandler):
                 continue
             tag = self.tags[i]
             for item in tag:
-                if item.content["canto-state"] == "":
-                    item.content["canto-state"] = []
-                if kwargs["prompt_state_string"] not in item.content["canto-state"]:
-                    item.content["canto-state"].append(kwargs["prompt_state_string"])
+                if item.handle_state(kwargs["prompt_state_string"]):
                     attributes[item.id] =\
                             { "canto-state" : item.content["canto-state"]}
 
@@ -300,10 +317,7 @@ class TagList(CommandHandler):
             item = self.lookup_by_idx(idx)
             if not item:
                 continue
-            if item.content["canto-state"] == "":
-                item.content["canto-state"] = []
-            if kwargs["prompt_state_string"] not in item.content["canto-state"]:
-                item.content["canto-state"].append(kwargs["prompt_state_string"])
+            if item.handle_state(kwargs["prompt_state_string"]):
                 attributes[item.id] =\
                         { "canto-state" : item.content["canto-state"] }
 
