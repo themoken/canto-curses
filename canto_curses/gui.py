@@ -6,9 +6,10 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from command import CommandHandler, command_format, generic_parse_error
+from theme import theme_print, theme_len, WrapPad, FakePad
 from canto.encoding import encoder
 from utility import silentfork
-from theme import theme_print, theme_len, WrapPad, FakePad
 from input import InputBox
 from consts import *
 
@@ -190,7 +191,7 @@ class Tag(set):
 # TagList is the class renders a classical Canto list of tags into the given
 # panel. It defers to the Tag class for the actual individual tag rendering.
 
-class TagList():
+class TagList(CommandHandler):
     def init(self, pad, callbacks):
         # Drawing information
         self.pad = pad
@@ -218,7 +219,7 @@ class TagList():
         return None
 
     def enumerate_and_input(self, prompt):
-        # Ensure the items are enumerated for goto
+        # Ensure the items are enumerated
         t = self.callbacks["get_tweakable"]("enumerated")
         self.callbacks["set_tweakable"]("enumerated", True)
 
@@ -228,34 +229,88 @@ class TagList():
         self.callbacks["set_tweakable"]("enumerated", t)
         return r
 
-    # Arbitrarily accept an item or list of item for
-    # commands like goto and read, etc.
-    def get_list_of_items(self, arg, prompt):
-        if " " not in arg:
-            target = self.enumerate_and_input(prompt)
-        else:
-            target = arg.split(" ", 1)[1]
+    # For Command processing
+    def input(self, prompt):
+        return self.callbacks["input"](prompt)
 
-        ret = []
-        if "," in target:
-            for i in target.split(","):
-                try:
-                    i = int(i)
-                except:
-                    log.error("Unable to parse %s as ID." % i)
-                    continue
-                ret.append(i)
-        else:
-            try:
-                i = int(i)
-            except:
-                log.error("Unable to parse %s as ID." % i)
-            ret.append(i)
+    # Prompt that ensures the items are enumerated first
+    def eprompt(self, prompt, value):
+         # Ensure the items are enumerated
+        t = self.callbacks["get_tweakable"]("enumerated")
+        self.callbacks["set_tweakable"]("enumerated", True)
 
-        if not ret:
-            return ret
+        r = self.prompt(prompt, value)
 
-        return filter(None, [ self.lookup_by_idx(i) for i in ret ])
+        # Reset enumerated to previous value
+        self.callbacks["set_tweakable"]("enumerated", t)
+        return r
+
+    def teprompt(self, prompt, value):
+        return self.prompt(prompt, value)
+
+    @command_format("goto\s+(?P<sel_idx>\d+)\s*$")
+    @command_format("goto\s*(?P<eprompt_goto_listof_int>\d+(\s*,\s*\d+)*)?\s*$")
+    @generic_parse_error
+    def goto(self, **kwargs):
+
+        # Single number variant
+        if "sel_idx" in kwargs:
+            items = [self.lookup_by_idx(int(kwargs["sel_idx"]))]
+
+        # Multiple idx variant
+        elif "eprompt_goto_listof_int" in kwargs:
+            items = [self.lookup_by_idx(i) for i in\
+                    kwargs["eprompt_goto_listof_int"]]
+
+        for item in items:
+            if not item:
+                continue
+            silentfork(None, item.content["link"])
+
+    @command_format("tag-state\s*(?P<prompt_state_string>\w)?(?P<teprompt_tags_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
+    @generic_parse_error
+    def tag_state(self, **kwargs):
+        global needs_redraw
+        log.debug("TAG_STATE: %s" % kwargs)
+
+        attributes = {}
+        for i in kwargs["teprompt_tags_listof_int"]:
+            if i >= len(self.tags):
+                continue
+            tag = self.tags[i]
+            for item in tag:
+                if item.content["canto-state"] == "":
+                    item.content["canto-state"] = []
+                if kwargs["prompt_state_string"] not in item.content["canto-state"]:
+                    item.content["canto-state"].append(kwargs["prompt_state_string"])
+                    attributes[item.id] =\
+                            { "canto-state" : item.content["canto-state"]}
+
+        if attributes != {}:
+            self.refresh()
+            needs_redraw = True
+            self.callbacks["write"]("SETATTRIBUTES", attributes)
+
+    @command_format("item-state\s*(?P<prompt_state_string>\w)?(?P<eprompt_items_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
+    @generic_parse_error
+    def item_state(self, **kwargs):
+        global needs_redraw
+        attributes = {}
+        for idx in kwargs["eprompt_items_listof_int"]:
+            item = self.lookup_by_idx(idx)
+            if not item:
+                continue
+            if item.content["canto-state"] == "":
+                item.content["canto-state"] = []
+            if kwargs["prompt_state_string"] not in item.content["canto-state"]:
+                item.content["canto-state"].append(kwargs["prompt_state_string"])
+                attributes[item.id] =\
+                        { "canto-state" : item.content["canto-state"] }
+
+        if attributes:
+            self.refresh()
+            needs_redraw = True
+            self.callbacks["write"]("SETATTRIBUTES", attributes)
 
     def command(self, cmd):
         global needs_redraw
@@ -267,24 +322,13 @@ class TagList():
         elif cmd == "page-up":
             self.offset = max(self.offset - (self.height - 1), 0)
             needs_redraw = True
+
         elif cmd.startswith("goto"):
-            for item in self.get_list_of_items(cmd[4:], "goto: "):
-                silentfork(None, item.content["link"])
-        elif cmd.startswith("read"):
-            for item in self.get_list_of_items(cmd[4:], "read: "):
-                if "read" in item.content["canto-state"]:
-                    return
-                if item.content["canto-state"] == "":
-                    item.content["canto-state"] = []
-
-                item.content["canto-state"].append("read")
-
-                attributes = { item.id :\
-                        { "canto-state" : item.content["canto-state"]}}
-
-                self.callbacks["write"]("SETATTRIBUTES", attributes)
-                self.refresh()
-                needs_redraw = True
+            self.goto(args=cmd)
+        elif cmd.startswith("tag-state"):
+            self.tag_state(args=cmd)
+        elif cmd.startswith("item-state"):
+            self.item_state(args=cmd)
 
     def refresh(self):
         self.max_offset = -1 * self.height
