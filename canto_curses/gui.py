@@ -42,17 +42,25 @@ class Story():
         self.id = id
 
     def enumeration_prefix(self, idx):
-        return "%2[" + str(idx) + "]%0 "
+        return "%1%B[" + str(idx) + "]%b%0 "
 
     def render(self, idx = 0):
-        return "%2" + self.content["title"] + "%0"
+        if self.content["canto-state"] and\
+                "read" in self.content["canto-state"]:
+            pre = "%3"
+            post = "%0"
+        else:
+            pre = "%2%B"
+            post = "%b%0"
+
+        return pre + self.content["title"] + post
 
     # Return what attributes of this story are needed
     # to render it. Eventually this will be determined
     # on the client render string.
 
     def needed_attributes(self):
-        return [ "title", "link" ]
+        return [ "title", "link", "canto-state" ]
 
 class Tag(set):
     def __init__(self, tag, callbacks):
@@ -209,6 +217,46 @@ class TagList():
             spent += ltag
         return None
 
+    def enumerate_and_input(self, prompt):
+        # Ensure the items are enumerated for goto
+        t = self.callbacks["get_tweakable"]("enumerated")
+        self.callbacks["set_tweakable"]("enumerated", True)
+
+        r = self.callbacks["input"](prompt)
+
+        # Reset enumerated to previous value
+        self.callbacks["set_tweakable"]("enumerated", t)
+        return r
+
+    # Arbitrarily accept an item or list of item for
+    # commands like goto and read, etc.
+    def get_list_of_items(self, arg, prompt):
+        if " " not in arg:
+            target = self.enumerate_and_input(prompt)
+        else:
+            target = arg.split(" ", 1)[1]
+
+        ret = []
+        if "," in target:
+            for i in target.split(","):
+                try:
+                    i = int(i)
+                except:
+                    log.error("Unable to parse %s as ID." % i)
+                    continue
+                ret.append(i)
+        else:
+            try:
+                i = int(i)
+            except:
+                log.error("Unable to parse %s as ID." % i)
+            ret.append(i)
+
+        if not ret:
+            return ret
+
+        return filter(None, [ self.lookup_by_idx(i) for i in ret ])
+
     def command(self, cmd):
         global needs_redraw
 
@@ -220,30 +268,23 @@ class TagList():
             self.offset = max(self.offset - (self.height - 1), 0)
             needs_redraw = True
         elif cmd.startswith("goto"):
-            if " " not in cmd:
-                # Ensure the items are enumerated for goto
-                t = self.callbacks["get_tweakable"]("enumerated")
-                self.callbacks["set_tweakable"]("enumerated", True)
+            for item in self.get_list_of_items(cmd[4:], "goto: "):
+                silentfork(None, item.content["link"])
+        elif cmd.startswith("read"):
+            for item in self.get_list_of_items(cmd[4:], "read: "):
+                if "read" in item.content["canto-state"]:
+                    return
+                if item.content["canto-state"] == "":
+                    item.content["canto-state"] = []
 
-                target = self.callbacks["input"]("goto: ")
+                item.content["canto-state"].append("read")
 
-                # Reset enumerated to previous value
-                self.callbacks["set_tweakable"]("enumerated", t)
-            else:
-                target = cmd.split(" ", 1)[1]
+                attributes = { item.id :\
+                        { "canto-state" : item.content["canto-state"]}}
 
-            try:
-                target = int(target)
-            except:
-                log.error("Can't parse %s as integer" % target)
-                return
-
-            item = self.lookup_by_idx(target)
-            if not item:
-                log.debug("No item with idx %d found." % target)
-                return
-
-            silentfork(None, item.content["link"])
+                self.callbacks["write"]("SETATTRIBUTES", attributes)
+                self.refresh()
+                needs_redraw = True
 
     def refresh(self):
         self.max_offset = -1 * self.height
@@ -342,7 +383,7 @@ class Screen():
 
         self.height, self.width = self.stdscr.getmaxyx()
 
-        for i, c in enumerate([ 7, 4 ]):
+        for i, c in enumerate([ 7, 4, 3 ]):
             curses.init_pair(i + 1, c, -1)
 
         return 0
@@ -561,6 +602,7 @@ class Screen():
                                 "e" : "toggle enumerated",
                                 "q" : "quit",
                                 "g" : "goto",
+                                "r" : "read",
                                 curses.KEY_NPAGE : "page-down",
                                 curses.KEY_PPAGE : "page-up" }])
 
@@ -581,7 +623,8 @@ class CantoCursesGui():
 
         callbacks = {
                 "set_tweakable" : self.set_tweakable_callback,
-                "get_tweakable" : self.get_tweakable_callback
+                "get_tweakable" : self.get_tweakable_callback,
+                "write" : self.backend.write
         }
 
         self.backend.write("LISTFEEDS", u"")
@@ -617,8 +660,11 @@ class CantoCursesGui():
         for tag in alltags:
             for story in tag:
                 for k in r[1][story.id]:
-                    story.content[k] =\
-                        r[1][story.id][k].replace("%", "\\%")
+                    a = r[1][story.id][k]
+                    if type(a) == unicode:
+                        story.content[k] = a.replace("%", "\\%")
+                    else:
+                        story.content[k] = a
 
         # Short circuit for testing the above setup.
         if do_curses:
