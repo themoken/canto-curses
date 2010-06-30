@@ -28,6 +28,7 @@ log = logging.getLogger("CANTO-CURSES")
 import traceback
 import locale
 import getopt
+import signal
 import errno
 import fcntl
 import time
@@ -44,6 +45,10 @@ class CantoCurses(CantoClient):
 
         # For good curses behavior.
         locale.setlocale(locale.LC_ALL, '')
+
+        # Used for GUI-signalled death.
+        self.pid = os.getpid()
+        self.done = False
 
         if self.args(args):
             sys.exit(-1)
@@ -81,7 +86,7 @@ class CantoCurses(CantoClient):
 
         log.debug("Response thread exiting.")
 
-    def start_thread(self):
+    def start_rthread(self):
         self.response_alive = True
         self.responses = Queue()
 
@@ -91,16 +96,29 @@ class CantoCurses(CantoClient):
         thread.daemon = True
         thread.start()
 
+    def start_gthread(self):
+        thread = Thread(target=self.gui.run)
+        thread.daemon = True
+        thread.start()
+
+    def winch(self, a = None, b = None):
+        self.gui.winch()
+
     def run(self):
-        self.start_thread()
+        self.start_rthread()
 
         self.gui = CantoCursesGui()
         self.gui.init(self)
+        self.start_gthread()
 
-        while True:
-            r = self.gui.run()
-            if r == GUI_EXIT:
-                break
+        signal.signal(signal.SIGWINCH, self.winch)
+
+        while not self.done:
+            signal.pause()
+
+    def exit(self):
+        self.done = True
+        os.kill(self.pid, signal.SIGINT)
 
     def args(self, args):
         if not args:

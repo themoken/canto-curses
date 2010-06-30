@@ -19,6 +19,7 @@ log = logging.getLogger("GUI")
 from threading import Thread, Event
 from Queue import Queue
 import curses
+import signal
 import time
 
 # Globals
@@ -146,6 +147,7 @@ class Tag(set):
                             pad.move(pad.getyx()[0], pad.getyx()[1] -\
                                     (3 - remaining))
 
+                        # Write out the ellipsis.
                         for i in xrange(3):
                             pad.waddch('.')
 
@@ -195,6 +197,8 @@ class TagList():
             self.tags = alltags
         else:
             self.tags = curtags
+
+        self.refresh()
 
     def lookup_by_idx(self, idx):
         spent = 0
@@ -258,8 +262,6 @@ class TagList():
         for tag in self.tags:
             taglines = tag.pad.getmaxyx()[0]
 
-            l = self.offset - spent_lines
-
             # If we're still off screen up after last tag, but this
             # tag will put us over the top, partial render.
 
@@ -271,16 +273,8 @@ class TagList():
                 # first tag is also the only tag on screen.
                 maxr = min(taglines - start, self.height)
 
-                try:
-                    tag.pad.overwrite(self.pad, start, 0, 0, 0,\
-                            maxr - 1, self.width - 1)
-                except Exception, e:
-                    log.error("Partial top overwrite exception! %s" % (e,))
-                    log.error("particulars: start -> %d" % start)
-                    log.error("             maxr  -> %d" % maxr)
-                    log.error("             width -> %d" % self.width)
-                    log.error("             height-> %d" % self.height)
-                    log.error("             offset-> %d" % self.offset)
+                tag.pad.overwrite(self.pad, start, 0, 0, 0,\
+                        maxr - 1, self.width - 1)
 
             # Elif we're possible visible
             elif spent_lines >= self.offset:
@@ -317,7 +311,6 @@ class Screen():
         self.user_queue = user_queue
         self.callbacks = callbacks
         self.layout = layout
-        self.focused = None
 
         if self.curses_setup() < 0:
             return -1
@@ -326,9 +319,6 @@ class Screen():
         self.sub_edit = False
 
         self.subwindows()
-
-        # Default to giving first taglist focus.
-        self.focus("taglist", 0)
 
         # Start grabbing user input
         self.start_input_thread()
@@ -400,6 +390,7 @@ class Screen():
         return (ci, height)
 
     def subwindows(self):
+        self.focused = None
         top = self.layout[0]
         top_h = 0
         if top:
@@ -435,6 +426,9 @@ class Screen():
 
         self.windows = ( tops, mids, bots )
 
+        # Default to giving first taglist focus.
+        self.focus("taglist", 0)
+
     def refresh_callback(self, c, t, l, b, r):
         c.pad.noutrefresh(0, 0, t, l, b, r)
 
@@ -451,6 +445,17 @@ class Screen():
         r = self.input_box.result
         self.input_box.reset()
         return r
+
+    def resize(self):
+        try:
+            curses.endwin()
+        except:
+            pass
+
+        self.stdscr.refresh()
+        self.curses_setup()
+        self.subwindows()
+        self.refresh()
 
     # Call refresh for all windows from
     # top to bottom, left to right.
@@ -508,6 +513,8 @@ class Screen():
                 idx = 0
 
             self.focus(cls, idx)
+        elif cmd == "resize":
+            self.resize()
 
         # Propagate command to focused window
         else:
@@ -519,6 +526,12 @@ class Screen():
         global needs_redraw
         while True:
             r = self.input_box.pad.getch()
+            if r == 300:
+                log.debug("Got -1 ithread bailing.")
+
+            # This should be handled by SIGWINCH
+            if r == curses.KEY_RESIZE:
+                continue
 
             # We're in an edit box
             if self.sub_edit:
@@ -653,46 +666,52 @@ class CantoCursesGui():
             return self.tweakables[tweak]
         return None
 
+    def winch(self):
+        self.backend.responses.put(("CMD", "resize"))
+
     def run(self):
         global needs_refresh
         global needs_redraw
 
-        cmd = self.backend.responses.get()
+        while True:
 
-        # User command
-        if cmd[0] == "CMD":
-            log.debug("CMD: %s" % cmd[1])
+            cmd = self.backend.responses.get()
 
-            # Sub in a user command on the fly.
-            if cmd[1] == "command":
-                cmd = (cmd[0], self.screen.input_callback(":"))
+            # User command
+            if cmd[0] == "CMD":
+                log.debug("CMD: %s" % cmd[1])
 
-            if cmd[1] in ["quit", "exit"]:
-                self.screen.exit()
-                return GUI_EXIT
+                # Sub in a user command on the fly.
+                if cmd[1] == "command":
+                    cmd = (cmd[0], self.screen.input_callback(":"))
 
-            # Tweakable Operations
-            elif cmd[1].startswith("set "):
-                rest = cmd[1][4:]
-                self.set_tweakable_callback(rest, True)
-            elif cmd[1].startswith("unset "):
-                rest = cmd[1][6:]
-                self.set_tweakable_callback(rest, False)
-            elif cmd[1].startswith("toggle "):
-                rest = cmd[1][7:]
-                t = self.get_tweakable_callback(rest)
-                self.set_tweakable_callback(rest, not t)
+                if cmd[1] in ["quit", "exit"]:
+                    self.screen.exit()
+                    self.backend.exit()
+                    return
 
-            # Propagate command to screen / subwindows
-            elif cmd[1] != "noop":
-                self.screen.command(cmd[1])
+                # Tweakable Operations
+                elif cmd[1].startswith("set "):
+                    rest = cmd[1][4:]
+                    self.set_tweakable_callback(rest, True)
+                elif cmd[1].startswith("unset "):
+                    rest = cmd[1][6:]
+                    self.set_tweakable_callback(rest, False)
+                elif cmd[1].startswith("toggle "):
+                    rest = cmd[1][7:]
+                    t = self.get_tweakable_callback(rest)
+                    self.set_tweakable_callback(rest, not t)
 
-        # XXX Server notification/reply
+                # Propagate command to screen / subwindows
+                elif cmd[1] != "noop":
+                    self.screen.command(cmd[1])
 
-        if needs_refresh:
-            self.screen.refresh()
-            needs_refresh = False
-            needs_redraw = False
-        elif needs_redraw:
-            self.screen.redraw()
-            needs_redraw = False
+            # XXX Server notification/reply
+
+            if needs_refresh:
+                self.screen.refresh()
+                needs_refresh = False
+                needs_redraw = False
+            elif needs_redraw:
+                self.screen.redraw()
+                needs_redraw = False
