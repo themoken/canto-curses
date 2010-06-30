@@ -526,8 +526,6 @@ class Screen():
         global needs_redraw
         while True:
             r = self.input_box.pad.getch()
-            if r == 300:
-                log.debug("Got -1 ithread bailing.")
 
             # This should be handled by SIGWINCH
             if r == curses.KEY_RESIZE:
@@ -620,7 +618,7 @@ class CantoCursesGui():
             for story in tag:
                 for k in r[1][story.id]:
                     story.content[k] =\
-                        r[1][story.id][k]
+                        r[1][story.id][k].replace("%", "\\%")
 
         # Short circuit for testing the above setup.
         if do_curses:
