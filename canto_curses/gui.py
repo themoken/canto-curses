@@ -83,7 +83,7 @@ class Story():
     def needed_attributes(self):
         return [ "title", "link", "canto-state" ]
 
-class Tag(set):
+class Tag(list):
     def __init__(self, tag, callbacks):
         # Note that Tag() is only given the top-level CantoCursesGui
         # callbacks as it shouldn't be doing input / refreshing
@@ -93,11 +93,11 @@ class Tag(set):
         self.tag = tag
         alltags.append(self)
 
-    # Create Story from ID before adding to set.
+    # Create Story from ID before appending to list.
 
-    def add(self, id):
+    def append(self, id):
         s = Story(id, self.callbacks)
-        set.add(self, s)
+        list.append(self, s)
 
     def refresh(self, mwidth, idx_offset):
         # Render once, doing no I/O to get proper dimensions
@@ -702,7 +702,7 @@ class CantoCursesGui():
 
         for tag in alltags:
             for item in r[1][tag.tag]:
-                tag.add(item)
+                tag.append(item)
 
         # Initial story attribute populate.
 
