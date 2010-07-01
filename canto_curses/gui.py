@@ -116,6 +116,7 @@ class Tag(list):
         alltags.append(self)
 
         self.cached_render_return = None
+        self.cached_enumerated = None
 
     # Create Story from ID before appending to list.
 
@@ -126,7 +127,9 @@ class Tag(list):
     def refresh(self, mwidth, idx_offset):
         # First, determine if we need to update.
 
-        if self.cached_render_return:
+        enumerated = self.callbacks["get_tweakable"]("enumerated")
+
+        if self.cached_render_return and enumerated == self.cached_enumerated:
             for item in self:
                 if item.needs_update():
                     break
@@ -151,9 +154,10 @@ class Tag(list):
 
         # Render again, actually drawing to the screen,
         # return ( new idx_offset, display lines for tag)
-        enumerated = self.callbacks["get_tweakable"]("enumerated")
+
         self.cached_render_return =\
                 self.render(mwidth, WrapPad(self.pad), idx_offset, enumerated)
+        self.cached_enumerated = enumerated
 
         # All items are rendered as are, no updates needed.
         for item in self:
