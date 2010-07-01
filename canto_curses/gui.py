@@ -116,7 +116,7 @@ class Tag(list):
         alltags.append(self)
 
         self.cached_render_return = None
-        self.cached_enumerated = None
+        self.cached_state = {}
 
     # Create Story from ID before appending to list.
 
@@ -129,7 +129,11 @@ class Tag(list):
 
         enumerated = self.callbacks["get_tweakable"]("enumerated")
 
-        if self.cached_render_return and enumerated == self.cached_enumerated:
+        state = { "enumerated" : enumerated,
+                  "mwidth" : mwidth,
+                  "idx_offset" : idx_offset}
+
+        if self.cached_render_return and state == self.cached_state:
             for item in self:
                 if item.needs_update():
                     break
@@ -157,7 +161,7 @@ class Tag(list):
 
         self.cached_render_return =\
                 self.render(mwidth, WrapPad(self.pad), idx_offset, enumerated)
-        self.cached_enumerated = enumerated
+        self.cached_state = state
 
         # All items are rendered as are, no updates needed.
         for item in self:
