@@ -6,8 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from theme import theme_print, theme_len, theme_process, WrapPad, FakePad
 from command import CommandHandler, command_format, generic_parse_error
-from theme import theme_print, theme_len, WrapPad, FakePad
 from canto.encoding import encoder
 from utility import silentfork
 from input import InputBox
@@ -180,7 +180,8 @@ class Tag(list):
                         for i in xrange(3):
                             pad.waddch('.')
 
-                        # Render no more.
+                        # Handling any dangling codes
+                        theme_process(pad, s)
                         s = None
 
                     # Spacer for right border
@@ -265,6 +266,7 @@ class TagList(CommandHandler):
         self.callbacks["set_tweakable"]("enumerated", t)
         return r
 
+    # Will enumerate tags in the future.
     def teprompt(self, prompt, value):
         return self.prompt(prompt, value)
 
@@ -287,7 +289,7 @@ class TagList(CommandHandler):
                 continue
             silentfork(None, item.content["link"])
 
-    @command_format("tag-state\s*(?P<prompt_state_string>\w)?(?P<teprompt_tags_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
+    @command_format("tag-state\s*(?P<prompt_state_string>\w+)?(?P<teprompt_tags_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
     @generic_parse_error
     def tag_state(self, **kwargs):
         global needs_redraw

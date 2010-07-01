@@ -183,3 +183,28 @@ def theme_len(uni):
             if width >= 0:
                 length += width
     return length
+
+# This is useful when a themed string needs to get truncated, so that color and
+# attribute settings can be processed, despite the last part of the string not
+# being displayed.
+
+def theme_process(pad, uni):
+    only_codes = ""
+    escaped = False
+    code = False
+
+    for c in uni:
+        if escaped:
+            escaped = False
+            continue
+        elif code:
+            only_codes += c
+            code = False
+        elif c == "\\":
+            escaped = True
+        elif c == "%":
+            code = True
+            only_codes += "%"
+
+    # NOTE: len works because codes never use widechars.
+    theme_print(pad, uni, len(uni))
