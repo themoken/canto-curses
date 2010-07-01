@@ -41,6 +41,8 @@ class Story():
         self.callbacks = callbacks
         self.content = {}
         self.id = id
+        self.selected = False
+        self.touched = True
 
     # Add / remove state. Return True if an actual change, False otherwise.
 
@@ -53,14 +55,30 @@ class Story():
             attr = attr[1:]
             if attr in self.content["canto-state"]:
                 self.content["canto-state"].remove(attr)
+                self.touched = True
                 return True
 
         # Positive attribute
         elif attr not in self.content["canto-state"]:
             self.content["canto-state"].append(attr)
+            self.touched = True
             return True
 
         return False
+
+    def select(self):
+        self.selected = True
+        self.touched = True
+
+    def unselect(self):
+        self.selected = False
+        self.touched = True
+
+    def needs_update(self):
+        return self.touched
+
+    def updated(self):
+        self.touched = False
 
     def enumeration_prefix(self, idx):
         return "%1%B[" + str(idx) + "]%b%0 "
@@ -73,6 +91,10 @@ class Story():
         else:
             pre = "%2%B"
             post = "%b%0"
+
+        if self.selected:
+            pre = "%R" + pre
+            post = post + "%r"
 
         return pre + self.content["title"] + post
 
@@ -93,6 +115,8 @@ class Tag(list):
         self.tag = tag
         alltags.append(self)
 
+        self.cached_render_return = None
+
     # Create Story from ID before appending to list.
 
     def append(self, id):
@@ -100,6 +124,17 @@ class Tag(list):
         list.append(self, s)
 
     def refresh(self, mwidth, idx_offset):
+        # First, determine if we need to update.
+
+        if self.cached_render_return:
+            for item in self:
+                if item.needs_update():
+                    break
+            else:
+                return self.cached_render_return
+
+        # Now we know we needed an update.
+
         # Render once, doing no I/O to get proper dimensions
 
         # We force enumerated = 0 on this run so we know
@@ -109,7 +144,7 @@ class Tag(list):
         # user initiated enumeration shift lines, but automatically
         # initiated enumeration not.
 
-        height = self.render(mwidth, FakePad(mwidth), idx_offset, 0)[1]
+        height = sum(self.render(mwidth, FakePad(mwidth), idx_offset, 0))
 
         # Create a custom pad
         self.pad = curses.newpad(height, mwidth)
@@ -117,7 +152,14 @@ class Tag(list):
         # Render again, actually drawing to the screen,
         # return ( new idx_offset, display lines for tag)
         enumerated = self.callbacks["get_tweakable"]("enumerated")
-        return self.render(mwidth, WrapPad(self.pad), idx_offset, enumerated)
+        self.cached_render_return =\
+                self.render(mwidth, WrapPad(self.pad), idx_offset, enumerated)
+
+        # All items are rendered as are, no updates needed.
+        for item in self:
+            item.updated()
+
+        return self.cached_render_return
 
     def render(self, mwidth, pad, idx_offset, enumerated):
 
@@ -128,13 +170,15 @@ class Tag(list):
         header = self.tag + u"\n"
         lheader = theme_len(header)
         theme_print(pad, header, lheader)
-        tag_lines = 1
+
+        # Header takes 1 line
+        mp = [1]
 
         for i, item in enumerate(self):
             try:
-                s = item.render(idx_offset)
+                s = item.render(idx_offset + i)
                 if enumerated:
-                    s = item.enumeration_prefix(idx_offset) + s
+                    s = item.enumeration_prefix(idx_offset + i) + s
 
                 lines = 0
                 while s:
@@ -194,20 +238,17 @@ class Tag(list):
                     # Keep track of lines for this item
                     lines += 1
 
-                    # Keep track of total lines for this tag
-                    tag_lines += 1
-
                 if not enumerated:
                     item.unenumerated_lines = lines
 
-                # Keep track of global index
-                idx_offset += 1
+                # Keep track of lines-per-item
+                mp.append(lines)
 
             except Exception, e:
                 log.error("addstr excepted: %s" % (e, ))
 
-        # Returns new global index offset and number of screen lines taken.
-        return (idx_offset, tag_lines)
+        # Returns lines in header + lines-per-item
+        return mp
 
 # TagList is the class renders a classical Canto list of tags into the given
 # panel. It defers to the Tag class for the actual individual tag rendering.
@@ -218,6 +259,9 @@ class TagList(CommandHandler):
         self.pad = pad
         self.height, self.width = self.pad.getmaxyx()
         self.offset = 0
+
+        # Selection information
+        self.sel = None
 
         # Callback information
         self.callbacks = callbacks
@@ -230,13 +274,22 @@ class TagList(CommandHandler):
 
         self.refresh()
 
-    def lookup_by_idx(self, idx):
+    def item_by_idx(self, idx):
         spent = 0
         for tag in self.tags:
             ltag = len(tag)
             if spent + ltag > idx:
-                return list(tag)[ idx - spent ]
+                return tag[ idx - spent ]
             spent += ltag
+        return None
+
+    def idx_by_item(self, item):
+        spent = 0
+        for tag in self.tags:
+            if item in tag:
+                return spent + tag.index(item)
+            else:
+                spent += len(tag)
         return None
 
     def enumerate_and_input(self, prompt):
@@ -256,7 +309,14 @@ class TagList(CommandHandler):
 
     # Prompt that ensures the items are enumerated first
     def eprompt(self, prompt, value):
-         # Ensure the items are enumerated
+
+        # If there's already a value, no need for
+        # enumeration or refresh.
+
+        if value:
+            return self.prompt(prompt, value)
+
+        # Ensure the items are enumerated
         t = self.callbacks["get_tweakable"]("enumerated")
         self.callbacks["set_tweakable"]("enumerated", True)
 
@@ -277,11 +337,11 @@ class TagList(CommandHandler):
 
         # Single number variant
         if "sel_idx" in kwargs:
-            items = [self.lookup_by_idx(int(kwargs["sel_idx"]))]
+            items = [self.item_by_idx(int(kwargs["sel_idx"]))]
 
         # Multiple idx variant
         elif "eprompt_goto_listof_int" in kwargs:
-            items = [self.lookup_by_idx(i) for i in\
+            items = [self.item_by_idx(i) for i in\
                     kwargs["eprompt_goto_listof_int"]]
 
         for item in items:
@@ -289,7 +349,7 @@ class TagList(CommandHandler):
                 continue
             silentfork(None, item.content["link"])
 
-    @command_format("tag-state\s*(?P<prompt_state_string>\w+)?(?P<teprompt_tags_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
+    @command_format("tag-state\s*(?P<prompt_state_string>[0-9A-Za-z-]+)?(?P<teprompt_tags_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
     @generic_parse_error
     def tag_state(self, **kwargs):
         global needs_redraw
@@ -310,13 +370,13 @@ class TagList(CommandHandler):
             needs_redraw = True
             self.callbacks["write"]("SETATTRIBUTES", attributes)
 
-    @command_format("item-state\s*(?P<prompt_state_string>\w)?(?P<eprompt_items_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
+    @command_format("item-state\s*(?P<prompt_state_string>[0-9A-Za-z-]+)?(?P<eprompt_items_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
     @generic_parse_error
     def item_state(self, **kwargs):
         global needs_redraw
         attributes = {}
         for idx in kwargs["eprompt_items_listof_int"]:
-            item = self.lookup_by_idx(idx)
+            item = self.item_by_idx(idx)
             if not item:
                 continue
             if item.handle_state(kwargs["prompt_state_string"]):
@@ -327,6 +387,67 @@ class TagList(CommandHandler):
             self.refresh()
             needs_redraw = True
             self.callbacks["write"]("SETATTRIBUTES", attributes)
+
+    # set-cursor is *absolute* and will not argue about indices that
+    # don't exist, it will just unselect negative or too high indices.
+
+    @command_format("set-cursor\s*(?P<eprompt_idx_int>[0-9-]+)?\s*$")
+    @generic_parse_error
+    def set_cursor(self, **kwargs):
+        idx = kwargs["eprompt_idx_int"]
+
+        if idx < 0:
+            self._set_cursor(None)
+        else:
+            self._set_cursor(self.item_by_idx(kwargs["eprompt_idx_int"]))
+
+    # rel-set-cursor will move the cursor relative to its current position.
+    # unlike set-cursor, it will both not allow the selection to be set to None
+    # by going off-list.
+
+    @command_format("rel-set-cursor\s*(?P<prompt_relidx_int>[0-9-]+)?\s*$")
+    @generic_parse_error
+    def rel_set_cursor(self, **kwargs):
+        idx = kwargs["prompt_relidx_int"]
+
+        if self.sel:
+            curidx = self.idx_by_item(self.sel)
+
+        # curidx = -1 so that a `rel_set_cursor 1` (i.e. next) will 
+        # select item 0
+        else:
+            curidx = -1
+
+        item = self.item_by_idx(curidx + idx)
+        if not item:
+            log.info("Will not relative scroll out of list.")
+        else:
+            return self._set_cursor(item)
+
+    def _set_cursor(self, item):
+        global needs_redraw
+
+        # May end up as None
+        if item != self.sel:
+            if self.sel:
+                self.sel.unselect()
+
+            self.sel = item
+
+            if self.sel:
+                self.sel.select()
+
+                # If we have to adjust offset to 
+                # keep selection on the screen,
+                # refresh again.
+
+                if self.offset > self.sel.max_offset:
+                    self.offset = self.sel.max_offset
+                elif self.offset < self.sel.min_offset:
+                    self.offset = self.sel.min_offset
+
+            self.refresh()
+            needs_redraw = True
 
     def command(self, cmd):
         global needs_redraw
@@ -345,13 +466,36 @@ class TagList(CommandHandler):
             self.tag_state(args=cmd)
         elif cmd.startswith("item-state"):
             self.item_state(args=cmd)
+        elif cmd.startswith("set-cursor"):
+            self.set_cursor(args=cmd)
+        elif cmd.startswith("rel-set-cursor"):
+            self.rel_set_cursor(args=cmd)
 
     def refresh(self):
         self.max_offset = -1 * self.height
         idx = 0
         for tag in self.tags:
-            idx, lines = tag.refresh(self.width, idx)
-            self.max_offset += lines
+            ml = tag.refresh(self.width, idx)
+
+            header, ml = ml[0], ml[1:]
+
+            # Update each item's {min,max}_offset for being visible
+            # in case they become selections.
+
+            for i in xrange(len(tag)):
+                curpos = self.max_offset + header + sum(ml[0:i + 1])
+                tag[i].min_offset = max(curpos + 1, 0)
+                tag[i].max_offset = curpos + (self.height - ml[i])
+
+            self.max_offset += (header + sum(ml))
+            idx += len(tag)
+
+        # Ensure that calculated selected max offset
+        # aren't outside of the general max offset
+
+        if self.sel and self.sel.max_offset > self.max_offset:
+            self.sel.max_offset = self.max_offset
+
         self.redraw()
 
     def redraw(self):
@@ -662,9 +806,10 @@ class Screen():
                                 "e" : "toggle enumerated",
                                 "q" : "quit",
                                 "g" : "goto",
-                                "r" : "read",
                                 curses.KEY_NPAGE : "page-down",
-                                curses.KEY_PPAGE : "page-up" }])
+                                curses.KEY_PPAGE : "page-up",
+                                curses.KEY_DOWN : "rel-set-cursor 1",
+                                curses.KEY_UP : "rel-set-cursor -1"}])
 
         self.inthread.daemon = True
         self.inthread.start()
