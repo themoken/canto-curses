@@ -171,9 +171,9 @@ class Tag(list):
 
     def render(self, mwidth, pad, idx_offset, enumerated):
 
-        left = u"%1│%0 "
-        left_more = u"%1│%0     "
-        right = u" %1│%0"
+        left = u"%C%1│%0 %c"
+        left_more = u"%C%1│%0     %c"
+        right = u"%C %1│%0%c"
 
         header = self.tag + u"\n"
         lheader = theme_len(header)

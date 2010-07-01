@@ -21,6 +21,12 @@ attr_count = { "B" : 0,
                "S" : 0,
                "U" : 0 }
 
+attr_map = { "B" : curses.A_BOLD,
+             "D" : curses.A_DIM,
+             "R" : curses.A_REVERSE,
+             "S" : curses.A_STANDOUT,
+             "U" : curses.A_UNDERLINE }
+
 # theme_print handles attribute codes and escaping:
 #   %1 - %8 turns on color pairs 1 - 8
 #   %0      turns on the previously enabled color
@@ -82,6 +88,7 @@ class WrapPad():
 def theme_print(pad, uni, width):
     global color_stack
     global attr_count
+    global attr_map
 
     max_width = width
     escaped = False
@@ -111,6 +118,8 @@ def theme_print(pad, uni, width):
                     color_stack = color_stack[0:-1]
                 else:
                     pad.attron(curses.color_pair(0))
+
+            # Turn attributes on / off
             elif c in "BbDdRrSsUu":
                 if c.isupper():
                     attr_count[c] += 1
@@ -118,21 +127,21 @@ def theme_print(pad, uni, width):
                     c = c.upper()
                     attr_count[c] -= 1
 
-                if c == "B":
-                    a = curses.A_BOLD
-                elif c == "D":
-                    a = curses.A_DIM
-                elif c == "R":
-                    a = curses.A_REVERSE
-                elif c == "S":
-                    a = curses.A_STANDOUT
-                elif c == "U":
-                    a = curses.A_UNDERLINE
-
                 if attr_count[c]:
-                    pad.attron(a)
+                    pad.attron(attr_map[c])
                 else:
-                    pad.attroff(a)
+                    pad.attroff(attr_map[c])
+
+            # Suspend attributes
+            elif c == "C":
+                for attr in attr_map:
+                    pad.attroff(attr_map[attr])
+
+            # Restory attributes
+            elif c == "c":
+                for attr in attr_map:
+                    if attr_count[attr]:
+                        pad.attron(attr_map[attr])
 
             code = False
         elif c == "\\":
