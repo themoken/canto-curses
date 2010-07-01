@@ -23,8 +23,6 @@ def command_format(pattern):
             if "error" in kwargs and not kwargs["error"]:
                 return fn(self, **kwargs)
 
-            log.debug("Trying pattern: %s" % pattern)
-
             m = r.match(kwargs["args"])
 
             if not m:
@@ -32,8 +30,6 @@ def command_format(pattern):
                 return fn(self, **kwargs)
 
             gd = m.groupdict()
-
-            log.debug("GD: %s" % gd)
 
             # Do special subs
 
@@ -45,7 +41,7 @@ def command_format(pattern):
                     # If the handler still didn't fill it out
                     # then error out for the next subcommand
 
-                    if not gd[k]:
+                    if gd[k] == None:
                         kwargs["error"] = True
                         return fn(self, **kwargs)
 
@@ -88,6 +84,12 @@ class CommandHandler():
                 return None
         elif typ == "string":
             return args
+        elif typ == "int":
+            try:
+                args = int(args)
+                return args
+            except:
+                return None
         else:
             return None
 
