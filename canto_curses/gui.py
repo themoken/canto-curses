@@ -315,15 +315,15 @@ class TagList(CommandHandler):
     def getforitems(self, value):
         return self.got_items
 
-    @command_format("goto\s*(?P<getforitems>)?\s*$")
     @command_format("goto\s*(?P<selidx>)?\s*$")
+    @command_format("goto\s*(?P<getforitems>)?\s*$")
     @command_format("goto\s*(?P<eprompt_goto_listof_int>\d+(\s*,\s*\d+)*)?\s*$")
     @generic_parse_error
     def goto(self, **kwargs):
 
         # Single number variant
-        if "selidx_int" in kwargs:
-            items = [self.item_by_idx(int(kwargs["selidx_int"]))]
+        if "selidx" in kwargs:
+            items = [self.item_by_idx(int(kwargs["selidx"]))]
 
         # Pre-defined multiple idx variant
         elif "getforitems" in kwargs:
