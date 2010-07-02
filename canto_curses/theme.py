@@ -216,4 +216,4 @@ def theme_process(pad, uni):
             only_codes += "%"
 
     # NOTE: len works because codes never use widechars.
-    theme_print(pad, uni, len(uni))
+    theme_print(pad, only_codes, len(only_codes))
