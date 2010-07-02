@@ -34,15 +34,11 @@ needs_redraw = False
 
 class Story():
     def __init__(self, id, callbacks):
-        # Note that Story() is only given the top-level CantoCursesGui
-        # callbacks as it shouldn't be doing input / refreshing
-        # itself.
-
         self.callbacks = callbacks
         self.content = {}
         self.id = id
         self.selected = False
-        self.touched = True
+        self.cached_state = {}
 
     # Add / remove state. Return True if an actual change, False otherwise.
 
@@ -55,48 +51,129 @@ class Story():
             attr = attr[1:]
             if attr in self.content["canto-state"]:
                 self.content["canto-state"].remove(attr)
-                self.touched = True
                 return True
 
         # Positive attribute
         elif attr not in self.content["canto-state"]:
             self.content["canto-state"].append(attr)
-            self.touched = True
             return True
 
         return False
 
     def select(self):
         self.selected = True
-        self.touched = True
 
     def unselect(self):
         self.selected = False
-        self.touched = True
 
-    def needs_update(self):
-        return self.touched
+    def refresh(self, mwidth, idx):
+        enumerated = self.callbacks["get_tweakable"]("enumerated")
+        state = { "mwidth" : mwidth,
+                  "idx" : idx,
+                  "enumerated" : enumerated,
+                  "state" : self.content["canto-state"],
+                  "selected" : self.selected }
 
-    def updated(self):
-        self.touched = False
+        if self.cached_state and self.cached_state == state:
+            return self.pad.getmaxyx()[0]
+        self.cached_state = state
 
-    def enumeration_prefix(self, idx):
-        return "%1%B[" + str(idx) + "]%b%0 "
+        lines = self.render(FakePad(mwidth), mwidth, idx, 0)
 
-    def render(self, idx = 0):
-        if self.content["canto-state"] and\
-                "read" in self.content["canto-state"]:
-            pre = "%3"
-            post = "%0"
-        else:
-            pre = "%2%B"
-            post = "%b%0"
+        self.pad = curses.newpad(lines, mwidth)
+
+        return self.render(WrapPad(self.pad), mwidth, idx, enumerated)
+
+    def render(self, pad, mwidth, idx, enumerated):
+        pre = ""
+        post = ""
 
         if self.selected:
             pre = "%R" + pre
             post = post + "%r"
 
-        return pre + self.content["title"] + post
+        if self.content["canto-state"] and\
+                "read" in self.content["canto-state"]:
+            pre = pre + "%3"
+            post = "%0" + post
+        else:
+            pre = pre + "%2%B"
+            post = "%b%0" + post
+
+        if enumerated:
+            pre = ("[%d] " % idx) + pre
+
+        s = pre + self.content["title"] + post
+        lines = 0
+
+        left = u"%C%1│%0 %c"
+        left_more = u"%C%1│%0     %c"
+        right = u"%C %1│%0%c"
+
+        try:
+            while s:
+                width = mwidth
+
+                # Left border
+                if lines == 0:
+                    l = left
+                else:
+                    l = left_more
+                llen = theme_len(l)
+                theme_print(pad, l, llen)
+                width -= llen
+
+                # Account for right border
+                rlen = theme_len(right)
+                width -= rlen
+
+                if width < 1:
+                    raise Exception, "Not wide enough!"
+
+                # Print body
+                t = theme_print(pad, s, width)
+                if s == t:
+                    raise Exception, "theme_print didn't advance!"
+                s = t
+
+                # Avoid line shifting when temporarily enumerating.
+                if s and enumerated and\
+                        lines == (self.unenumerated_lines - 1):
+                    remaining = (mwidth - rlen) - pad.getyx()[1]
+
+                    # If we don't have enough room left in the line
+                    # for the ellipsis naturally (because of a word
+                    # break, etc), then we roll the cursor back and
+                    # overwrite those characters.
+
+                    if remaining < 3:
+                        pad.move(pad.getyx()[0], pad.getyx()[1] -\
+                                (3 - remaining))
+
+                    # Write out the ellipsis.
+                    for i in xrange(3):
+                        pad.waddch('.')
+
+                    # Handling any dangling codes
+                    theme_process(pad, s)
+                    s = None
+
+                # Spacer for right border
+                while pad.getyx()[1] < (mwidth - rlen):
+                    pad.waddch(' ')
+
+                # Right border
+                theme_print(pad, right, rlen)
+
+                # Keep track of lines for this item
+                lines += 1
+
+            if not enumerated:
+                self.unenumerated_lines = lines
+        except Exception, e:
+            log.debug("Story exception: %s" % (e,))
+
+        return lines
 
     # Return what attributes of this story are needed
     # to render it. Eventually this will be determined
@@ -125,137 +202,36 @@ class Tag(list):
         list.append(self, s)
 
     def refresh(self, mwidth, idx_offset):
-        # First, determine if we need to update.
+        lines = 0
+        for i, item in enumerate(self):
+            lines += item.refresh(mwidth, idx_offset + i)
 
-        enumerated = self.callbacks["get_tweakable"]("enumerated")
+        # For header, for now
+        lines += 1
 
-        state = { "enumerated" : enumerated,
-                  "mwidth" : mwidth,
-                  "idx_offset" : idx_offset}
+        self.pad = curses.newpad(lines, mwidth)
 
-        if self.cached_render_return and state == self.cached_state:
-            for item in self:
-                if item.needs_update():
-                    break
-            else:
-                return self.cached_render_return
+        return self.render(mwidth, WrapPad(self.pad))
 
-        # Now we know we needed an update.
-
-        # Render once, doing no I/O to get proper dimensions
-
-        # We force enumerated = 0 on this run so we know
-        # the correct number of lines to truncate enumerated lines
-        # on the next call, because the number of lines shouldn't
-        # be different ... although a future tweakable should let
-        # user initiated enumeration shift lines, but automatically
-        # initiated enumeration not.
-
-        height = sum(self.render(mwidth, FakePad(mwidth), idx_offset, 0))
-
-        # Create a custom pad
-        self.pad = curses.newpad(height, mwidth)
-
-        # Render again, actually drawing to the screen,
-        # return ( new idx_offset, display lines for tag)
-
-        self.cached_render_return =\
-                self.render(mwidth, WrapPad(self.pad), idx_offset, enumerated)
-        self.cached_state = state
-
-        # All items are rendered as are, no updates needed.
-        for item in self:
-            item.updated()
-
-        return self.cached_render_return
-
-    def render(self, mwidth, pad, idx_offset, enumerated):
-
-        left = u"%C%1│%0 %c"
-        left_more = u"%C%1│%0     %c"
-        right = u"%C %1│%0%c"
+    def render(self, mwidth, pad):
 
         header = self.tag + u"\n"
         lheader = theme_len(header)
         theme_print(pad, header, lheader)
 
         # Header takes 1 line
+        spent_lines = 1
         mp = [1]
 
-        for i, item in enumerate(self):
-            try:
-                s = item.render(idx_offset + i)
-                if enumerated:
-                    s = item.enumeration_prefix(idx_offset + i) + s
+        for item in self:
+            cur_lines = item.pad.getmaxyx()[0]
+            mp.append(cur_lines)
 
-                lines = 0
-                while s:
-                    width = mwidth
+            item.pad.overwrite(self.pad, 0, 0, spent_lines, 0,\
+                spent_lines + cur_lines - 1 , mwidth - 1)
 
-                    # Left border
-                    if lines == 0:
-                        l = left
-                    else:
-                        l = left_more
-                    llen = theme_len(l)
-                    theme_print(pad, l, llen)
-                    width -= llen
+            spent_lines += cur_lines
 
-                    # Account for right border
-                    rlen = theme_len(right)
-                    width -= rlen
-
-                    if width < 1:
-                        raise Exception, "Not wide enough!"
-
-                    # Print body
-                    t = theme_print(pad, s, width)
-                    if s == t:
-                        raise Exception, "theme_print didn't advance!"
-                    s = t
-
-                    # Avoid line shifting when temporarily enumerating.
-                    if s and enumerated and\
-                            lines == (item.unenumerated_lines - 1):
-                        remaining = (mwidth - rlen) - pad.getyx()[1]
-
-                        # If we don't have enough room left in the line
-                        # for the ellipsis naturally (because of a word
-                        # break, etc), then we roll the cursor back and
-                        # overwrite those characters.
-
-                        if remaining < 3:
-                            pad.move(pad.getyx()[0], pad.getyx()[1] -\
-                                    (3 - remaining))
-
-                        # Write out the ellipsis.
-                        for i in xrange(3):
-                            pad.waddch('.')
-
-                        # Handling any dangling codes
-                        theme_process(pad, s)
-                        s = None
-
-                    # Spacer for right border
-                    while pad.getyx()[1] < (mwidth - rlen):
-                        pad.waddch(' ')
-
-                    # Right border
-                    theme_print(pad, right, rlen)
-
-                    # Keep track of lines for this item
-                    lines += 1
-
-                if not enumerated:
-                    item.unenumerated_lines = lines
-
-                # Keep track of lines-per-item
-                mp.append(lines)
-
-            except Exception, e:
-                log.error("addstr excepted: %s" % (e, ))
-
-        # Returns lines in header + lines-per-item
         return mp
 
 # TagList is the class renders a classical Canto list of tags into the given
@@ -283,6 +259,9 @@ class TagList(CommandHandler):
         self.refresh()
 
     def item_by_idx(self, idx):
+        if idx < 0:
+            return None
+
         spent = 0
         for tag in self.tags:
             ltag = len(tag)
@@ -338,14 +317,18 @@ class TagList(CommandHandler):
     def teprompt(self, prompt, value):
         return self.prompt(prompt, value)
 
-    @command_format("goto\s+(?P<sel_idx>\d+)\s*$")
+    def selidx(self, prompt, value):
+        if not value and self.sel:
+            return self.idx_by_item(self.sel)
+
+    @command_format("goto\s*(?P<selidx_int>\d+)?\s*$")
     @command_format("goto\s*(?P<eprompt_goto_listof_int>\d+(\s*,\s*\d+)*)?\s*$")
     @generic_parse_error
     def goto(self, **kwargs):
 
         # Single number variant
-        if "sel_idx" in kwargs:
-            items = [self.item_by_idx(int(kwargs["sel_idx"]))]
+        if "selidx_int" in kwargs:
+            items = [self.item_by_idx(int(kwargs["selidx_int"]))]
 
         # Multiple idx variant
         elif "eprompt_goto_listof_int" in kwargs:
@@ -430,7 +413,7 @@ class TagList(CommandHandler):
         if not item:
             log.info("Will not relative scroll out of list.")
         else:
-            return self._set_cursor(item)
+            self._set_cursor(item)
 
     def _set_cursor(self, item):
         global needs_redraw
@@ -794,6 +777,7 @@ class Screen():
                 if not rc:
                     self.sub_edit = False
                     self.input_done.set()
+                    needs_redraw = True
                 continue
 
             # We're not in an edit box.
