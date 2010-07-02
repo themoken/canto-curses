@@ -37,13 +37,16 @@ def command_format(pattern):
                 if "_" in k:
                     handler, arg = k.split("_", 1)
                     gd[k] = getattr(self, handler)(arg, gd[k])
+                else:
+                    handler = k
+                    gd[k] = getattr(self, k)(gd[k])
 
-                    # If the handler still didn't fill it out
-                    # then error out for the next subcommand
+                # If the handler still didn't fill it out
+                # then error out for the next subcommand
 
-                    if gd[k] == None:
-                        kwargs["error"] = True
-                        return fn(self, **kwargs)
+                if gd[k] == None:
+                    kwargs["error"] = True
+                    return fn(self, **kwargs)
 
             kwargs["error"] = False
             kwargs.update(gd)

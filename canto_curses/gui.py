@@ -256,6 +256,8 @@ class TagList(CommandHandler):
         else:
             self.tags = curtags
 
+        self.got_items = None
+
         self.refresh()
 
     def item_by_idx(self, idx):
@@ -279,49 +281,42 @@ class TagList(CommandHandler):
                 spent += len(tag)
         return None
 
-    def enumerate_and_input(self, prompt):
-        # Ensure the items are enumerated
-        t = self.callbacks["get_tweakable"]("enumerated")
-        self.callbacks["set_tweakable"]("enumerated", True)
-
-        r = self.callbacks["input"](prompt)
-
-        # Reset enumerated to previous value
-        self.callbacks["set_tweakable"]("enumerated", t)
-        return r
-
     # For Command processing
     def input(self, prompt):
         return self.callbacks["input"](prompt)
 
     # Prompt that ensures the items are enumerated first
-    def eprompt(self, prompt, value):
+    def eprompt(self, args, value):
 
         # If there's already a value, no need for
         # enumeration or refresh.
 
         if value:
-            return self.prompt(prompt, value)
+            return self.prompt(args, value)
 
         # Ensure the items are enumerated
         t = self.callbacks["get_tweakable"]("enumerated")
         self.callbacks["set_tweakable"]("enumerated", True)
 
-        r = self.prompt(prompt, value)
+        r = self.prompt(args, value)
 
         # Reset enumerated to previous value
         self.callbacks["set_tweakable"]("enumerated", t)
         return r
 
     # Will enumerate tags in the future.
-    def teprompt(self, prompt, value):
-        return self.prompt(prompt, value)
+    def teprompt(self, args, value):
+        return self.prompt(args, value)
 
-    def selidx(self, prompt, value):
-        if not value and self.sel:
+    def selidx(self, value):
+        if self.sel:
             return self.idx_by_item(self.sel)
 
-    @command_format("goto\s*(?P<selidx_int>\d+)?\s*$")
+    def getforitems(self, value):
+        return self.got_items
+
+    @command_format("goto\s*(?P<getforitems>)?\s*$")
+    @command_format("goto\s*(?P<selidx>)?\s*$")
     @command_format("goto\s*(?P<eprompt_goto_listof_int>\d+(\s*,\s*\d+)*)?\s*$")
     @generic_parse_error
     def goto(self, **kwargs):
@@ -329,6 +324,10 @@ class TagList(CommandHandler):
         # Single number variant
         if "selidx_int" in kwargs:
             items = [self.item_by_idx(int(kwargs["selidx_int"]))]
+
+        # Pre-defined multiple idx variant
+        elif "getforitems" in kwargs:
+            items = kwargs["getforitems"]
 
         # Multiple idx variant
         elif "eprompt_goto_listof_int" in kwargs:
@@ -361,15 +360,20 @@ class TagList(CommandHandler):
             needs_redraw = True
             self.callbacks["write"]("SETATTRIBUTES", attributes)
 
+    @command_format("item-state\s*(?P<prompt_state_string>[0-9A-Za-z-]+)?(?P<getforitems>)?\s*$")
     @command_format("item-state\s*(?P<prompt_state_string>[0-9A-Za-z-]+)?(?P<eprompt_items_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
     @generic_parse_error
     def item_state(self, **kwargs):
         global needs_redraw
+
+        if "getforitems" in kwargs:
+            items = kwargs["getforitems"]
+        elif "eprompt_items_listof_int" in kwargs:
+            items = filter(None, [ self.item_by_idx(i) for i in\
+                                    kwargs["eprompt_items_listof_int"]])
+
         attributes = {}
-        for idx in kwargs["eprompt_items_listof_int"]:
-            item = self.item_by_idx(idx)
-            if not item:
-                continue
+        for item in items:
             if item.handle_state(kwargs["prompt_state_string"]):
                 attributes[item.id] =\
                         { "canto-state" : item.content["canto-state"] }
@@ -440,6 +444,18 @@ class TagList(CommandHandler):
             self.refresh()
             needs_redraw = True
 
+    @command_format("foritems\s*(?P<eprompt_items_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
+    @generic_parse_error
+    def foritems(self, **kwargs):
+        self.got_items = filter(None,\
+                [self.item_by_idx(i) for i in
+                    kwargs["eprompt_items_listof_int"]])
+
+    @command_format("clearitems\s*$")
+    @generic_parse_error
+    def clearitems(self, **kwargs):
+        self.got_items = None
+
     def command(self, cmd):
         global needs_redraw
 
@@ -461,6 +477,10 @@ class TagList(CommandHandler):
             self.set_cursor(args=cmd)
         elif cmd.startswith("rel-set-cursor"):
             self.rel_set_cursor(args=cmd)
+        elif cmd.startswith("foritems"):
+            self.foritems(args=cmd)
+        elif cmd.startswith("clearitems"):
+            self.clearitems(args=cmd)
 
     def refresh(self):
         self.max_offset = -1 * self.height
