@@ -77,6 +77,7 @@ class CantoCurses(CantoClient):
 
                 # HUP
                 if r == 16:
+                    self.response_alive = False
                     break
                 if r:
                     self.responses.put(r)
@@ -104,6 +105,9 @@ class CantoCurses(CantoClient):
     def winch(self, a = None, b = None):
         self.gui.winch()
 
+    def sigusr1(self, a = None, b = None):
+        pass
+
     def run(self):
         self.start_rthread()
 
@@ -111,14 +115,17 @@ class CantoCurses(CantoClient):
         self.gui.init(self)
         self.start_gthread()
 
+        signal.signal(signal.SIGUSR1, self.sigusr1)
         signal.signal(signal.SIGWINCH, self.winch)
 
         while not self.done:
             signal.pause()
 
+        log.debug("Run exiting.")
+
     def exit(self):
         self.done = True
-        os.kill(self.pid, signal.SIGINT)
+        os.kill(self.pid, signal.SIGUSR1)
 
     def args(self, args):
         if not args:
@@ -194,6 +201,24 @@ class CantoCurses(CantoClient):
             tb = traceback.format_exc(e)
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
+
+        self.write("PING", "")
+
+        # Exploit the fact that requests are
+        # made in order and PING/PONG to ensure
+        # all previous traffic is done.
+
+        while True:
+            if not self.responses.empty():
+                r = self.responses.get()
+                log.debug("r = %s" % (r, ))
+                if r[0] == "PONG":
+                    break
+            if not self.response_alive:
+                log.debug("Unabled to sync, connection closed.")
+                break
+
+        self.response_alive = False
 
         log.info("Exiting.")
         sys.exit(0)
