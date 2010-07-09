@@ -1,2 +1,5 @@
 - Cursor / other state not maintained through refresh
 - Ditto with input state.
+- Ping sync doesn't work really. Perhaps need to ensure closing connection
+  doesn't interrupt server completing its task.
+        - Probably need a real SYNC command to close all open shelves.
