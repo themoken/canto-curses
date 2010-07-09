@@ -1,0 +1,2 @@
+- Cursor / other state not maintained through refresh
+- Ditto with input state.
