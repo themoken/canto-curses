@@ -148,6 +148,19 @@ class CantoCurses(CantoClient):
         return 0
 
     def start_daemon(self):
+        pidfile = self.conf_dir + "/pid"
+        if os.path.exists(pidfile) and os.path.isfile(pidfile):
+            try:
+                pf = open(pidfile, "a+")
+                fcntl.flock(pf.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(pf.fileno(), fcntl.LOCK_UN)
+                pf.close()
+            except IOError, e:
+                if e.errno == errno.EAGAIN:
+                    # If we failed to get a lock, then the daemon is running
+                    # and we're done.
+                    return
+
         pid = os.fork()
         if not pid:
             # Shutup any log output before canto-daemon
