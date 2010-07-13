@@ -1,5 +1,13 @@
 - Cursor / other state not maintained through refresh
+- Lost keys when resizing
 - Ditto with input state.
-- Ping sync doesn't work really. Perhaps need to ensure closing connection
+- Unmatched groups in CommandHandlers obey no order, so depending on what order
+  dict.keys() returns the prompts could have inconsistent ordering. We need
+  to sort the keys by their position in the command string.
+
+
+= FIXED =
+
+X Ping sync doesn't work really. Perhaps need to ensure closing connection
   doesn't interrupt server completing its task.
         - Probably need a real SYNC command to close all open shelves.

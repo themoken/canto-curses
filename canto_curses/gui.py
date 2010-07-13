@@ -6,6 +6,11 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+# OVERALL GUI DESIGN:
+# The interface is divided into a number of important classes. They communicate
+# with each other through callbacks (which essentially just declare an API
+# instead of calling random functions in a class).
+
 from theme import theme_print, theme_len, theme_process, WrapPad, FakePad
 from command import CommandHandler, command_format, generic_parse_error
 from canto.encoding import encoder
@@ -24,13 +29,18 @@ import signal
 import time
 
 # Globals
-# Yes, I know, this is Python.
+# Yes, I know, this is Python
+# These will be tucked behind callbacks as soon as I get around to it, they are
+# artifacts of a more primitive age. =)
 
 curtags = []
 alltags = []
 
 needs_refresh = False
 needs_redraw = False
+
+# The Story class is the basic wrapper for an item to be displayed. It manages
+# its own state only because it affects its representiation.
 
 class Story():
     def __init__(self, id, callbacks):
