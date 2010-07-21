@@ -315,27 +315,19 @@ class TagList(CommandHandler):
     def teprompt(self, args, value):
         return self.prompt(args, value)
 
-    def selidx(self, value):
-        item = self.callbacks["get_var"]("selected")
-        if item:
-            return self.idx_by_item(item)
-        return None
+    def selection(self, value):
+        return self.callbacks["get_var"]("selected")
 
     def getforitems(self, value):
         return self.got_items
 
-    @command_format("goto\s*(?P<selidx>)?\s*$")
     @command_format("goto\s*(?P<getforitems>)?\s*$")
     @command_format("goto\s*(?P<eprompt_goto_listof_int>\d+(\s*,\s*\d+)*)?\s*$")
     @generic_parse_error
     def goto(self, **kwargs):
 
-        # Single number variant
-        if "selidx" in kwargs:
-            items = [self.item_by_idx(int(kwargs["selidx"]))]
-
         # Pre-defined multiple idx variant
-        elif "getforitems" in kwargs:
+        if "getforitems" in kwargs:
             items = kwargs["getforitems"]
 
         # Multiple idx variant
@@ -455,12 +447,17 @@ class TagList(CommandHandler):
             self.refresh()
             needs_redraw = True
 
+    @command_format("foritems\s*(?P<selection>)?\s*$")
     @command_format("foritems\s*(?P<eprompt_items_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
     @generic_parse_error
     def foritems(self, **kwargs):
-        self.got_items = filter(None,\
-                [self.item_by_idx(i) for i in
-                    kwargs["eprompt_items_listof_int"]])
+        if "selection" in kwargs:
+            # Guaranteed to not be None by selecection call
+            self.got_items = [ kwargs["selection"] ]
+        elif "eprompt_items_listof_int" in kwargs:
+            self.got_items = filter(None,\
+                    [self.item_by_idx(i) for i in
+                        kwargs["eprompt_items_listof_int"]])
 
     @command_format("clearitems\s*$")
     @generic_parse_error
@@ -827,13 +824,13 @@ class Screen():
         self.inthread =\
                 Thread(target = self.input_thread,
                        args = [{ ":" : "command",
-                                "e" : "toggle enumerated",
-                                "q" : "quit",
-                                "g" : "goto",
-                                curses.KEY_NPAGE : "page-down",
-                                curses.KEY_PPAGE : "page-up",
-                                curses.KEY_DOWN : "rel-set-cursor 1",
-                                curses.KEY_UP : "rel-set-cursor -1"}])
+                        "e" : "toggle enumerated",
+                        "q" : "quit",
+                        "g" : "foritems & goto & item-state read & clearitems",
+                        curses.KEY_NPAGE : "page-down",
+                        curses.KEY_PPAGE : "page-up",
+                        curses.KEY_DOWN : "rel-set-cursor 1",
+                        curses.KEY_UP : "rel-set-cursor -1"}])
 
         self.inthread.daemon = True
         self.inthread.start()
