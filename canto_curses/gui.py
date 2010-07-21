@@ -943,13 +943,43 @@ class CantoCursesGui():
     def winch(self):
         self.backend.responses.put(("CMD", "resize"))
 
+    # Search for unescaped & to split up multiple commands.
+    def cmd_split(self, cmd):
+        r = []
+        escaped = False
+        acc = ""
+        for c in cmd:
+            if escaped:
+                acc += c
+                escaped = False
+            elif c == "\\":
+                escaped = True
+            elif c == "&":
+                r.append(acc)
+                acc = ""
+            else:
+                acc += c
+        r.append(acc)
+
+        # lstrip all commands because we
+        # want to use .startswith instead of a regex.
+        return [ s.lstrip() for s in r ]
+
     def run(self):
         global needs_refresh
         global needs_redraw
 
-        while True:
+        # Priority commands allow a single
+        # user inputed string to actually
+        # break down into multiple actions.
+        priority_commands = []
 
-            cmd = self.backend.responses.get()
+        while True:
+            if priority_commands:
+                cmd = ("CMD", priority_commands[0])
+                priority_commands = priority_commands[1:]
+            else:
+                cmd = self.backend.responses.get()
 
             # User command
             if cmd[0] == "CMD":
@@ -957,7 +987,19 @@ class CantoCursesGui():
 
                 # Sub in a user command on the fly.
                 if cmd[1] == "command":
-                    cmd = (cmd[0], self.screen.input_callback(":"))
+                    cmd = ("CMD", self.screen.input_callback(":"))
+                    log.debug("command resolved to: %s" % cmd[1])
+
+                cmds = self.cmd_split(cmd[1])
+
+                # If this is actually multiple commands,
+                # then append them to the priority queue
+                # and continue to execute them one at a time.
+
+                if len(cmds) > 1:
+                    log.debug("single command split into: %s" % cmds)
+                    priority_commands.extend(cmds)
+                    continue
 
                 if cmd[1] in ["quit", "exit"]:
                     self.screen.exit()
