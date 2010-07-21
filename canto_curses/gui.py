@@ -77,7 +77,7 @@ class Story():
         self.selected = False
 
     def refresh(self, mwidth, idx):
-        enumerated = self.callbacks["get_tweakable"]("enumerated")
+        enumerated = self.callbacks["get_var"]("enumerated")
         state = { "mwidth" : mwidth,
                   "idx" : idx,
                   "enumerated" : enumerated,
@@ -254,9 +254,6 @@ class TagList(CommandHandler):
         self.height, self.width = self.pad.getmaxyx()
         self.offset = 0
 
-        # Selection information
-        self.sel = None
-
         # Callback information
         self.callbacks = callbacks
 
@@ -305,13 +302,13 @@ class TagList(CommandHandler):
             return self.prompt(args, value)
 
         # Ensure the items are enumerated
-        t = self.callbacks["get_tweakable"]("enumerated")
-        self.callbacks["set_tweakable"]("enumerated", True)
+        t = self.callbacks["get_var"]("enumerated")
+        self.callbacks["set_var"]("enumerated", True)
 
         r = self.prompt(args, value)
 
         # Reset enumerated to previous value
-        self.callbacks["set_tweakable"]("enumerated", t)
+        self.callbacks["set_var"]("enumerated", t)
         return r
 
     # Will enumerate tags in the future.
@@ -319,8 +316,10 @@ class TagList(CommandHandler):
         return self.prompt(args, value)
 
     def selidx(self, value):
-        if self.sel:
-            return self.idx_by_item(self.sel)
+        item = self.callbacks["get_var"]("selected")
+        if item:
+            return self.idx_by_item(item)
+        return None
 
     def getforitems(self, value):
         return self.got_items
@@ -415,8 +414,9 @@ class TagList(CommandHandler):
     def rel_set_cursor(self, **kwargs):
         idx = kwargs["prompt_relidx_int"]
 
-        if self.sel:
-            curidx = self.idx_by_item(self.sel)
+        sel = self.callbacks["get_var"]("selected")
+        if sel:
+            curidx = self.idx_by_item(sel)
 
         # curidx = -1 so that a `rel_set_cursor 1` (i.e. next) will 
         # select item 0
@@ -433,23 +433,24 @@ class TagList(CommandHandler):
         global needs_redraw
 
         # May end up as None
-        if item != self.sel:
-            if self.sel:
-                self.sel.unselect()
+        sel = self.callbacks["get_var"]("selected")
+        if item != sel:
+            if sel:
+                sel.unselect()
 
-            self.sel = item
+            self.callbacks["set_var"]("selected", item)
 
-            if self.sel:
-                self.sel.select()
+            if item:
+                item.select()
 
                 # If we have to adjust offset to 
                 # keep selection on the screen,
                 # refresh again.
 
-                if self.offset > self.sel.max_offset:
-                    self.offset = self.sel.max_offset
-                elif self.offset < self.sel.min_offset:
-                    self.offset = self.sel.min_offset
+                if self.offset > item.max_offset:
+                    self.offset = item.max_offset
+                elif self.offset < item.min_offset:
+                    self.offset = item.min_offset
 
             self.refresh()
             needs_redraw = True
@@ -514,8 +515,9 @@ class TagList(CommandHandler):
         # Ensure that calculated selected max offset
         # aren't outside of the general max offset
 
-        if self.sel and self.sel.max_offset > self.max_offset:
-            self.sel.max_offset = self.max_offset
+        sel = self.callbacks["get_var"]("selected")
+        if sel and sel.max_offset > self.max_offset:
+            sel.max_offset = self.max_offset
 
         self.redraw()
 
@@ -844,13 +846,14 @@ class CantoCursesGui():
         self.backend = backend
 
         # Tweakables that affect the overall operation.
-        self.tweakables = {
+        self.vars = {
             "enumerated" : False,
+            "selected" : None,
         }
 
         callbacks = {
-                "set_tweakable" : self.set_tweakable_callback,
-                "get_tweakable" : self.get_tweakable_callback,
+                "set_var" : self.set_var_callback,
+                "get_var" : self.get_var_callback,
                 "write" : self.backend.write
         }
 
@@ -912,29 +915,29 @@ class CantoCursesGui():
             else:
                 log.debug("waiting: %s != %s" % (r[0], cmd))
 
-    # Set a tweakable *only* if there is a value already.
-    # This means that every tweakable has to have a default
-    # (of course), but also that tweakables can't be randomly
+    # Set a var *only* if there is a value already.
+    # This means that every var has to have a default
+    # (of course), but also that vars can't be randomly
     # added by accident.
 
-    def set_tweakable_callback(self, tweak, value):
+    def set_var_callback(self, tweak, value):
         changed = False
-        if tweak in self.tweakables:
-            if self.tweakables[tweak] != value:
-                self.tweakables[tweak] = value
+        if tweak in self.vars:
+            if self.vars[tweak] != value:
+                self.vars[tweak] = value
                 changed = True
         else:
-            log.info("Unknown tweakable: %s" % tweak)
+            log.info("Unknown var: %s" % tweak)
             return
 
-        # Special actions on certain tweakables changed.
+        # Special actions on certain vars changed.
         if changed:
             if tweak == "enumerated":
                 self.screen.refresh()
 
-    def get_tweakable_callback(self, tweak):
-        if tweak in self.tweakables:
-            return self.tweakables[tweak]
+    def get_var_callback(self, tweak):
+        if tweak in self.vars:
+            return self.vars[tweak]
         return None
 
     def winch(self):
@@ -964,14 +967,14 @@ class CantoCursesGui():
                 # Tweakable Operations
                 elif cmd[1].startswith("set "):
                     rest = cmd[1][4:]
-                    self.set_tweakable_callback(rest, True)
+                    self.set_var_callback(rest, True)
                 elif cmd[1].startswith("unset "):
                     rest = cmd[1][6:]
-                    self.set_tweakable_callback(rest, False)
+                    self.set_var_callback(rest, False)
                 elif cmd[1].startswith("toggle "):
                     rest = cmd[1][7:]
-                    t = self.get_tweakable_callback(rest)
-                    self.set_tweakable_callback(rest, not t)
+                    t = self.get_var_callback(rest)
+                    self.set_var_callback(rest, not t)
 
                 # Propagate command to screen / subwindows
                 elif cmd[1] != "noop":
