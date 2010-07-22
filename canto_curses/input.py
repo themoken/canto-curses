@@ -34,7 +34,6 @@ from curses import ascii
 class InputBox:
     def init(self, pad, callbacks):
         self.pad = pad
-        self.pad.keypad(1)
 
         self.callbacks = callbacks
 

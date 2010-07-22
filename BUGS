@@ -1,4 +1,3 @@
-- Lost keys when resizing
 - Input state not persisting through resize.
 - Unmatched groups in CommandHandlers obey no order, so depending on what order
   dict.keys() returns the prompts could have inconsistent ordering. We need
@@ -6,6 +5,8 @@
 
 
 = FIXED =
+
+X Lost keys when resizing
 
 X Ping sync doesn't work really. Perhaps need to ensure closing connection
   doesn't interrupt server completing its task.

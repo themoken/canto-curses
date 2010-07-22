@@ -577,8 +577,12 @@ class Screen():
         self.callbacks = callbacks
         self.layout = layout
 
+
         if self.curses_setup() < 0:
             return -1
+
+        self.pseudo_input_box = curses.newpad(1,1)
+        self.pseudo_input_box.keypad(1)
 
         self.input_box = None
         self.sub_edit = False
@@ -598,6 +602,7 @@ class Screen():
             pass
 
         try:
+            curses.cbreak()
             curses.noecho()
             curses.start_color()
             curses.use_default_colors()
@@ -717,6 +722,13 @@ class Screen():
         except:
             pass
 
+        # Re-enable keypad on the input box because
+        # apparently endwin unsets it. Must be done
+        # before the stdscr.refresh() or the first
+        # keypress after KEY_RESIZE doesn't get translated
+        # (you get raw bytes).
+
+        self.pseudo_input_box.keypad(1)
         self.stdscr.refresh()
         self.curses_setup()
         self.subwindows()
@@ -790,11 +802,9 @@ class Screen():
     def input_thread(self, binds = {}):
         global needs_redraw
         while True:
-            r = self.input_box.pad.getch()
+            r = self.pseudo_input_box.getch()
 
-            # This should be handled by SIGWINCH
-            if r == curses.KEY_RESIZE:
-                continue
+            log.debug("R = %s" % r)
 
             # We're in an edit box
             if self.sub_edit:
