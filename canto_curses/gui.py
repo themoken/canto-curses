@@ -28,17 +28,6 @@ import curses
 import signal
 import time
 
-# Globals
-# Yes, I know, this is Python
-# These will be tucked behind callbacks as soon as I get around to it, they are
-# artifacts of a more primitive age. =)
-
-curtags = []
-alltags = []
-
-needs_refresh = False
-needs_redraw = False
-
 # The Story class is the basic wrapper for an item to be displayed. It manages
 # its own state only because it affects its representiation.
 
@@ -200,7 +189,7 @@ class Tag(list):
 
         self.callbacks = callbacks
         self.tag = tag
-        alltags.append(self)
+        callbacks["get_var"]("alltags").append(self)
 
         self.cached_render_return = None
         self.cached_state = {}
@@ -258,10 +247,9 @@ class TagList(CommandHandler):
         self.callbacks = callbacks
 
         # Tags to be displayed.
-        if not curtags:
-            self.tags = alltags
-        else:
-            self.tags = curtags
+        self.tags = callbacks["get_var"]("curtags")
+        if not self.tags:
+            self.tags = callbacks["get_var"]("alltags")
 
         self.got_items = None
 
@@ -343,7 +331,6 @@ class TagList(CommandHandler):
     @command_format("tag-state\s*(?P<prompt_state_string>[0-9A-Za-z-]+)?(?P<teprompt_tags_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
     @generic_parse_error
     def tag_state(self, **kwargs):
-        global needs_redraw
         log.debug("TAG_STATE: %s" % kwargs)
 
         attributes = {}
@@ -358,15 +345,13 @@ class TagList(CommandHandler):
 
         if attributes != {}:
             self.refresh()
-            needs_redraw = True
+            self.callbacks["set_var"]("needs_redraw", True)
             self.callbacks["write"]("SETATTRIBUTES", attributes)
 
     @command_format("item-state\s*(?P<prompt_state_string>[0-9A-Za-z-]+)?(?P<getforitems>)?\s*$")
     @command_format("item-state\s*(?P<prompt_state_string>[0-9A-Za-z-]+)?(?P<eprompt_items_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
     @generic_parse_error
     def item_state(self, **kwargs):
-        global needs_redraw
-
         if "getforitems" in kwargs:
             items = kwargs["getforitems"]
         elif "eprompt_items_listof_int" in kwargs:
@@ -381,7 +366,7 @@ class TagList(CommandHandler):
 
         if attributes:
             self.refresh()
-            needs_redraw = True
+            self.callbacks["set_var"]("needs_redraw", True)
             self.callbacks["write"]("SETATTRIBUTES", attributes)
 
     # set-cursor is *absolute* and will not argue about indices that
@@ -422,8 +407,6 @@ class TagList(CommandHandler):
             self._set_cursor(item)
 
     def _set_cursor(self, item):
-        global needs_redraw
-
         # May end up as None
         sel = self.callbacks["get_var"]("selected")
         if item != sel:
@@ -445,7 +428,7 @@ class TagList(CommandHandler):
                     self.offset = item.min_offset
 
             self.refresh()
-            needs_redraw = True
+            self.callbacks["set_var"]("needs_redraw", True)
 
     @command_format("foritems\s*(?P<selection>)?\s*$")
     @command_format("foritems\s*(?P<eprompt_items_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
@@ -465,15 +448,13 @@ class TagList(CommandHandler):
         self.got_items = None
 
     def command(self, cmd):
-        global needs_redraw
-
         log.debug("TagList command: %s" % cmd)
         if cmd == "page-down":
             self.offset = min(self.offset + (self.height - 1), self.max_offset)
-            needs_redraw = True
+            self.callbacks["set_var"]("needs_redraw", True)
         elif cmd == "page-up":
             self.offset = max(self.offset - (self.height - 1), 0)
-            needs_redraw = True
+            self.callbacks["set_var"]("needs_redraw", True)
 
         elif cmd.startswith("goto"):
             self.goto(args=cmd)
@@ -800,7 +781,6 @@ class Screen():
     # Thread to put fully formed commands on the user_queue.
 
     def input_thread(self, binds = {}):
-        global needs_redraw
         while True:
             r = self.pseudo_input_box.getch()
 
@@ -816,7 +796,7 @@ class Screen():
                 if not rc:
                     self.sub_edit = False
                     self.input_done.set()
-                    needs_redraw = True
+                    self.callbacks["set_var"]("needs_redraw", True)
                 continue
 
             # We're not in an edit box.
@@ -856,6 +836,10 @@ class CantoCursesGui():
         self.vars = {
             "enumerated" : False,
             "selected" : None,
+            "curtags" : [],
+            "alltags" : [],
+            "needs_refresh" : False,
+            "needs_redraw" : False
         }
 
         callbacks = {
@@ -879,7 +863,7 @@ class CantoCursesGui():
         self.backend.write("ITEMS", item_tags)
         r = self.wait_response("ITEMS")
 
-        for tag in alltags:
+        for tag in self.vars["alltags"]:
             for item in r[1][tag.tag]:
                 tag.append(item)
 
@@ -887,14 +871,14 @@ class CantoCursesGui():
 
         attribute_stories = {}
 
-        for tag in alltags:
+        for tag in self.vars["alltags"]:
             for story in tag:
                 attribute_stories[story.id] = story.needed_attributes()
 
         self.backend.write("ATTRIBUTES", attribute_stories)
         r = self.wait_response("ATTRIBUTES")
 
-        for tag in alltags:
+        for tag in self.vars["alltags"]:
             for story in tag:
                 for k in r[1][story.id]:
                     a = r[1][story.id][k]
@@ -973,9 +957,6 @@ class CantoCursesGui():
         return [ s.lstrip() for s in r ]
 
     def run(self):
-        global needs_refresh
-        global needs_redraw
-
         # Priority commands allow a single
         # user inputed string to actually
         # break down into multiple actions.
@@ -1031,10 +1012,10 @@ class CantoCursesGui():
 
             # XXX Server notification/reply
 
-            if needs_refresh:
+            if self.vars["needs_refresh"]:
                 self.screen.refresh()
-                needs_refresh = False
-                needs_redraw = False
-            elif needs_redraw:
+                self.vars["needs_refresh"] = False
+                self.vars["needs_redraw"] = False
+            elif self.vars["needs_redraw"]:
                 self.screen.redraw()
-                needs_redraw = False
+                self.vars["needs_redraw"] = False
