@@ -38,7 +38,6 @@ def command_format(pattern):
                     handler, arg = k.split("_", 1)
                     gd[k] = getattr(self, handler)(arg, gd[k])
                 else:
-                    handler = k
                     gd[k] = getattr(self, k)(gd[k])
 
                 # If the handler still didn't fill it out

@@ -622,7 +622,7 @@ class TagList(CommandHandler):
 # main curses window. It's also the top-level gui object, so call to refresh the
 # screen and get input should come through it.
 
-class Screen():
+class Screen(CommandHandler):
     def init(self, user_queue, callbacks, layout = [[],[TagList],[InputBox]]):
         self.user_queue = user_queue
         self.callbacks = callbacks
@@ -748,7 +748,7 @@ class Screen():
         self.windows = ( tops, mids, bots )
 
         # Default to giving first taglist focus.
-        self.focus("taglist", 0)
+        self._focus(TagList, 0)
 
     def refresh_callback(self, c, t, l, b, r):
         c.pad.noutrefresh(0, 0, t, l, b, r)
@@ -767,7 +767,8 @@ class Screen():
         self.input_box.reset()
         return r
 
-    def resize(self):
+    @command_format("resize\s*$")
+    def resize(self, **kwargs):
         try:
             curses.endwin()
         except:
@@ -800,21 +801,32 @@ class Screen():
                 c.redraw()
         curses.doupdate()
 
+    def classtype(self, value):
+        if value == "taglist":
+            return TagList
+        return None
+
+    def optint(self, value):
+        if not value:
+            return 0
+        try:
+            return int(value)
+        except:
+            return None
+
     # Focus idx-th instance of cls.
+    @command_format("focus\s+(?P<classtype>[a-z]*)\s*(?P<optint>\d+)?\s*$")
+    @generic_parse_error
+    def focus(self, **kwargs):
+        self._focus(kwargs["classtype"],kwargs["optint"])
 
-    def focus(self, cls, idx):
-        if cls == "taglist":
-            targetct = TagList
-        else:
-            log.info("unknown window class: %s" % cls)
-
+    def _focus(self, cls, idx):
         curidx = 0
-
         for region in self.windows:
             for ct, c in region:
-                if ct == targetct:
+                if ct == cls:
                     if curidx == idx:
-                        log.debug("Focusing %s %d" % (cls, idx))
+                        log.debug("Focusing %s %d" % (ct, curidx))
                         self.focused = c
                         break
                     curidx += 1
@@ -827,22 +839,10 @@ class Screen():
     # Pass a command to focused window:
 
     def command(self, cmd):
-        if cmd.startswith("focus "):
-            rest = cmd[6:]
-            if " " in rest:
-                cls, idx = rest.split(" ", 1)
-                try:
-                    idx == int(idx)
-                except:
-                    log.info("Failed to parse index (\"%s\") as integer" % idx)
-                    return
-            else:
-                cls = rest
-                idx = 0
-
-            self.focus(cls, idx)
-        elif cmd == "resize":
-            self.resize()
+        if cmd.startswith("focus"):
+            self.focus(args=cmd)
+        elif cmd.startswith("resize"):
+            self.resize(args=cmd)
 
         # Propagate command to focused window
         else:
