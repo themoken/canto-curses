@@ -29,7 +29,8 @@ import signal
 import time
 
 # The Story class is the basic wrapper for an item to be displayed. It manages
-# its own state only because it affects its representiation.
+# its own state only because it affects its representation, it's up to a higher
+# class to actually communicate state changes to the backend.
 
 class Story():
     def __init__(self, id, callbacks):
@@ -66,24 +67,48 @@ class Story():
         self.selected = False
 
     def refresh(self, mwidth, idx):
+        # Do we need the enumerated form?
         enumerated = self.callbacks["get_var"]("enumerated")
+
+        # These are the only things that affect the drawing
+        # of this item.
+
         state = { "mwidth" : mwidth,
                   "idx" : idx,
                   "enumerated" : enumerated,
                   "state" : self.content["canto-state"],
                   "selected" : self.selected }
 
+        # If the last refresh call had the same parameters and
+        # settings, then we don't need to touch the actual pad.
+
         if self.cached_state and self.cached_state == state:
             return self.pad.getmaxyx()[0]
+
+
         self.cached_state = state
+
+        # Render once to a FakePad (no IO) to determine the correct
+        # amount of lines. Force this to enumerated = 0 because
+        # we don't want the enumerated content to take any more lines
+        # than the unenumerated. Render will truncate smartly if we
+        # attempt to go over. This avoids insane amounts of line shifting
+        # when enumerating items and allows us to get the perfect size
+        # for this story's pad.
 
         lines = self.render(FakePad(mwidth), mwidth, idx, 0)
 
-        self.pad = curses.newpad(lines, mwidth)
+        # Create the new pad and actually do the render.
 
+        self.pad = curses.newpad(lines, mwidth)
         return self.render(WrapPad(self.pad), mwidth, idx, enumerated)
 
     def render(self, pad, mwidth, idx, enumerated):
+
+        # The first render step is to get a big long line
+        # describing what we want to render with the
+        # given state.
+
         pre = ""
         post = ""
 
@@ -103,6 +128,10 @@ class Story():
             pre = ("[%d] " % idx) + pre
 
         s = pre + self.content["title"] + post
+
+        # s is now a themed line based on this story.
+        # This doesn't include a border.
+
         lines = 0
 
         left = u"%C%1│%0 %c"
@@ -113,11 +142,15 @@ class Story():
             while s:
                 width = mwidth
 
-                # Left border
+                # Left border, for first line
                 if lines == 0:
                     l = left
+
+                # Left border, for subsequent lines (indent)
                 else:
                     l = left_more
+
+                # Render left border
                 llen = theme_len(l)
                 theme_print(pad, l, llen)
                 width -= llen
@@ -127,12 +160,15 @@ class Story():
                 width -= rlen
 
                 if width < 1:
-                    raise Exception, "Not wide enough!"
+                    raise Exception("Not wide enough!")
 
-                # Print body
+                # Render body
                 t = theme_print(pad, s, width)
                 if s == t:
-                    raise Exception, "theme_print didn't advance!"
+                    # If we didn't advance, we don't want to
+                    # infinite loop. The above width limiting *should*
+                    # make that impossible, consider this a sanity check.
+                    raise Exception("theme_print didn't advance!")
                 s = t
 
                 # Avoid line shifting when temporarily enumerating.
@@ -161,17 +197,26 @@ class Story():
                 while pad.getyx()[1] < (mwidth - rlen):
                     pad.waddch(' ')
 
-                # Right border
+                # Render right border
                 theme_print(pad, right, rlen)
 
                 # Keep track of lines for this item
                 lines += 1
 
+            # Keep track of unenumerated lines so that we can
+            # do the above shift-avoiding.
+
             if not enumerated:
                 self.unenumerated_lines = lines
+
+        # Render exceptions should be non-fatal. The worst
+        # case scenario is that one story's worth of space
+        # is going to be fucked up.
+
         except Exception, e:
             log.debug("Story exception: %s" % (e,))
 
+        # Return number of lines this story took to render entirely.
         return lines
 
     # Return what attributes of this story are needed
@@ -181,6 +226,10 @@ class Story():
     def needed_attributes(self):
         return [ "title", "link", "canto-state" ]
 
+# The Tag class manages stories. Externally, it looks
+# like a Tag takes IDs from the backend and renders an ncurses pad. No class
+# other than Tag actually touches Story objects directly.
+
 class Tag(list):
     def __init__(self, tag, callbacks):
         # Note that Tag() is only given the top-level CantoCursesGui
@@ -189,16 +238,17 @@ class Tag(list):
 
         self.callbacks = callbacks
         self.tag = tag
+
+        # Upon creation, this Tag adds itself to the
+        # list of all tags.
+
         callbacks["get_var"]("alltags").append(self)
 
-        self.cached_render_return = None
-        self.cached_state = {}
-
     # Create Story from ID before appending to list.
-
     def append(self, id):
         s = Story(id, self.callbacks)
         list.append(self, s)
+
 
     def refresh(self, mwidth, idx_offset):
         lines = 0
@@ -208,6 +258,8 @@ class Tag(list):
         # For header, for now
         lines += 1
 
+        # Create a new pad with enough lines to
+        # include all story objects.
         self.pad = curses.newpad(lines, mwidth)
 
         return self.render(mwidth, WrapPad(self.pad))
@@ -226,15 +278,21 @@ class Tag(list):
             cur_lines = item.pad.getmaxyx()[0]
             mp.append(cur_lines)
 
+            # Copy the item pad into the Tag's pad.
             item.pad.overwrite(self.pad, 0, 0, spent_lines, 0,\
                 spent_lines + cur_lines - 1 , mwidth - 1)
 
             spent_lines += cur_lines
 
+        # Return a list of integers, the heights of the header,
+        # and all of the stories. The sum must == the height
+        # of the tag's pad.
         return mp
 
 # TagList is the class renders a classical Canto list of tags into the given
 # panel. It defers to the Tag class for the actual individual tag rendering.
+# This is the level at which commands are taken and the backend is communicated
+# with.
 
 class TagList(CommandHandler):
     def init(self, pad, callbacks):
@@ -251,6 +309,7 @@ class TagList(CommandHandler):
         if not self.tags:
             self.tags = callbacks["get_var"]("alltags")
 
+        # Holster for a list of items for batch operations.
         self.got_items = None
 
         self.refresh()
@@ -348,6 +407,8 @@ class TagList(CommandHandler):
             self.callbacks["set_var"]("needs_redraw", True)
             self.callbacks["write"]("SETATTRIBUTES", attributes)
 
+    # item-state: Add/remove state for multiple items.
+
     @command_format("item-state\s*(?P<prompt_state_string>[0-9A-Za-z-]+)?(?P<getforitems>)?\s*$")
     @command_format("item-state\s*(?P<prompt_state_string>[0-9A-Za-z-]+)?(?P<eprompt_items_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
     @generic_parse_error
@@ -363,6 +424,8 @@ class TagList(CommandHandler):
             if item.handle_state(kwargs["prompt_state_string"]):
                 attributes[item.id] =\
                         { "canto-state" : item.content["canto-state"] }
+
+        # Propagate state changes to the backend.
 
         if attributes:
             self.refresh()
@@ -430,6 +493,8 @@ class TagList(CommandHandler):
             self.refresh()
             self.callbacks["set_var"]("needs_redraw", True)
 
+    # foritems gets a valid list of items by index.
+
     @command_format("foritems\s*(?P<selection>)?\s*$")
     @command_format("foritems\s*(?P<eprompt_items_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
     @generic_parse_error
@@ -442,10 +507,15 @@ class TagList(CommandHandler):
                     [self.item_by_idx(i) for i in
                         kwargs["eprompt_items_listof_int"]])
 
+    # clearitems clears all the items set by foritems.
+
     @command_format("clearitems\s*$")
     @generic_parse_error
     def clearitems(self, **kwargs):
         self.got_items = None
+
+    # simple command dispatcher.
+    # TODO: This whole function could be made generic in CommandHandler
 
     def command(self, cmd):
         log.debug("TagList command: %s" % cmd)
