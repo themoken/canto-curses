@@ -898,11 +898,11 @@ class Screen(CommandHandler):
     def exit(self):
         curses.endwin()
 
-class CantoCursesGui():
+class CantoCursesGui(CommandHandler):
     def init(self, backend, do_curses=True):
         self.backend = backend
 
-        # Tweakables that affect the overall operation.
+        # Variables that affect the overall operation.
         self.vars = {
             "enumerated" : False,
             "selected" : None,
@@ -913,8 +913,8 @@ class CantoCursesGui():
         }
 
         callbacks = {
-                "set_var" : self.set_var_callback,
-                "get_var" : self.get_var_callback,
+                "set_var" : self.set_var,
+                "get_var" : self.get_var,
                 "write" : self.backend.write
         }
 
@@ -976,12 +976,25 @@ class CantoCursesGui():
             else:
                 log.debug("waiting: %s != %s" % (r[0], cmd))
 
+    @command_format("set\s*(?P<prompt_var_string>[a-z]+)?\s*$")
+    def set(self, **kwargs):
+        self.set_var(kwargs["prompt_var_string"], True)
+
+    @command_format("unset\s*(?P<prompt_var_string>[a-z]+)?\s*$")
+    def unset(self, **kwargs):
+        self.set_var(kwargs["prompt_var_string"], False)
+
+    @command_format("toggle\s*(?P<prompt_var_string>[a-z]+)?\s*$")
+    def toggle(self, **kwargs):
+        var = kwargs["prompt_var_string"]
+        self.set_var(var, not self.get_var(var))
+
     # Set a var *only* if there is a value already.
     # This means that every var has to have a default
     # (of course), but also that vars can't be randomly
     # added by accident.
 
-    def set_var_callback(self, tweak, value):
+    def set_var(self, tweak, value):
         changed = False
         if tweak in self.vars:
             if self.vars[tweak] != value:
@@ -996,7 +1009,7 @@ class CantoCursesGui():
             if tweak == "enumerated":
                 self.screen.refresh()
 
-    def get_var_callback(self, tweak):
+    def get_var(self, tweak):
         if tweak in self.vars:
             return self.vars[tweak]
         return None
@@ -1064,17 +1077,13 @@ class CantoCursesGui():
                     self.backend.exit()
                     return
 
-                # Tweakable Operations
-                elif cmd[1].startswith("set "):
-                    rest = cmd[1][4:]
-                    self.set_var_callback(rest, True)
-                elif cmd[1].startswith("unset "):
-                    rest = cmd[1][6:]
-                    self.set_var_callback(rest, False)
-                elif cmd[1].startswith("toggle "):
-                    rest = cmd[1][7:]
-                    t = self.get_var_callback(rest)
-                    self.set_var_callback(rest, not t)
+                # Variable Operations
+                elif cmd[1].startswith("set"):
+                    self.set(args=cmd[1])
+                elif cmd[1].startswith("unset"):
+                    self.unset(args=cmd[1])
+                elif cmd[1].startswith("toggle"):
+                    self.toggle(args=cmd[1])
 
                 # Propagate command to screen / subwindows
                 elif cmd[1] != "noop":
