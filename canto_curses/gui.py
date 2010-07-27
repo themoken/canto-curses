@@ -945,6 +945,14 @@ class CantoCursesGui(CommandHandler):
 
         for tag in self.vars["alltags"]:
             for story in tag:
+                # If the story disappeared between
+                # the ITEMS and ATTRIBUTES calls
+                # it will return None.
+                if not r[1][story.id]:
+                    log.debug("Caught item disappearing.")
+                    tag.remove(story)
+                    continue
+
                 for k in r[1][story.id]:
                     a = r[1][story.id][k]
                     if type(a) == unicode:
