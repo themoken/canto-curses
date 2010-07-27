@@ -248,7 +248,6 @@ class Tag(list):
         s = Story(id, self.callbacks)
         list.append(self, s)
 
-
     def refresh(self, mwidth, idx_offset):
         lines = 0
         for i, item in enumerate(self):
@@ -618,7 +617,7 @@ class Screen(CommandHandler):
         self.callbacks = callbacks
         self.layout = layout
 
-
+        self.stdscr = curses.initscr()
         if self.curses_setup() < 0:
             return -1
 
@@ -634,8 +633,6 @@ class Screen(CommandHandler):
         self.start_input_thread()
 
     def curses_setup(self):
-        self.stdscr = curses.initscr()
-
         # This can throw an exception, but we shouldn't care.
         try:
             curses.curs_set(0)
@@ -792,6 +789,7 @@ class Screen(CommandHandler):
 
         self.pseudo_input_box.keypad(1)
         self.stdscr.refresh()
+
         self.curses_setup()
         self.subwindows()
         self.refresh()
