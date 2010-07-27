@@ -76,15 +76,14 @@ class Story():
         state = { "mwidth" : mwidth,
                   "idx" : idx,
                   "enumerated" : enumerated,
-                  "state" : self.content["canto-state"],
+                  "state" : self.content["canto-state"][:],
                   "selected" : self.selected }
 
         # If the last refresh call had the same parameters and
         # settings, then we don't need to touch the actual pad.
 
-        if self.cached_state and self.cached_state == state:
+        if self.cached_state == state:
             return self.pad.getmaxyx()[0]
-
 
         self.cached_state = state
 
@@ -335,70 +334,85 @@ class TagList(CommandHandler):
                 spent += len(tag)
         return None
 
+    def all_items(self):
+        r = []
+        for tag in self.tags:
+            r.extend(tag)
+        return r
+
     # For Command processing
     def input(self, prompt):
         return self.callbacks["input"](prompt)
 
     # Prompt that ensures the items are enumerated first
-    def eprompt(self, args, value):
-
-        # If there's already a value, no need for
-        # enumeration or refresh.
-
-        if value:
-            return self.prompt(args, value)
-
+    def eprompt(self):
         # Ensure the items are enumerated
         t = self.callbacks["get_var"]("enumerated")
         self.callbacks["set_var"]("enumerated", True)
 
-        r = self.prompt(args, value)
+        r = self.input("items: ")
 
         # Reset enumerated to previous value
         self.callbacks["set_var"]("enumerated", t)
         return r
 
     # Will enumerate tags in the future.
-    def teprompt(self, args, value):
-        return self.prompt(args, value)
+    def teprompt(self):
+        return self.input("tags: ")
 
-    def selection(self, value):
-        return self.callbacks["get_var"]("selected")
+    def uint(self, args):
+        t, r = self._int(args, lambda : self.input("uint: "))
+        if t:
+            return (True, t, r)
+        return (False, None, None)
 
-    def getforitems(self, value):
-        return self.got_items
+    def listof_items(self, args):
+        if not args:
+            s = self.callbacks["get_var"]("selected")
+            if s:
+                return (True, [s], "")
+            if self.got_items:
+                return (True, self.got_items, "")
+            else:
+                args = self.eprompt()
 
-    @command_format("goto\s*(?P<getforitems>)?\s*$")
-    @command_format("goto\s*(?P<eprompt_goto_listof_int>\d+(\s*,\s*\d+)*)?\s*$")
+        ints = self._listof_int(args, len(self.all_items()), self.eprompt)
+        return (True, filter(None, [ self.item_by_idx(i) for i in ints ]), "")
+
+    def listof_tags(self, args):
+        if not args:
+            args = self.teprompt()
+
+        ints = self._listof_int(args, len(self.tags), self.teprompt)
+        return(True, [ self.tags[i] for i in ints ], "")
+
+    def state(self, args):
+        t, r = self._first_term(args, lambda : self.input("state: "))
+        return (True, t, r)
+
+    def item(self, args):
+        t, r = self._int(args, lambda : self.input("item :"))
+        if t:
+            item = self.item_by_idx(t)
+            if not item:
+                log.error("There is no item %d" % t)
+                return (False, None, None)
+            return (True, item, r)
+        return (False, None, None)
+
+    @command_format("goto", [("items", "listof_items")])
     @generic_parse_error
     def goto(self, **kwargs):
-
-        # Pre-defined multiple idx variant
-        if "getforitems" in kwargs:
-            items = kwargs["getforitems"]
-
-        # Multiple idx variant
-        elif "eprompt_goto_listof_int" in kwargs:
-            items = [self.item_by_idx(i) for i in\
-                    kwargs["eprompt_goto_listof_int"]]
-
-        for item in items:
-            if not item:
-                continue
+        for item in kwargs["items"]:
             silentfork(None, item.content["link"])
 
-    @command_format("tag-state\s*(?P<prompt_state_string>[0-9A-Za-z-]+)?(?P<teprompt_tags_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
+    @command_format("tag-state", [("state", "state"),("tags","listof_tags")])
     @generic_parse_error
     def tag_state(self, **kwargs):
-        log.debug("TAG_STATE: %s" % kwargs)
-
         attributes = {}
-        for i in kwargs["teprompt_tags_listof_int"]:
-            if i >= len(self.tags):
-                continue
-            tag = self.tags[i]
+        for tag in kwargs["tags"]:
             for item in tag:
-                if item.handle_state(kwargs["prompt_state_string"]):
+                if item.handle_state(kwargs["state"]):
                     attributes[item.id] =\
                             { "canto-state" : item.content["canto-state"]}
 
@@ -409,19 +423,12 @@ class TagList(CommandHandler):
 
     # item-state: Add/remove state for multiple items.
 
-    @command_format("item-state\s*(?P<prompt_state_string>[0-9A-Za-z-]+)?(?P<getforitems>)?\s*$")
-    @command_format("item-state\s*(?P<prompt_state_string>[0-9A-Za-z-]+)?(?P<eprompt_items_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
+    @command_format("item-state", [("state", "state"),("items","listof_items")])
     @generic_parse_error
     def item_state(self, **kwargs):
-        if "getforitems" in kwargs:
-            items = kwargs["getforitems"]
-        elif "eprompt_items_listof_int" in kwargs:
-            items = filter(None, [ self.item_by_idx(i) for i in\
-                                    kwargs["eprompt_items_listof_int"]])
-
         attributes = {}
-        for item in items:
-            if item.handle_state(kwargs["prompt_state_string"]):
+        for item in kwargs["items"]:
+            if item.handle_state(kwargs["state"]):
                 attributes[item.id] =\
                         { "canto-state" : item.content["canto-state"] }
 
@@ -432,28 +439,18 @@ class TagList(CommandHandler):
             self.callbacks["set_var"]("needs_redraw", True)
             self.callbacks["write"]("SETATTRIBUTES", attributes)
 
-    # set-cursor is *absolute* and will not argue about indices that
-    # don't exist, it will just unselect negative or too high indices.
-
-    @command_format("set-cursor\s*(?P<eprompt_idx_int>[0-9-]+)?\s*$")
+    @command_format("set-cursor", [("idx", "item")])
     @generic_parse_error
     def set_cursor(self, **kwargs):
-        idx = kwargs["eprompt_idx_int"]
-
-        if idx < 0:
-            self._set_cursor(None)
-        else:
-            self._set_cursor(self.item_by_idx(kwargs["eprompt_idx_int"]))
+        self._set_cursor(kwargs["item"])
 
     # rel-set-cursor will move the cursor relative to its current position.
     # unlike set-cursor, it will both not allow the selection to be set to None
     # by going off-list.
 
-    @command_format("rel-set-cursor\s*(?P<prompt_relidx_int>[0-9-]+)?\s*$")
+    @command_format("rel-set-cursor", [("relidx", "uint")])
     @generic_parse_error
     def rel_set_cursor(self, **kwargs):
-        idx = kwargs["prompt_relidx_int"]
-
         sel = self.callbacks["get_var"]("selected")
         if sel:
             curidx = self.idx_by_item(sel)
@@ -463,7 +460,7 @@ class TagList(CommandHandler):
         else:
             curidx = -1
 
-        item = self.item_by_idx(curidx + idx)
+        item = self.item_by_idx(curidx + kwargs["relidx"])
         if not item:
             log.info("Will not relative scroll out of list.")
         else:
@@ -495,21 +492,14 @@ class TagList(CommandHandler):
 
     # foritems gets a valid list of items by index.
 
-    @command_format("foritems\s*(?P<selection>)?\s*$")
-    @command_format("foritems\s*(?P<eprompt_items_listof_int>\s+\d+(\s*,\s*\d+)*)?\s*$")
+    @command_format("foritems", [("items", "listof_items")])
     @generic_parse_error
     def foritems(self, **kwargs):
-        if "selection" in kwargs:
-            # Guaranteed to not be None by selecection call
-            self.got_items = [ kwargs["selection"] ]
-        elif "eprompt_items_listof_int" in kwargs:
-            self.got_items = filter(None,\
-                    [self.item_by_idx(i) for i in
-                        kwargs["eprompt_items_listof_int"]])
+        self.got_items = kwargs["items"]
 
     # clearitems clears all the items set by foritems.
 
-    @command_format("clearitems\s*$")
+    @command_format("clearitems", [])
     @generic_parse_error
     def clearitems(self, **kwargs):
         self.got_items = None
@@ -767,7 +757,27 @@ class Screen(CommandHandler):
         self.input_box.reset()
         return r
 
-    @command_format("resize\s*$")
+    def classtype(self, args):
+        t, r = self._first_term(args, lambda : self.input_callback("class: "))
+        if t == "taglist":
+            return (True, TagList, r)
+
+        log.error("Unknown class: %s" % t)
+        return (False, None, None)
+
+    def optint(self, args):
+        if not args:
+            return (True, 0, "")
+        t, r = self._first_term(args, None)
+        try:
+            t = int(t)
+        except:
+            log.error("Can't parse %s as integer" % t)
+            return (False, None, None)
+        return (True, t, r)
+
+    @command_format("resize", [])
+    @generic_parse_error
     def resize(self, **kwargs):
         try:
             curses.endwin()
@@ -801,24 +811,11 @@ class Screen(CommandHandler):
                 c.redraw()
         curses.doupdate()
 
-    def classtype(self, value):
-        if value == "taglist":
-            return TagList
-        return None
-
-    def optint(self, value):
-        if not value:
-            return 0
-        try:
-            return int(value)
-        except:
-            return None
-
     # Focus idx-th instance of cls.
-    @command_format("focus\s+(?P<classtype>[a-z]*)\s*(?P<optint>\d+)?\s*$")
+    @command_format("focus", [("cls", "classtype"),("idx", "optint")])
     @generic_parse_error
     def focus(self, **kwargs):
-        self._focus(kwargs["classtype"],kwargs["optint"])
+        self._focus(kwargs["cls"],kwargs["idx"])
 
     def _focus(self, cls, idx):
         curidx = 0
@@ -976,33 +973,35 @@ class CantoCursesGui(CommandHandler):
             else:
                 log.debug("waiting: %s != %s" % (r[0], cmd))
 
-    @command_format("set\s*(?P<prompt_var_string>[a-z]+)?\s*$")
+    def var(self, args):
+        t, r = self._first_term(args,\
+                lambda : self.screen.input_callback("var: "))
+        if t in self.vars:
+            return (True, t, r)
+        log.error("Unknown variable: %s" % t)
+        return (False, None, None)
+
+    @command_format("set", [("var","var")])
+    @generic_parse_error
     def set(self, **kwargs):
-        self.set_var(kwargs["prompt_var_string"], True)
+        self.set_var(kwargs["var"], True)
 
-    @command_format("unset\s*(?P<prompt_var_string>[a-z]+)?\s*$")
+    @command_format("unset", [("var","var")])
+    @generic_parse_error
     def unset(self, **kwargs):
-        self.set_var(kwargs["prompt_var_string"], False)
+        self.set_var(kwargs["var"], False)
 
-    @command_format("toggle\s*(?P<prompt_var_string>[a-z]+)?\s*$")
+    @command_format("toggle", [("var","var")])
+    @generic_parse_error
     def toggle(self, **kwargs):
-        var = kwargs["prompt_var_string"]
+        var = kwargs["var"]
         self.set_var(var, not self.get_var(var))
-
-    # Set a var *only* if there is a value already.
-    # This means that every var has to have a default
-    # (of course), but also that vars can't be randomly
-    # added by accident.
 
     def set_var(self, tweak, value):
         changed = False
-        if tweak in self.vars:
-            if self.vars[tweak] != value:
-                self.vars[tweak] = value
-                changed = True
-        else:
-            log.info("Unknown var: %s" % tweak)
-            return
+        if self.vars[tweak] != value:
+            self.vars[tweak] = value
+            changed = True
 
         # Special actions on certain vars changed.
         if changed:

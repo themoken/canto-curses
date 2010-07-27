@@ -10,10 +10,7 @@ import logging
 
 log = logging.getLogger("COMMAND")
 
-import re
-
-def command_format(pattern):
-    r = re.compile(pattern)
+def command_format(command, types):
     def cf(fn):
         def cfdec(self, **kwargs):
 
@@ -23,36 +20,25 @@ def command_format(pattern):
             if "error" in kwargs and not kwargs["error"]:
                 return fn(self, **kwargs)
 
-            m = r.match(kwargs["args"])
-
-            if not m:
+            if not kwargs["args"].startswith(command):
                 kwargs["error"] = True
                 return fn(self, **kwargs)
 
-            gd = m.groupdict()
+            rem = kwargs["args"][len(command):]
+            realkwargs = {}
 
-            # Do special subs
-
-            for k in gd:
-                if "_" in k:
-                    handler, arg = k.split("_", 1)
-                    gd[k] = getattr(self, handler)(arg, gd[k])
-                else:
-                    gd[k] = getattr(self, k)(gd[k])
-
-                # If the handler still didn't fill it out
-                # then error out for the next subcommand
-
-                if gd[k] == None:
+            for kw, validator in types:
+                validator = getattr(self, validator)
+                valid, result, rem = validator(rem.lstrip())
+                if not valid:
                     kwargs["error"] = True
                     return fn(self, **kwargs)
 
-            kwargs["error"] = False
-            kwargs.update(gd)
-            return fn(self, **kwargs)
+                realkwargs[kw] = result
 
+            realkwargs["error"] = False
+            return fn(self, **realkwargs)
         return cfdec
-
     return cf
 
 def generic_parse_error(fn):
@@ -64,39 +50,59 @@ def generic_parse_error(fn):
     return gpedec
 
 class CommandHandler():
-    def input(self, prompt):
-        pass
 
-    def handle_type(self, typ, args):
-        log.debug("handle_type: %s %s" % (typ, args))
-        if typ.startswith("listof_"):
-            typ = typ.split("_", 1)[1]
-            try:
-                args = eval("[" + args + "]")
-            except:
-                return None
+    def _listof_int(self, args, maxint, prompt):
+        if not args:
+            args = prompt()
 
-            if typ == "int":
-                for i in args:
-                    if type(i) != int:
-                        return None
+        if args == "*":
+            return range(0, maxint)
 
-                return args
-            else:
-                return None
-        elif typ == "string":
-            return args
-        elif typ == "int":
-            try:
-                args = int(args)
-                return args
-            except:
-                return None
+        if " " in args:
+            terms = args.split(" ")
+        elif "," in args:
+            terms = args.split(",")
         else:
-            return None
+            terms = [args]
 
-    def prompt(self, args, value):
-        prompt, typ = args.split("_", 1)
-        if not value:
-            value = self.input(prompt + ": ")
-        return self.handle_type(typ, value)
+        r = []
+        for term in terms:
+            if "-" in term:
+                a, b = term.split("-",1)
+                try:
+                    a = int(a)
+                    b = int(b)
+                except:
+                    log.error("Can't parse %s as range" % term)
+                    continue
+                r.extend(range(min(a, maxint), min(b + 1, maxint)))
+            else:
+                try:
+                    term = int(term)
+                except:
+                    log.error("Can't parse %s as integer" % term)
+                    continue
+                if term < maxint:
+                    r.append(term)
+        return r
+
+    def _int(self, args, prompt):
+        t, r = self._first_term(args, prompt)
+        try:
+            t = int(t)
+        except:
+            log.error("Can't parse %s as integer." % t)
+            return (None, None)
+        return (t, r)
+
+    def _first_term(self, args, prompt):
+        if not args:
+            args = prompt().split(" ")
+            if len(args) > 1:
+                log.error("Ignoring extra characters: %s" % " ".join(args[1:]))
+            return (args[0], "")
+
+        if " " not in args:
+            return (args, "")
+        args = args.split(" ", 1)
+        return (args[0], args[1])
