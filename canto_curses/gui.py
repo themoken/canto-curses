@@ -536,17 +536,22 @@ class TagList(CommandHandler):
         for tag in self.tags:
             ml = tag.refresh(self.width, idx)
 
-            header, ml = ml[0], ml[1:]
+            # Merge the header (ml[0]) and the first item (ml[1])
+            # so that the header is made visible at the same time
+            # as the top item.
 
-            # Update each item's {min,max}_offset for being visible
-            # in case they become selections.
+            if len(ml) > 1:
+                ml = [ml[0] + ml[1]] + ml[2:]
 
-            for i in xrange(len(tag)):
-                curpos = self.max_offset + header + sum(ml[0:i + 1])
-                tag[i].min_offset = max(curpos + 1, 0)
-                tag[i].max_offset = curpos + (self.height - ml[i])
+                # Update each item's {min,max}_offset for being visible in case
+                # they become selections.
 
-            self.max_offset += (header + sum(ml))
+                for i in xrange(len(tag)):
+                    curpos = self.max_offset + sum(ml[0:i + 1])
+                    tag[i].min_offset = max(curpos + 1, 0)
+                    tag[i].max_offset = curpos + (self.height - ml[i])
+
+            self.max_offset += sum(ml)
             idx += len(tag)
 
         # Ensure that calculated selected max offset
