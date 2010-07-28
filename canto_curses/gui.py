@@ -249,12 +249,13 @@ class Tag(list):
         list.append(self, s)
 
     def refresh(self, mwidth, idx_offset):
-        lines = 0
+
+        lines = self.render_header(mwidth, FakePad(mwidth))
+
+        self.header_pad = curses.newpad(lines, mwidth)
+
         for i, item in enumerate(self):
             lines += item.refresh(mwidth, idx_offset + i)
-
-        # For header, for now
-        lines += 1
 
         # Create a new pad with enough lines to
         # include all story objects.
@@ -262,15 +263,28 @@ class Tag(list):
 
         return self.render(mwidth, WrapPad(self.pad))
 
-    def render(self, mwidth, pad):
-
+    def render_header(self, mwidth, pad):
         header = self.tag + u"\n"
-        lheader = theme_len(header)
-        theme_print(pad, header, lheader)
+        lines = 0
 
-        # Header takes 1 line
-        spent_lines = 1
-        mp = [1]
+        while header:
+            t = theme_print(pad, header, mwidth)
+            # Avoid infinite loop sanity check
+            if t == header:
+                raise Exception("header theme_print not advancing")
+            header = t
+
+            lines += 1
+
+        return lines
+
+    def render(self, mwidth, pad):
+        # Update header_pad (used to float tag header)
+        self.render_header(mwidth, WrapPad(self.header_pad))
+
+        # Render to the taglist pad as well.
+        spent_lines = self.render_header(mwidth, pad)
+        mp = [spent_lines]
 
         for item in self:
             cur_lines = item.pad.getmaxyx()[0]
@@ -536,20 +550,19 @@ class TagList(CommandHandler):
         for tag in self.tags:
             ml = tag.refresh(self.width, idx)
 
-            # Merge the header (ml[0]) and the first item (ml[1])
-            # so that the header is made visible at the same time
-            # as the top item.
-
             if len(ml) > 1:
-                ml = [ml[0] + ml[1]] + ml[2:]
-
                 # Update each item's {min,max}_offset for being visible in case
                 # they become selections.
 
+                # Note: ml[0] == header, so current item's length = ml[i + 1]
+
                 for i in xrange(len(tag)):
-                    curpos = self.max_offset + sum(ml[0:i + 1])
+                    curpos = self.max_offset + sum(ml[0:i + 2])
                     tag[i].min_offset = max(curpos + 1, 0)
-                    tag[i].max_offset = curpos + (self.height - ml[i])
+                    tag[i].max_offset = curpos + (self.height - ml[i + 1])
+
+                    # Adjust for the floating header.
+                    tag[i].max_offset -= ml[0]
 
             self.max_offset += sum(ml)
             idx += len(tag)
@@ -586,6 +599,13 @@ class TagList(CommandHandler):
                 tag.pad.overwrite(self.pad, start, 0, 0, 0,\
                         maxr - 1, self.width - 1)
 
+                # This is first tag, render floating tag header.
+                headerlines = tag.header_pad.getmaxyx()[0]
+                maxr = min(headerlines, self.height)
+
+                tag.header_pad.overwrite(self.pad, 0, 0, 0, 0,\
+                        maxr - 1, self.width - 1)
+
             # Elif we're possible visible
             elif spent_lines >= self.offset:
 
@@ -595,7 +615,7 @@ class TagList(CommandHandler):
                     tag.pad.overwrite(self.pad, 0, 0, dest_start, 0,\
                             dest_start + taglines - 1 , self.width - 1)
 
-                # Elif we're partially visible.
+                # Elif we're partially visible (last tag).
                 elif spent_lines < (self.offset + self.height):
                     dest_start = (spent_lines - self.offset)
                     maxr = dest_start +\
