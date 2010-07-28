@@ -931,6 +931,8 @@ class Screen(CommandHandler):
                         "g" : "foritems & goto & item-state read & clearitems",
                         "R" : "item-state read *",
                         "U" : "item-state -read *",
+                        "r" : "tag-state read",
+                        "u" : "tag-state -read",
                         curses.KEY_NPAGE : "page-down",
                         curses.KEY_PPAGE : "page-up",
                         curses.KEY_DOWN : "rel-set-cursor 1",
