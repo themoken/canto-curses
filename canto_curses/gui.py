@@ -926,6 +926,7 @@ class Screen(CommandHandler):
         self.inthread =\
                 Thread(target = self.input_thread,
                        args = [{ ":" : "command",
+                        "E" : "toggle tags_enumerated",
                         "e" : "toggle enumerated",
                         "q" : "quit",
                         "g" : "foritems & goto & item-state read & clearitems",
