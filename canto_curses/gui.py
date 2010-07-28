@@ -28,6 +28,22 @@ import curses
 import signal
 import time
 
+class Reader():
+    def init(self, pad, callbacks):
+        self.pad = pad
+        self.callbacks = callbacks
+
+    def refresh(self):
+        self.redraw()
+
+    def redraw(self):
+        self.pad.erase()
+        self.pad.addstr("This is the reader.")
+        self.callbacks["refresh"]()
+
+    def command(self, cmd):
+        pass
+
 # The Story class is the basic wrapper for an item to be displayed. It manages
 # its own state only because it affects its representation, it's up to a higher
 # class to actually communicate state changes to the backend.
@@ -777,12 +793,13 @@ class Screen(CommandHandler):
         for i, c in enumerate(mid):
             ci, h = self.subwindow(c, top_h, mid_w * i, \
                     mid_w, self.height - bot_h)
+            ci.focus_idx = i
             mids.append((c, ci))
 
         self.windows = ( tops, mids, bots )
 
-        # Default to giving first taglist focus.
-        self._focus(TagList, 0)
+        # Default to giving first window focus.
+        self._focus(0)
 
     def refresh_callback(self, c, t, l, b, r):
         c.pad.noutrefresh(0, 0, t, l, b, r)
@@ -803,8 +820,11 @@ class Screen(CommandHandler):
 
     def classtype(self, args):
         t, r = self._first_term(args, lambda : self.input_callback("class: "))
+
         if t == "taglist":
             return (True, TagList, r)
+        elif t == "reader":
+            return (True, Reader, r)
 
         log.error("Unknown class: %s" % t)
         return (False, None, None)
@@ -819,6 +839,21 @@ class Screen(CommandHandler):
             log.error("Can't parse %s as integer" % t)
             return (False, None, None)
         return (True, t, r)
+
+    # Call refresh for all windows from
+    # top to bottom, left to right.
+
+    def refresh(self):
+        for region in self.windows:
+            for ct, c in region:
+                c.refresh()
+        curses.doupdate()
+
+    def redraw(self):
+        for region in self.windows:
+            for ct, c in region:
+                c.redraw()
+        curses.doupdate()
 
     @command_format("resize", [])
     @generic_parse_error
@@ -841,42 +876,30 @@ class Screen(CommandHandler):
         self.subwindows()
         self.refresh()
 
-    # Call refresh for all windows from
-    # top to bottom, left to right.
-
-    def refresh(self):
-        for region in self.windows:
-            for ct, c in region:
-                c.refresh()
-        curses.doupdate()
-
-    def redraw(self):
-        for region in self.windows:
-            for ct, c in region:
-                c.redraw()
-        curses.doupdate()
-
     # Focus idx-th instance of cls.
-    @command_format("focus", [("cls", "classtype"),("idx", "optint")])
+    @command_format("focus", [("idx", "optint")])
     @generic_parse_error
     def focus(self, **kwargs):
         self._focus(kwargs["cls"],kwargs["idx"])
 
-    def _focus(self, cls, idx):
-        curidx = 0
-        for region in self.windows:
-            for ct, c in region:
-                if ct == cls:
-                    if curidx == idx:
-                        log.debug("Focusing %s %d" % (ct, curidx))
-                        self.focused = c
-                        break
-                    curidx += 1
-            else:
-                continue
-            break
+    def _focus(self, idx):
+        l = len(self.windows[1])
+        if -1 * l < idx < l:
+            self.focused = self.windows[1][idx][1]
+            log.debug("Focusing window %d" % idx)
         else:
-            log.info("%s of idx %d not found" % (cls, idx))
+            log.debug("Couldn't find window %d" % idx)
+
+    @command_format("add-window", [("cls","classtype")])
+    @generic_parse_error
+    def add_window(self, **kwargs):
+        self._add_window(kwargs["cls"])
+
+    def _add_window(self, cls):
+        self.layout[1].append(cls)
+        self.subwindows()
+        self._focus(-1)
+        self.refresh()
 
     # Pass a command to focused window:
 
@@ -885,6 +908,8 @@ class Screen(CommandHandler):
             self.focus(args=cmd)
         elif cmd.startswith("resize"):
             self.resize(args=cmd)
+        elif cmd.startswith("add-window"):
+            self.add_window(args=cmd)
 
         # Propagate command to focused window
         else:
