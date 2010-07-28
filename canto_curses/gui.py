@@ -231,6 +231,8 @@ class Story():
 
 class Tag(list):
     def __init__(self, tag, callbacks):
+        list.__init__(self)
+
         # Note that Tag() is only given the top-level CantoCursesGui
         # callbacks as it shouldn't be doing input / refreshing
         # itself.
@@ -242,6 +244,14 @@ class Tag(list):
         # list of all tags.
 
         callbacks["get_var"]("alltags").append(self)
+
+    # We override eq so that empty tags don't evaluate
+    # as equal and screw up things like enumeration.
+
+    def __eq__(self, other):
+        if self.tag != other.tag:
+            return False
+        return list.__eq__(self, other)
 
     # Create Story from ID before appending to list.
     def append(self, id):
@@ -264,7 +274,12 @@ class Tag(list):
         return self.render(mwidth, WrapPad(self.pad))
 
     def render_header(self, mwidth, pad):
+        enumerated = self.callbacks["get_var"]("tags_enumerated")
         header = self.tag + u"\n"
+        if enumerated:
+            curtags = self.callbacks["get_var"]("curtags")
+            header = ("[%d] " % curtags.index(self)) + header
+
         lines = 0
 
         while header:
@@ -316,10 +331,7 @@ class TagList(CommandHandler):
         # Callback information
         self.callbacks = callbacks
 
-        # Tags to be displayed.
         self.tags = callbacks["get_var"]("curtags")
-        if not self.tags:
-            self.tags = callbacks["get_var"]("alltags")
 
         # Holster for a list of items for batch operations.
         self.got_items = None
@@ -359,19 +371,22 @@ class TagList(CommandHandler):
 
     # Prompt that ensures the items are enumerated first
     def eprompt(self):
-        # Ensure the items are enumerated
-        t = self.callbacks["get_var"]("enumerated")
-        self.callbacks["set_var"]("enumerated", True)
-
-        r = self.input("items: ")
-
-        # Reset enumerated to previous value
-        self.callbacks["set_var"]("enumerated", t)
-        return r
+        return self._var_set_prompt("enumerated", "items: ")
 
     # Will enumerate tags in the future.
     def teprompt(self):
-        return self.input("tags: ")
+        return self._var_set_prompt("tags_enumerated", "tags: ")
+
+    def _var_set_prompt(self, var, prompt):
+        # Ensure the items are enumerated
+        t = self.callbacks["get_var"](var)
+        self.callbacks["set_var"](var, True)
+
+        r = self.input(prompt)
+
+        # Reset var to previous value
+        self.callbacks["set_var"](var, t)
+        return r
 
     def uint(self, args):
         t, r = self._int(args, lambda : self.input("uint: "))
@@ -925,11 +940,17 @@ class CantoCursesGui(CommandHandler):
         self.backend = backend
 
         # Variables that affect the overall operation.
+        # We use the same list for alltags and curtags
+        # so that, if curtags isn't set explicity, it
+        # automatically equals alltags
+
+        td = []
         self.vars = {
+            "tags_enumerated" : False,
             "enumerated" : False,
             "selected" : None,
-            "curtags" : [],
-            "alltags" : [],
+            "curtags" : td,
+            "alltags" : td,
             "needs_refresh" : False,
             "needs_redraw" : False
         }
@@ -1038,7 +1059,7 @@ class CantoCursesGui(CommandHandler):
 
         # Special actions on certain vars changed.
         if changed:
-            if tweak == "enumerated":
+            if tweak in ["tags_enumerated", "enumerated"]:
                 self.screen.refresh()
 
     def get_var(self, tweak):
