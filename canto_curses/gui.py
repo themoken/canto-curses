@@ -409,7 +409,14 @@ class TagList(CommandHandler):
 
     def listof_tags(self, args):
         if not args:
-            args = self.teprompt()
+            s = self.callbacks["get_var"]("selected")
+            if s:
+                for tag in self.tags:
+                    if s in tag:
+                        return (True, [tag], "")
+                raise Exception("Couldn't find tag of selection!")
+            else:
+                args = self.teprompt()
 
         ints = self._listof_int(args, len(self.tags), self.teprompt)
         return(True, [ self.tags[i] for i in ints ], "")
