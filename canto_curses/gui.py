@@ -287,12 +287,7 @@ class Tag(list):
         lines = 0
 
         while header:
-            t = theme_print(pad, header, mwidth)
-            # Avoid infinite loop sanity check
-            if t == header:
-                raise Exception("header theme_print not advancing")
-            header = t
-
+            header = theme_print(pad, header, mwidth, u"│ ", u"│")
             lines += 1
 
         return lines

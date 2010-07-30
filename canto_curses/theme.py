@@ -214,7 +214,7 @@ def theme_len(uni):
     length = 0
 
     for c in uni:
-	ec = encoder(c)
+        ec = encoder(c)
         if escaped:
             length += wcwidth(ec)
             escaped = False
