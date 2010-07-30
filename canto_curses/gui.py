@@ -749,7 +749,11 @@ class Screen(CommandHandler):
         return (ci, height)
 
     def subwindows(self):
+        self.stdscr.erase()
+        self.stdscr.refresh()
+
         self.focused = None
+
         top = self.layout[0]
         top_h = 0
         if top:
