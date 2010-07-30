@@ -53,6 +53,9 @@ class FakePad():
     def attroff(self, attr):
         pass
 
+    def clrtoeol(self):
+        pass
+
     def waddch(self, ch):
         self.x += wcwidth(ch)
         if self.x >= self.width:
@@ -76,6 +79,9 @@ class WrapPad():
     def attroff(self, attr):
         self.pad.attroff(attr)
 
+    def clrtoeol(self):
+        self.pad.clrtoeol()
+
     def waddch(self, ch):
         waddch(self.pad, ch)
 
@@ -85,7 +91,7 @@ class WrapPad():
     def move(self, x, y):
         return self.pad.move(x, y)
 
-def theme_print(pad, uni, width):
+def theme_print_one(pad, uni, width):
     global color_stack
     global attr_count
     global attr_map
@@ -148,6 +154,8 @@ def theme_print(pad, uni, width):
             escaped = True
         elif c == "%":
             code = True
+        elif c == "\n":
+            return uni[i + 1:]
         else:
             if c == " ":
                 # Word too long
@@ -167,6 +175,35 @@ def theme_print(pad, uni, width):
             width -= cwidth
 
     return None
+
+def theme_print(pad, uni, mwidth, pre = "", post = ""):
+    prel = theme_len(pre)
+    postl = theme_len(post)
+    y = pad.getyx()[0]
+
+    theme_print_one(pad, pre, prel)
+
+    width = (mwidth - prel) - postl
+    if width <= 0:
+        raise Exception("theme_print: NO ROOM!")
+
+    r = theme_print_one(pad, uni, width)
+
+    pad.clrtoeol()
+
+    if post:
+        pad.move(pad.getyx()[0], mwidth - postl)
+        theme_print_one(pad, post, postl)
+    else:
+        try:
+            pad.move(y + 1, 0)
+        except:
+            pass
+
+    if r == uni:
+        raise Exception("theme_print: didn't advance!")
+
+    return r
 
 # Returns the effective, printed length of a string, taking
 # escapes and wide characters into account.

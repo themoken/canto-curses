@@ -155,8 +155,6 @@ class Story():
 
         try:
             while s:
-                width = mwidth
-
                 # Left border, for first line
                 if lines == 0:
                     l = left
@@ -165,40 +163,13 @@ class Story():
                 else:
                     l = left_more
 
-                # Render left border
-                llen = theme_len(l)
-                theme_print(pad, l, llen)
-                width -= llen
-
-                # Account for right border
-                rlen = theme_len(right)
-                width -= rlen
-
-                if width < 1:
-                    raise Exception("Not wide enough!")
-
-                # Render body
-                t = theme_print(pad, s, width)
-                if s == t:
-                    # If we didn't advance, we don't want to
-                    # infinite loop. The above width limiting *should*
-                    # make that impossible, consider this a sanity check.
-                    raise Exception("theme_print didn't advance!")
-                s = t
+                s = theme_print(pad, s, mwidth, l, right)
 
                 # Avoid line shifting when temporarily enumerating.
                 if s and enumerated and\
                         lines == (self.unenumerated_lines - 1):
-                    remaining = (mwidth - rlen) - pad.getyx()[1]
-
-                    # If we don't have enough room left in the line
-                    # for the ellipsis naturally (because of a word
-                    # break, etc), then we roll the cursor back and
-                    # overwrite those characters.
-
-                    if remaining < 3:
-                        pad.move(pad.getyx()[0], pad.getyx()[1] -\
-                                (3 - remaining))
+                    pad.move(pad.getyx()[0],\
+                            pad.getyx()[1] - (theme_len(right) + 3))
 
                     # Write out the ellipsis.
                     for i in xrange(3):
@@ -207,13 +178,6 @@ class Story():
                     # Handling any dangling codes
                     theme_process(pad, s)
                     s = None
-
-                # Spacer for right border
-                while pad.getyx()[1] < (mwidth - rlen):
-                    pad.waddch(' ')
-
-                # Render right border
-                theme_print(pad, right, rlen)
 
                 # Keep track of lines for this item
                 lines += 1
