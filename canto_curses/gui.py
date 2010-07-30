@@ -1018,27 +1018,7 @@ class CantoCursesGui(CommandHandler):
 
         self.backend.write("ATTRIBUTES", attribute_stories)
         r = self.wait_response("ATTRIBUTES")
-
-        for tag in self.vars["alltags"]:
-            for story in tag:
-                # If the story disappeared between
-                # the ITEMS and ATTRIBUTES calls
-                # it will return None.
-                if not r[1][story.id]:
-                    log.debug("Caught item disappearing.")
-                    tag.remove(story)
-                    continue
-
-                for k in r[1][story.id]:
-                    a = r[1][story.id][k]
-                    if type(a) == unicode:
-                        a = a.replace("\\", "\\\\")
-                        a = a.replace("%", "\\%")
-                        a = html_entity_convert(a)
-                        a = char_ref_convert(a)
-                        story.content[k] = a
-                    else:
-                        story.content[k] = a
+        self.attributes(r[1])
 
         # Short circuit for testing the above setup.
         if do_curses:
@@ -1058,6 +1038,28 @@ class CantoCursesGui(CommandHandler):
                 return r
             else:
                 log.debug("waiting: %s != %s" % (r[0], cmd))
+
+    def attributes(self, d):
+        for given_id in d:
+            if not d[given_id]:
+                log.debug("Caught item disappearing.")
+                continue
+
+            for tag in self.vars["alltags"]:
+                item = tag.get_id(given_id)
+                if not item:
+                    continue
+
+                for k in d[given_id]:
+                    a = d[given_id][k]
+                    if type(a) == unicode:
+                        a = a.replace("\\", "\\\\")
+                        a = a.replace("%", "\\%")
+                        a = html_entity_convert(a)
+                        a = char_ref_convert(a)
+                        item.content[k] = a
+                    else:
+                        item.content[k] = a
 
     def var(self, args):
         t, r = self._first_term(args,\
@@ -1175,17 +1177,7 @@ class CantoCursesGui(CommandHandler):
                     self.screen.command(cmd[1])
 
             elif cmd[0] == "ATTRIBUTES":
-                for given_id in cmd[1]:
-                    for tag in self.vars["alltags"]:
-                        item = tag.get_id(given_id)
-                        if not item:
-                            continue
-
-                        log.debug("Updating %s with:" % item.content["title"])
-                        for k in cmd[1][given_id]:
-                            log.debug("\t%s = %s" % (k, cmd[1][given_id][k]))
-                            item.content[k] = cmd[1][given_id][k]
-                        break
+                self.attributes(cmd[1])
 
             # XXX Server notification/reply
 
