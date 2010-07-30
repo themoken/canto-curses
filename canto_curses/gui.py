@@ -6,13 +6,9 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-# OVERALL GUI DESIGN:
-# The interface is divided into a number of important classes. They communicate
-# with each other through callbacks (which essentially just declare an API
-# instead of calling random functions in a class).
-
 from theme import theme_print, theme_len, theme_process, WrapPad, FakePad
 from command import CommandHandler, command_format, generic_parse_error
+from html import htmlparser, char_ref_convert, html_entity_convert
 from canto.encoding import encoder
 from utility import silentfork
 from input import InputBox
@@ -37,8 +33,30 @@ class Reader():
         self.redraw()
 
     def redraw(self):
+        log.debug("Reader redraw!")
         self.pad.erase()
-        self.pad.addstr("This is the reader.")
+
+        mwidth = self.pad.getmaxyx()[1]
+        pad = WrapPad(self.pad)
+
+        sel = self.callbacks["get_var"]("selected")
+        if not sel:
+            self.pad.addstr("No selected story.")
+        else:
+            if "description" not in sel.content:
+                self.callbacks["write"]("ATTRIBUTES", { sel.id : [
+                    "description" ] } )
+                self.callbacks["set_var"]("needs_deferred_redraw", True)
+                s = "%BWaiting for content...%b"
+            else:
+                s = "%B" + sel.content["title"] + "%b\n"
+                c, l = htmlparser.convert(sel.content["description"])
+                s += c
+
+            while s:
+                s = s.lstrip(" \t\v").rstrip(" \t\v")
+                s = theme_print(pad, s, mwidth, " ", " ")
+
         self.callbacks["refresh"]()
 
     def command(self, cmd):
@@ -237,6 +255,12 @@ class Tag(list):
     def append(self, id):
         s = Story(id, self.callbacks)
         list.append(self, s)
+
+    def get_id(self, id):
+        for item in self:
+            if item.id == id:
+                return item
+        return None
 
     def refresh(self, mwidth, idx_offset):
 
@@ -677,7 +701,7 @@ class Screen(CommandHandler):
 
         self.height, self.width = self.stdscr.getmaxyx()
 
-        for i, c in enumerate([ 7, 4, 3 ]):
+        for i, c in enumerate([ 7, 4, 3, 4, 2 ]):
             curses.init_pair(i + 1, c, -1)
 
         return 0
@@ -844,7 +868,7 @@ class Screen(CommandHandler):
     @command_format("focus", [("idx", "optint")])
     @generic_parse_error
     def focus(self, **kwargs):
-        self._focus(kwargs["cls"],kwargs["idx"])
+        self._focus(kwargs["idx"])
 
     def _focus(self, idx):
         l = len(self.windows[1])
@@ -951,7 +975,8 @@ class CantoCursesGui(CommandHandler):
             "curtags" : td,
             "alltags" : td,
             "needs_refresh" : False,
-            "needs_redraw" : False
+            "needs_redraw" : False,
+            "needs_deferred_redraw" : False
         }
 
         callbacks = {
@@ -1003,7 +1028,11 @@ class CantoCursesGui(CommandHandler):
                 for k in r[1][story.id]:
                     a = r[1][story.id][k]
                     if type(a) == unicode:
-                        story.content[k] = a.replace("%", "\\%")
+                        a = a.replace("\\", "\\\\")
+                        a = a.replace("%", "\\%")
+                        a = html_entity_convert(a)
+                        a = char_ref_convert(a)
+                        story.content[k] = a
                     else:
                         story.content[k] = a
 
@@ -1141,12 +1170,31 @@ class CantoCursesGui(CommandHandler):
                 elif cmd[1] != "noop":
                     self.screen.command(cmd[1])
 
+            elif cmd[0] == "ATTRIBUTES":
+                for given_id in cmd[1]:
+                    for tag in self.vars["alltags"]:
+                        item = tag.get_id(given_id)
+                        if not item:
+                            continue
+
+                        log.debug("Updating %s with:" % item.content["title"])
+                        for k in cmd[1][given_id]:
+                            log.debug("\t%s = %s" % (k, cmd[1][given_id][k]))
+                            item.content[k] = cmd[1][given_id][k]
+                        break
+
             # XXX Server notification/reply
 
             if self.vars["needs_refresh"]:
+                log.debug("Needed refresh")
                 self.screen.refresh()
                 self.vars["needs_refresh"] = False
                 self.vars["needs_redraw"] = False
             elif self.vars["needs_redraw"]:
+                log.debug("Needed redraw")
                 self.screen.redraw()
                 self.vars["needs_redraw"] = False
+
+            if self.vars["needs_deferred_redraw"]:
+                self.vars["needs_deferred_redraw"] = False
+                self.vars["needs_redraw"] = True
