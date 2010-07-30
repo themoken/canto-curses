@@ -51,6 +51,11 @@ def generic_parse_error(fn):
 
 class CommandHandler():
 
+    def key(self, k):
+        if k in self.keys:
+            return self.keys[k]
+        return None
+
     def _listof_int(self, args, maxint, prompt):
         if not args:
             args = prompt()

@@ -24,7 +24,7 @@ import curses
 import signal
 import time
 
-class Reader():
+class Reader(CommandHandler):
     def init(self, pad, callbacks):
         self.pad = pad
         self.callbacks = callbacks
@@ -334,6 +334,20 @@ class TagList(CommandHandler):
 
         # Holster for a list of items for batch operations.
         self.got_items = None
+
+        self.keys = {
+            "g" : "foritems & goto & item-state read & clearitems",
+            "E" : "toggle tags_enumerated",
+            "e" : "toggle enumerated",
+            "R" : "item-state read *",
+            "U" : "item-state -read *",
+            "r" : "tag-state read",
+            "u" : "tag-state -read",
+            curses.KEY_NPAGE : "page-down",
+            curses.KEY_PPAGE : "page-up",
+            curses.KEY_DOWN : "rel-set-cursor 1",
+            curses.KEY_UP : "rel-set-cursor -1",
+        }
 
         self.refresh()
 
@@ -663,6 +677,8 @@ class Screen(CommandHandler):
         self.callbacks = callbacks
         self.layout = layout
 
+        self.keys = {}
+
         self.stdscr = curses.initscr()
         if self.curses_setup() < 0:
             return -1
@@ -902,9 +918,15 @@ class Screen(CommandHandler):
         else:
             self.focused.command(cmd)
 
-    # Thread to put fully formed commands on the user_queue.
+    def key(self, k):
+        r = CommandHandler.key(self, k)
+        if r:
+            return r
+        if self.focused:
+            return self.focused.key(k)
+        return None
 
-    def input_thread(self, binds = {}):
+    def input_thread(self):
         while True:
             r = self.pseudo_input_box.getch()
 
@@ -929,27 +951,12 @@ class Screen(CommandHandler):
             if r < 256:
                 r = chr(r)
 
-            # Try to translate raw key to full command.
-            if r in binds:
-                self.user_queue.put(("CMD", binds[r]))
+            self.user_queue.put(("KEY", r))
 
     def start_input_thread(self):
         self.input_done = Event()
         self.inthread =\
-                Thread(target = self.input_thread,
-                       args = [{ ":" : "command",
-                        "E" : "toggle tags_enumerated",
-                        "e" : "toggle enumerated",
-                        "q" : "quit",
-                        "g" : "foritems & goto & item-state read & clearitems",
-                        "R" : "item-state read *",
-                        "U" : "item-state -read *",
-                        "r" : "tag-state read",
-                        "u" : "tag-state -read",
-                        curses.KEY_NPAGE : "page-down",
-                        curses.KEY_PPAGE : "page-up",
-                        curses.KEY_DOWN : "rel-set-cursor 1",
-                        curses.KEY_UP : "rel-set-cursor -1"}])
+                Thread(target = self.input_thread)
 
         self.inthread.daemon = True
         self.inthread.start()
@@ -982,6 +989,11 @@ class CantoCursesGui(CommandHandler):
                 "set_var" : self.set_var,
                 "get_var" : self.get_var,
                 "write" : self.backend.write
+        }
+
+        self.keys = {
+                ":" : "command",
+                "q" : "quit"
         }
 
         self.backend.write("LISTFEEDS", u"")
@@ -1099,6 +1111,12 @@ class CantoCursesGui(CommandHandler):
     def winch(self):
         self.backend.responses.put(("CMD", "resize"))
 
+    def key(self, k):
+        r = CommandHandler.key(self, k)
+        if r:
+            return r
+        return self.screen.key(k)
+
     # Search for unescaped & to split up multiple commands.
     def cmd_split(self, cmd):
         r = []
@@ -1133,6 +1151,12 @@ class CantoCursesGui(CommandHandler):
                 priority_commands = priority_commands[1:]
             else:
                 cmd = self.backend.responses.get()
+
+            if cmd[0] == "KEY":
+                resolved = self.key(cmd[1])
+                if not resolved:
+                    continue
+                cmd = ("CMD", resolved)
 
             # User command
             if cmd[0] == "CMD":
