@@ -28,6 +28,7 @@ class Reader(CommandHandler):
     def init(self, pad, callbacks):
         self.pad = pad
         self.callbacks = callbacks
+        self.keys = {}
 
     def refresh(self):
         self.redraw()
@@ -336,6 +337,7 @@ class TagList(CommandHandler):
         self.got_items = None
 
         self.keys = {
+            " " : "add-window reader",
             "g" : "foritems & goto & item-state read & clearitems",
             "E" : "toggle tags_enumerated",
             "e" : "toggle enumerated",
