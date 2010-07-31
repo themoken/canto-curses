@@ -63,6 +63,12 @@ class Reader(CommandHandler):
     def command(self, cmd):
         pass
 
+    def get_height(self, mheight):
+        return mheight
+
+    def get_width(self, mwidth):
+        return mwidth
+
 # The Story class is the basic wrapper for an item to be displayed. It manages
 # its own state only because it affects its representation, it's up to a higher
 # class to actually communicate state changes to the backend.
@@ -669,12 +675,18 @@ class TagList(CommandHandler):
 
         self.callbacks["refresh"]()
 
+    def get_height(self, mheight):
+        return mheight
+
+    def get_width(self, mwidth):
+        return mwidth
+
 # The Screen class handles the layout of multiple sub-windows on the 
 # main curses window. It's also the top-level gui object, so call to refresh the
 # screen and get input should come through it.
 
 class Screen(CommandHandler):
-    def init(self, user_queue, callbacks, layout = [[],[TagList],[InputBox]]):
+    def init(self, user_queue, callbacks, layout = [[TagList],InputBox]):
         self.user_queue = user_queue
         self.callbacks = callbacks
         self.layout = layout
@@ -722,26 +734,17 @@ class Screen(CommandHandler):
     # Translate the layout into a set of curses pads given
     # a set of coordinates relating to how they're mapped to the screen.
 
-    def subwindow(self, ct, top, left, width, height = -1):
-        ci = ct()
-
+    def _subw_init(self, ci, ct, top, left, width, height):
         # This will grab the last inputbox instantiated,
         # though others seem pointless anyway.
 
         if ct == InputBox:
             self.input_box = ci
 
-        # Top and bottom windows specify an absolute height
-        # in their class (usually 1) and as such it doesn't
-        # need to be specified here.
-
-        if height < 0:
-            height = ci.get_height()
-
         # Height - 1 because start + height = line after bottom.
 
         bottom = top + (height - 1)
-        right = left + width
+        right = left + (width - 1)
 
         refcb = lambda : self.refresh_callback(ci, top, left, bottom, right)
 
@@ -759,54 +762,119 @@ class Screen(CommandHandler):
 
         ci.init(pad, callbacks)
 
-        return (ci, height)
+        self.windows.append(ci)
+
+    # Layout some windows into the given space, stacking with
+    # orientation horizontally or vertically.
+
+    def _subw(self, layout, top, left, height, width, orientation):
+        immediates = []
+        cmplx = []
+        ret = [0] * len(layout)
+        sizes = [0] * len(layout)
+
+        # Separate windows in to two categories:
+        # immediates that are defined as base classes and
+        # cmplx which are lists for further processing (iterables)
+
+        for i, unit in enumerate(layout):
+            if hasattr(unit, "__iter__"):
+                cmplx.append((i, unit))
+            else:
+                immediates.append((i,unit))
+
+        # Units are the number of windows we'll have
+        # to split the area with.
+
+        units = len(layout)
+
+        # Used, the amounts of space already used.
+        used = 0
+
+        # Instances, used later.
+        imm_instances = []
+
+        for i, unit in immediates:
+            # Grab an instance
+            ci = unit()
+            imm_instances.append((i, ci))
+
+            # Get the size of the window from the class.
+            # Each class is given, as a maximum, the largest
+            # possible slice we can *guarantee*.
+
+            if orientation == "horizontal":
+                size = ci.get_width((width - used) / units)
+            else:
+                size = ci.get_height((height - used) / units)
+
+            used += size
+
+            sizes[i] = size
+            ret[i] = ci
+
+            # Subtract so that the next run only divides
+            # the remaining space by the number of units
+            # that don't have space allocated.
+
+            units -= 1
+
+        # All of the immediates have been allocated for.
+        # So now only the cmplxs are vying for space.
+
+        units = len(cmplx)
+
+
+        for i, unit in cmplx:
+            offset = sum(sizes[0:i])
+
+            # Recursives call this function, alternating
+            # the orientation, for the space we can guarantee
+            # this set of windows.
+
+            if orientation == "horizontal":
+                available = (width - used) / units
+                r = self._subw(unit, top, left + offset,\
+                        height, available, "vertical")
+                sizes[i] = max([x.pad.getmaxyx()[1] - 1 for x in r])
+            else:
+                available = (height - used) / units
+                r = self._subw(unit, top + offset, left,\
+                        available, width, "horizontal")
+                sizes[i] = max([x.pad.getmaxyx()[0] - 1 for x in r])
+
+            ret[i] = r
+            used += sizes[i]
+            units -= 1
+
+        # Now that we know the actual sizes (and thus locations) of
+        # the windows, we actually setup the immediates.
+
+        for i, ci in imm_instances:
+            offset = sum(sizes[0:i])
+            if orientation == "horizontal":
+                self._subw_init(ci, layout[i], top, left + offset,
+                        sizes[i], height)
+            else:
+                self._subw_init(ci, layout[i], top + offset, left,
+                        width, sizes[i])
+
+        return ret
 
     def subwindows(self):
         self.stdscr.erase()
         self.stdscr.refresh()
 
         self.focused = None
+        self.windows = []
 
-        top = self.layout[0]
-        top_h = 0
-        if top:
-            top_w = self.width / len(top)
-        tops = []
-
-        for i, c in enumerate(top):
-            win_h, ci = self.subwindow(c, 0, i * top_w, top_w)
-            top_h = max(top_h, win_h)
-            tops.append((c, ci))
-
-        bot = self.layout[2]
-        bot_h = 0
-        if bot:
-            bot_w = self.width / len(bot)
-        bots = []
-
-        for i, c, in enumerate(bot):
-            win_h = c().get_height()
-            ci, h = self.subwindow(c, self.height - win_h, i * bot_w, bot_w)
-            bot_h = max(bot_h, win_h)
-            bots.append((c, ci))
-
-        mid = self.layout[1]
-        if mid:
-            mid_w = self.width / len(mid)
-
-        mids = []
-        for i, c in enumerate(mid):
-            ci, h = self.subwindow(c, top_h, mid_w * i, \
-                    mid_w, self.height - bot_h)
-            ci.focus_idx = i
-            mids.append((c, ci))
-
-        self.windows = ( tops, mids, bots )
+        self._subw(self.layout, 0, 0, self.height, self.width, "vertical")
 
         # Default to giving first window focus.
         self._focus(0)
 
     def refresh_callback(self, c, t, l, b, r):
+        log.debug("args: %s" % ((c, t, l, b, r),))
         c.pad.noutrefresh(0, 0, t, l, b, r)
 
     def input_callback(self, prompt):
@@ -845,19 +913,14 @@ class Screen(CommandHandler):
             return (False, None, None)
         return (True, t, r)
 
-    # Call refresh for all windows from
-    # top to bottom, left to right.
-
     def refresh(self):
-        for region in self.windows:
-            for ct, c in region:
-                c.refresh()
+        for c in self.windows:
+            c.refresh()
         curses.doupdate()
 
     def redraw(self):
-        for region in self.windows:
-            for ct, c in region:
-                c.redraw()
+        for c in self.windows:
+            c.redraw()
         curses.doupdate()
 
     @command_format("resize", [])
@@ -888,12 +951,18 @@ class Screen(CommandHandler):
         self._focus(kwargs["idx"])
 
     def _focus(self, idx):
-        l = len(self.windows[1])
+        l = len(self.windows)
         if -1 * l < idx < l:
-            self.focused = self.windows[1][idx][1]
-            log.debug("Focusing window %d" % idx)
+            self.focused = self.windows[idx]
+            log.debug("Focusing window %d (%s)" % (idx, self.focused))
         else:
             log.debug("Couldn't find window %d" % idx)
+
+    def _window_levels(self, toplevel):
+        for i in reversed(toplevel):
+            if hasattr(i, "__iter__"):
+                return [self] + [ self._window_levels(i) ]
+        return toplevel
 
     @command_format("add-window", [("cls","classtype")])
     @generic_parse_error
@@ -901,9 +970,9 @@ class Screen(CommandHandler):
         self._add_window(kwargs["cls"])
 
     def _add_window(self, cls):
-        self.layout[1].append(cls)
+        self._window_levels(self.layout)[-1].append(cls)
         self.subwindows()
-        self._focus(-1)
+        self._focus(0)
         self.refresh()
 
     # Pass a command to focused window:
@@ -937,7 +1006,7 @@ class Screen(CommandHandler):
             # We're in an edit box
             if self.sub_edit:
                 # Feed the key to the input_box
-                rc = self.input_box.key(r)
+                rc = self.input_box.addkey(r)
 
                 # If rc == 1, need more keys
                 # If rc == 0, all done (result could still be "" though)

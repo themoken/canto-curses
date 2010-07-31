@@ -24,6 +24,7 @@
 # based on Textbox.
 
 from canto.encoding import encoder
+from command import CommandHandler
 
 import logging
 log = logging.getLogger("INPUT")
@@ -31,11 +32,13 @@ log = logging.getLogger("INPUT")
 import curses
 from curses import ascii
 
-class InputBox:
+class InputBox(CommandHandler):
     def init(self, pad, callbacks):
         self.pad = pad
 
         self.callbacks = callbacks
+
+        self.keys = {}
 
         self.reset()
 
@@ -47,8 +50,11 @@ class InputBox:
         self.x = self.minx
         self.result = ""
 
-    def get_height(self):
+    def get_height(self, mheight):
         return 1
+
+    def get_width(self, mwidth):
+        return mwidth
 
     def refresh(self):
         self.pad.move(0, self.minx)
@@ -64,7 +70,7 @@ class InputBox:
     def redraw(self):
         self.refresh()
 
-    def key(self, ch):
+    def addkey(self, ch):
         if ch in (ascii.STX, curses.KEY_LEFT):
             if self.x > self.minx:
                 self.x -= 1
