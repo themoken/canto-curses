@@ -50,12 +50,6 @@ class InputBox(CommandHandler):
         self.x = self.minx
         self.result = ""
 
-    def get_height(self, mheight):
-        return 1
-
-    def get_width(self, mwidth):
-        return mwidth
-
     def refresh(self):
         self.pad.move(0, self.minx)
         maxx = self.pad.getmaxyx()[1]
@@ -106,3 +100,12 @@ class InputBox(CommandHandler):
         self.reset(prompt)
         self.refresh()
         curses.doupdate()
+
+    def get_height(self, mheight):
+        return 1
+
+    def get_width(self, mwidth):
+        return mwidth
+
+    def is_input(self):
+        return True

@@ -28,7 +28,7 @@ class Reader(CommandHandler):
     def init(self, pad, callbacks):
         self.pad = pad
         self.callbacks = callbacks
-        self.keys = {}
+        self.keys = {" " : "destroy"}
 
     def refresh(self):
         self.redraw()
@@ -60,8 +60,16 @@ class Reader(CommandHandler):
 
         self.callbacks["refresh"]()
 
+    @command_format("destroy", [])
+    def destroy(self, **kwargs):
+        self.callbacks["die"](self)
+
     def command(self, cmd):
-        pass
+        if cmd.startswith("destroy"):
+            self.destroy(args=cmd)
+
+    def is_input(self):
+        return False
 
     def get_height(self, mheight):
         return mheight
@@ -675,6 +683,9 @@ class TagList(CommandHandler):
 
         self.callbacks["refresh"]()
 
+    def is_input(self):
+        return False
+
     def get_height(self, mheight):
         return mheight
 
@@ -686,10 +697,11 @@ class TagList(CommandHandler):
 # screen and get input should come through it.
 
 class Screen(CommandHandler):
-    def init(self, user_queue, callbacks, layout = [[TagList],InputBox]):
+    def init(self, user_queue, callbacks, types = [TagList, InputBox]):
         self.user_queue = user_queue
         self.callbacks = callbacks
-        self.layout = layout
+        self.layout = "default"
+        self.windows = [t() for t in types]
 
         self.keys = {}
 
@@ -734,13 +746,7 @@ class Screen(CommandHandler):
     # Translate the layout into a set of curses pads given
     # a set of coordinates relating to how they're mapped to the screen.
 
-    def _subw_init(self, ci, ct, top, left, width, height):
-        # This will grab the last inputbox instantiated,
-        # though others seem pointless anyway.
-
-        if ct == InputBox:
-            self.input_box = ci
-
+    def _subw_init(self, ci, top, left, width, height):
         # Height - 1 because start + height = line after bottom.
 
         bottom = top + (height - 1)
@@ -759,10 +765,9 @@ class Screen(CommandHandler):
         callbacks = self.callbacks.copy()
         callbacks["refresh"] = refcb
         callbacks["input"] = self.input_callback
+        callbacks["die"] = self.die_callback
 
         ci.init(pad, callbacks)
-
-        self.windows.append(ci)
 
     # Layout some windows into the given space, stacking with
     # orientation horizontally or vertically.
@@ -770,7 +775,6 @@ class Screen(CommandHandler):
     def _subw(self, layout, top, left, height, width, orientation):
         immediates = []
         cmplx = []
-        ret = [0] * len(layout)
         sizes = [0] * len(layout)
 
         # Separate windows in to two categories:
@@ -791,27 +795,19 @@ class Screen(CommandHandler):
         # Used, the amounts of space already used.
         used = 0
 
-        # Instances, used later.
-        imm_instances = []
-
         for i, unit in immediates:
-            # Grab an instance
-            ci = unit()
-            imm_instances.append((i, ci))
-
             # Get the size of the window from the class.
             # Each class is given, as a maximum, the largest
             # possible slice we can *guarantee*.
 
             if orientation == "horizontal":
-                size = ci.get_width((width - used) / units)
+                size = unit.get_width((width - used) / units)
             else:
-                size = ci.get_height((height - used) / units)
+                size = unit.get_height((height - used) / units)
 
             used += size
 
             sizes[i] = size
-            ret[i] = ci
 
             # Subtract so that the next run only divides
             # the remaining space by the number of units
@@ -823,7 +819,6 @@ class Screen(CommandHandler):
         # So now only the cmplxs are vying for space.
 
         units = len(cmplx)
-
 
         for i, unit in cmplx:
             offset = sum(sizes[0:i])
@@ -843,38 +838,54 @@ class Screen(CommandHandler):
                         available, width, "horizontal")
                 sizes[i] = max([x.pad.getmaxyx()[0] - 1 for x in r])
 
-            ret[i] = r
             used += sizes[i]
             units -= 1
 
         # Now that we know the actual sizes (and thus locations) of
         # the windows, we actually setup the immediates.
 
-        for i, ci in imm_instances:
+        for i, ci in immediates:
             offset = sum(sizes[0:i])
             if orientation == "horizontal":
-                self._subw_init(ci, layout[i], top, left + offset,
+                self._subw_init(ci, top, left + offset,
                         sizes[i], height)
             else:
-                self._subw_init(ci, layout[i], top + offset, left,
+                self._subw_init(ci, top + offset, left,
                         width, sizes[i])
 
-        return ret
+        return layout
+
+    def fill_layout(self, layout, windows):
+        inputs = [ w for w in windows if w.is_input() ]
+        if inputs:
+            self.input_box = inputs[0]
+        else:
+            self.input_box = None
+
+        if layout == "hstack":
+            return self.windows
+        elif layout == "vstack":
+            return [ self.windows ]
+        else:
+            if self.input_box:
+                return [ [ w for w in self.windows if w != self.input_box ],\
+                        self.input_box ]
+            else:
+                return self.windows
 
     def subwindows(self):
         self.stdscr.erase()
         self.stdscr.refresh()
 
         self.focused = None
-        self.windows = []
 
-        self._subw(self.layout, 0, 0, self.height, self.width, "vertical")
+        l = self.fill_layout(self.layout, self.windows)
+        self._subw(l, 0, 0, self.height, self.width, "vertical")
 
         # Default to giving first window focus.
         self._focus(0)
 
     def refresh_callback(self, c, t, l, b, r):
-        log.debug("args: %s" % ((c, t, l, b, r),))
         c.pad.noutrefresh(0, 0, t, l, b, r)
 
     def input_callback(self, prompt):
@@ -891,6 +902,13 @@ class Screen(CommandHandler):
         self.input_box.reset()
         return r
 
+    def die_callback(self, window):
+        self.windows = [ w for w in self.windows if w != window ]
+        self.subwindows()
+        if self.focused == window:
+            self._focus(0)
+        self.refresh()
+
     def classtype(self, args):
         t, r = self._first_term(args, lambda : self.input_callback("class: "))
 
@@ -898,6 +916,8 @@ class Screen(CommandHandler):
             return (True, TagList, r)
         elif t == "reader":
             return (True, Reader, r)
+        elif t == "inputbox":
+            return (True, InputBox, r)
 
         log.error("Unknown class: %s" % t)
         return (False, None, None)
@@ -970,9 +990,9 @@ class Screen(CommandHandler):
         self._add_window(kwargs["cls"])
 
     def _add_window(self, cls):
-        self._window_levels(self.layout)[-1].append(cls)
+        self.windows.append(cls())
         self.subwindows()
-        self._focus(0)
+        self._focus(-1)
         self.refresh()
 
     # Pass a command to focused window:
