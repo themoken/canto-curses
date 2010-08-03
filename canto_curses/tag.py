@@ -105,4 +105,3 @@ class Tag(list):
         # and all of the stories. The sum must == the height
         # of the tag's pad.
         return mp
-

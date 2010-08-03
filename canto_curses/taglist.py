@@ -375,5 +375,3 @@ class TagList(CommandHandler):
 
     def get_width(self, mwidth):
         return mwidth
-
-

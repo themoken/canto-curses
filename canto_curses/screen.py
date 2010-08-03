@@ -379,5 +379,3 @@ class Screen(CommandHandler):
 
     def exit(self):
         curses.endwin()
-
-

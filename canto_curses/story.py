@@ -173,4 +173,3 @@ class Story():
 
     def needed_attributes(self):
         return [ "title", "link", "canto-state" ]
-
