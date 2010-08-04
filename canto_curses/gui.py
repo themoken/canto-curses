@@ -39,6 +39,8 @@ class CantoCursesGui(CommandHandler):
         callbacks = {
                 "set_var" : self.set_var,
                 "get_var" : self.get_var,
+                "set_cfg" : self.set_cfg,
+                "get_cfg" : self.get_cfg,
                 "write" : self.backend.write
         }
 
@@ -46,6 +48,15 @@ class CantoCursesGui(CommandHandler):
                 ":" : "command",
                 "q" : "quit"
         }
+
+        self.config = {
+                "browser" : "firefox %u"
+        }
+
+        self.backend.write("CONFIGS", [ "CantoCurses" ])
+        self.config.update(self.wait_response("CONFIGS")[1]["CantoCurses"])
+
+        log.debug("FINAL CONFIG:\n%s" % self.config)
 
         self.backend.write("LISTFEEDS", u"")
         r = self.wait_response("LISTFEEDS")
@@ -158,6 +169,13 @@ class CantoCursesGui(CommandHandler):
         if tweak in self.vars:
             return self.vars[tweak]
         return None
+
+    def set_cfg(self, option, value):
+        self.config[option] = value
+        self.backend.write("SETCONFIGS", { option : value })
+
+    def get_cfg(self, option):
+        return self.config[option]
 
     def winch(self):
         self.backend.responses.put(("CMD", "resize"))

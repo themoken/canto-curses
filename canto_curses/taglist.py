@@ -151,8 +151,13 @@ class TagList(CommandHandler):
     @command_format("goto", [("items", "listof_items")])
     @generic_parse_error
     def goto(self, **kwargs):
+        browser = self.callbacks["get_cfg"]("browser")
+        if not browser:
+            log.error("No browser defined! Cannot goto.")
+            return
+
         for item in kwargs["items"]:
-            silentfork(None, item.content["link"])
+            silentfork(browser, item.content["link"])
 
     @command_format("tag-state", [("state", "state"),("tags","listof_tags")])
     @generic_parse_error

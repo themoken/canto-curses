@@ -13,10 +13,6 @@ import os
 
 def silentfork(path, href):
 
-    # XXX temporary until we have a config option
-    if not path:
-        path = "iceweasel \"%u\""
-
     href = encoder(href)
 
     pid = os.fork()
