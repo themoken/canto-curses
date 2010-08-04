@@ -37,8 +37,8 @@ class TagList(CommandHandler):
         self.keys = {
             " " : "add-window reader",
             "g" : "foritems & goto & item-state read & clearitems",
-            "E" : "toggle tags_enumerated",
-            "e" : "toggle enumerated",
+            "E" : "toggle-opt tags_enumerated",
+            "e" : "toggle-opt enumerated",
             "R" : "item-state read *",
             "U" : "item-state -read *",
             "r" : "tag-state read",
@@ -84,21 +84,21 @@ class TagList(CommandHandler):
 
     # Prompt that ensures the items are enumerated first
     def eprompt(self):
-        return self._var_set_prompt("enumerated", "items: ")
+        return self._cfg_set_prompt("enumerated", "items: ")
 
     # Will enumerate tags in the future.
     def teprompt(self):
-        return self._var_set_prompt("tags_enumerated", "tags: ")
+        return self._cfg_set_prompt("tags_enumerated", "tags: ")
 
-    def _var_set_prompt(self, var, prompt):
+    def _cfg_set_prompt(self, option, prompt):
         # Ensure the items are enumerated
-        t = self.callbacks["get_var"](var)
-        self.callbacks["set_var"](var, True)
+        t = self.callbacks["get_opt"](option)
+        self.callbacks["set_opt"](option, True)
 
         r = self.input(prompt)
 
-        # Reset var to previous value
-        self.callbacks["set_var"](var, t)
+        # Reset option to previous value
+        self.callbacks["set_opt"](option, t)
         return r
 
     def uint(self, args):
@@ -151,7 +151,7 @@ class TagList(CommandHandler):
     @command_format("goto", [("items", "listof_items")])
     @generic_parse_error
     def goto(self, **kwargs):
-        browser = self.callbacks["get_cfg"]("browser")
+        browser = self.callbacks["get_opt"]("browser")
         if not browser:
             log.error("No browser defined! Cannot goto.")
             return

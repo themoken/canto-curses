@@ -26,8 +26,6 @@ class CantoCursesGui(CommandHandler):
 
         td = []
         self.vars = {
-            "tags_enumerated" : False,
-            "enumerated" : False,
             "selected" : None,
             "curtags" : td,
             "alltags" : td,
@@ -37,20 +35,22 @@ class CantoCursesGui(CommandHandler):
         }
 
         callbacks = {
-                "set_var" : self.set_var,
-                "get_var" : self.get_var,
-                "set_cfg" : self.set_cfg,
-                "get_cfg" : self.get_cfg,
-                "write" : self.backend.write
+            "set_var" : self.set_var,
+            "get_var" : self.get_var,
+            "set_opt" : self.set_opt,
+            "get_opt" : self.get_opt,
+            "write" : self.backend.write
         }
 
         self.keys = {
-                ":" : "command",
-                "q" : "quit"
+            ":" : "command",
+            "q" : "quit"
         }
 
         self.config = {
-                "browser" : "firefox %u"
+            "browser" : "firefox %u",
+            "tags_enumerated" : "False",
+            "enumerated" : "False",
         }
 
         self.backend.write("CONFIGS", [ "CantoCurses" ])
@@ -126,9 +126,7 @@ class CantoCursesGui(CommandHandler):
                         a = a.replace("%", "\\%")
                         a = html_entity_convert(a)
                         a = char_ref_convert(a)
-                        item.content[k] = a
-                    else:
-                        item.content[k] = a
+                    item.content[k] = a
 
     def var(self, args):
         t, r = self._first_term(args,\
@@ -160,21 +158,51 @@ class CantoCursesGui(CommandHandler):
             self.vars[tweak] = value
             changed = True
 
-        # Special actions on certain vars changed.
-        if changed:
-            if tweak in ["tags_enumerated", "enumerated"]:
-                self.screen.refresh()
+        # XXX use changed on vars needing refresh
 
     def get_var(self, tweak):
         if tweak in self.vars:
             return self.vars[tweak]
         return None
 
-    def set_cfg(self, option, value):
-        self.config[option] = value
-        self.backend.write("SETCONFIGS", { option : value })
+    def opt(self, args):
+        t, r = self._first_term(args,
+                lambda : self.screen.input_callback("opt: "))
+        if t in self.config:
+            return (True, t, r)
+        log.error("Unknown option: %s" % t)
+        return (False, None, None)
 
-    def get_cfg(self, option):
+    @command_format("toggle-opt", [("opt","opt")])
+    @generic_parse_error
+    def toggle_opt(self, **kwargs):
+        opt = kwargs["opt"]
+        if opt not in self.config:
+            log.error("Unknown option: %s" % opt)
+            return
+        if self.config[opt] not in ["True", "False"]:
+            log.error("Option %s isn't boolean." % opt)
+            return
+        if self.config[opt] == "True":
+            self.set_opt(opt, "False")
+        else:
+            self.set_opt(opt, "True")
+
+    def set_opt(self, option, value):
+        changed = False
+        if self.config[option] != value:
+            self.config[option] = value
+            changed = True
+
+        # Special actions on certain opt changes.
+        if changed:
+            if option in ["tags_enumerated", "enumerated"]:
+                self.screen.refresh()
+
+            self.backend.write("SETCONFIGS",\
+                    { "CantoCurses." + option : value })
+
+    def get_opt(self, option):
         return self.config[option]
 
     def winch(self):
@@ -257,6 +285,8 @@ class CantoCursesGui(CommandHandler):
                     self.set(args=cmd[1])
                 elif cmd[1].startswith("unset"):
                     self.unset(args=cmd[1])
+                elif cmd[1].startswith("toggle-opt"):
+                    self.toggle_opt(args=cmd[1])
                 elif cmd[1].startswith("toggle"):
                     self.toggle(args=cmd[1])
 

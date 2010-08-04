@@ -25,7 +25,6 @@ class Reader(CommandHandler):
         self.redraw()
 
     def redraw(self):
-        log.debug("Reader redraw!")
         self.pad.erase()
 
         mwidth = self.pad.getmaxyx()[1]
@@ -67,4 +66,3 @@ class Reader(CommandHandler):
 
     def get_width(self, mwidth):
         return mwidth
-
