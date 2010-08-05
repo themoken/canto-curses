@@ -284,10 +284,20 @@ class TagList(CommandHandler):
         elif cmd.startswith("clearitems"):
             self.clearitems(args=cmd)
 
+    def visible_tags(self, tags):
+        hide_empty = self.callbacks["get_opt"]("hide_empty_tags") == "True"
+
+        t = []
+        for tag in tags:
+            if hide_empty and len(tag) == 0:
+                continue
+            t.append(tag)
+        return t
+
     def refresh(self):
         self.max_offset = -1 * self.height
         idx = 0
-        for tag in self.tags:
+        for tag in self.visible_tags(self.tags):
             ml = tag.refresh(self.width, idx)
 
             if len(ml) > 1:
@@ -320,9 +330,17 @@ class TagList(CommandHandler):
         self.pad.erase()
 
         spent_lines = 0
+
+        # We use 'done' when we know we've rendered all the
+        # tags we can. We can't just 'break' from the loop
+        # or spent_lines accounting will fuck up.
+
+        done = False
+
         lines = self.height
 
-        for tag in self.tags:
+        for tag in self.visible_tags(self.tags):
+
             taglines = tag.pad.getmaxyx()[0]
 
             # If we're still off screen up after last tag, but this
@@ -362,13 +380,18 @@ class TagList(CommandHandler):
                             ((self.offset + self.height) - spent_lines)
                     tag.pad.overwrite(self.pad, 0, 0, dest_start, 0,\
                             maxr - 1, self.width - 1)
-                    break
+                    done = True
 
                 # Else, we're off screen, and done.
                 else:
-                    break
+                    done = True
 
             spent_lines += taglines
+            if done:
+                break
+
+        if not spent_lines:
+            self.pad.addstr("All tags empty.")
 
         self.callbacks["refresh"]()
 

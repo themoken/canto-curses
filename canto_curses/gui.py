@@ -51,6 +51,7 @@ class CantoCursesGui(CommandHandler):
             "browser" : "firefox %u",
             "tags_enumerated" : "False",
             "enumerated" : "False",
+            "hide_empty_tags" : "True",
         }
 
         self.backend.write("CONFIGS", [ "CantoCurses" ])
