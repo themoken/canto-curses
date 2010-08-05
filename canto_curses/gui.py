@@ -139,12 +139,18 @@ class CantoCursesGui(CommandHandler):
     @command_format("set", [("var","var")])
     @generic_parse_error
     def set(self, **kwargs):
-        self.set_var(kwargs["var"], True)
+        if self.vars[kwargs["var"]] in [ True, False]:
+            self.set_var(kwargs["var"], True)
+        else:
+            log.error("Variable %s is not boolean." % kwargs["var"])
 
     @command_format("unset", [("var","var")])
     @generic_parse_error
     def unset(self, **kwargs):
-        self.set_var(kwargs["var"], False)
+        if self.vars[kwargs["var"]] in [True, False]:
+            self.set_var(kwargs["var"], False)
+        else:
+            log.error("Variable %s is not boolean." % kwargs["var"])
 
     @command_format("toggle", [("var","var")])
     @generic_parse_error
