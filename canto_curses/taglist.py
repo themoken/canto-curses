@@ -219,6 +219,12 @@ class TagList(CommandHandler):
         else:
             self._set_cursor(item)
 
+    def adjust_offset(self, item):
+        if self.offset > item.max_offset:
+            self.offset = item.max_offset
+        elif self.offset < item.min_offset:
+            self.offset = item.min_offset
+
     def _set_cursor(self, item):
         # May end up as None
         sel = self.callbacks["get_var"]("selected")
@@ -234,11 +240,7 @@ class TagList(CommandHandler):
                 # If we have to adjust offset to 
                 # keep selection on the screen,
                 # refresh again.
-
-                if self.offset > item.max_offset:
-                    self.offset = item.max_offset
-                elif self.offset < item.min_offset:
-                    self.offset = item.min_offset
+                self.adjust_offset(item)
 
             self.refresh()
             self.callbacks["set_var"]("needs_redraw", True)
@@ -317,12 +319,9 @@ class TagList(CommandHandler):
             self.max_offset += sum(ml)
             idx += len(tag)
 
-        # Ensure that calculated selected max offset
-        # aren't outside of the general max offset
-
         sel = self.callbacks["get_var"]("selected")
-        if sel and sel.max_offset > self.max_offset:
-            sel.max_offset = self.max_offset
+        if sel:
+            self.adjust_offset(sel)
 
         self.redraw()
 
