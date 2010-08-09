@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto.encoding import encoder
+from canto_next.encoding import encoder
 
 import sys
 import os

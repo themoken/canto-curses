@@ -6,8 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto.client import CantoClient
-from canto.encoding import decoder
+from canto_next.client import CantoClient
+from canto_next.encoding import decoder
 from gui import CantoCursesGui
 from consts import *
 
