@@ -319,6 +319,12 @@ class TagList(CommandHandler):
             self.max_offset += sum(ml)
             idx += len(tag)
 
+        # If we have less than a screenful of
+        # content, set max_offset to pin it to the top.
+
+        if self.max_offset < 0:
+            self.max_offset = 0
+
         sel = self.callbacks["get_var"]("selected")
         if sel:
             self.adjust_offset(sel)
