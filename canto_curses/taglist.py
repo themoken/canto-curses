@@ -325,6 +325,9 @@ class TagList(CommandHandler):
         if self.max_offset < 0:
             self.max_offset = 0
 
+        # If we've got a selection make sure it's
+        # still going to be onscreen.
+
         sel = self.callbacks["get_var"]("selected")
         if sel:
             self.adjust_offset(sel)
