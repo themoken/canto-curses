@@ -97,7 +97,7 @@ class TagList(CommandHandler):
     def _cfg_set_prompt(self, option, prompt):
         # Ensure the items are enumerated
         t = self.callbacks["get_opt"](option)
-        self.callbacks["set_opt"](option, True)
+        self.callbacks["set_opt"](option, "True")
 
         r = self.input(prompt)
 
