@@ -73,10 +73,14 @@ class TagList(CommandHandler):
         return None
 
     def all_items(self):
-        r = []
         for tag in self.tags:
-            r.extend(tag)
-        return r
+            for story in tag:
+                yield story
+
+    def all_items_reversed(self):
+        for tag in reversed(self.tags):
+            for story in reversed(tag):
+                yield story
 
     # For Command processing
     def input(self, prompt):
@@ -117,7 +121,7 @@ class TagList(CommandHandler):
             else:
                 args = self.eprompt()
 
-        ints = self._listof_int(args, len(self.all_items()), self.eprompt)
+        ints = self._listof_int(args, len(list(self.all_items())), self.eprompt)
         return (True, filter(None, [ self.item_by_idx(i) for i in ints ]), "")
 
     def listof_tags(self, args):
@@ -221,9 +225,9 @@ class TagList(CommandHandler):
 
     def adjust_offset(self, item):
         if self.offset > item.max_offset:
-            self.offset = item.max_offset
+            self.offset = min(item.max_offset, self.max_offset)
         elif self.offset < item.min_offset:
-            self.offset = item.min_offset
+            self.offset = max(item.min_offset, 0)
 
     def _set_cursor(self, item):
         # May end up as None
@@ -237,9 +241,7 @@ class TagList(CommandHandler):
             if item:
                 item.select()
 
-                # If we have to adjust offset to 
-                # keep selection on the screen,
-                # refresh again.
+                # Adjust offset to keep selection on the screen
                 self.adjust_offset(item)
 
             self.refresh()
@@ -259,18 +261,62 @@ class TagList(CommandHandler):
     def clearitems(self, **kwargs):
         self.got_items = None
 
+    @command_format("page-up", [])
+    @generic_parse_error
+    def page_up(self, **kwargs):
+        scroll = self.height - 1
+
+        sel = self.callbacks["get_var"]("selected")
+        if sel:
+            newsel = None
+            for item in self.all_items_reversed():
+                if item.max_offset <= (sel.max_offset - scroll):
+                    break
+                newsel = item
+
+            if newsel:
+                item_offset = sel.max_offset - self.offset
+                self.offset = min(newsel.max_offset - item_offset,
+                        self.max_offset)
+                self._set_cursor(newsel)
+        else:
+            self.offset = self.offset - scroll
+
+        self.offset = max(self.offset, 0)
+        self.callbacks["set_var"]("needs_redraw", True)
+
+    @command_format("page-down", [])
+    @generic_parse_error
+    def page_down(self, **kwargs):
+        scroll = self.height - 1
+
+        sel = self.callbacks["get_var"]("selected")
+        if sel:
+            newsel = None
+            for item in self.all_items():
+                if item.max_offset >= (sel.max_offset + scroll):
+                    break
+                newsel = item
+
+            if newsel:
+                item_offset = sel.max_offset - self.offset
+                self.offset = newsel.max_offset - item_offset
+                self._set_cursor(newsel)
+        else:
+            self.offset = self.offset + scroll
+
+        self.offset = min(self.offset, self.max_offset)
+        self.callbacks["set_var"]("needs_redraw", True)
+
     # simple command dispatcher.
     # TODO: This whole function could be made generic in CommandHandler
 
     def command(self, cmd):
         log.debug("TagList command: %s" % cmd)
-        if cmd == "page-down":
-            self.offset = min(self.offset + (self.height - 1), self.max_offset)
-            self.callbacks["set_var"]("needs_redraw", True)
-        elif cmd == "page-up":
-            self.offset = max(self.offset - (self.height - 1), 0)
-            self.callbacks["set_var"]("needs_redraw", True)
-
+        if cmd.startswith("page-up"):
+            self.page_up(args=cmd)
+        elif cmd.startswith("page-down"):
+            self.page_down(args=cmd)
         elif cmd.startswith("goto"):
             self.goto(args=cmd)
         elif cmd.startswith("tag-state"):
@@ -308,9 +354,12 @@ class TagList(CommandHandler):
 
                 # Note: ml[0] == header, so current item's length = ml[i + 1]
 
+                # Note: min/max_offsets are theoretical (i.e. they don't
+                # have to exist between 0 and self.max_offset.
+
                 for i in xrange(len(tag)):
                     curpos = self.max_offset + sum(ml[0:i + 2])
-                    tag[i].min_offset = max(curpos + 1, 0)
+                    tag[i].min_offset = curpos + 1
                     tag[i].max_offset = curpos + (self.height - ml[i + 1])
 
                     # Adjust for the floating header.
@@ -322,8 +371,10 @@ class TagList(CommandHandler):
         # If we have less than a screenful of
         # content, set max_offset to pin it to the top.
 
-        if self.max_offset < 0:
+        if self.max_offset <= 0:
             self.max_offset = 0
+        else:
+            self.max_offset += 1
 
         # If we've got a selection make sure it's
         # still going to be onscreen.
