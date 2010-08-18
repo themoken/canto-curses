@@ -15,7 +15,6 @@ static PyObject * py_wcwidth(PyObject *self, PyObject *args)
     wchar_t dest[2];
     char *message;
     int ret, bytes;
-    FILE *o;
 
     if(!PyArg_ParseTuple(args, "et", &m_enc, &message))
 	return NULL;
