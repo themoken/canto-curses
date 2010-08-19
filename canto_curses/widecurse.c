@@ -35,6 +35,7 @@ static PyObject * py_waddch(PyObject *self, PyObject *args)
     const char *m_enc;
     PyObject *window, *ret_o;
     WINDOW *win;
+    int x, y;
 
     /* We use the 'et' format because we don't want Python
        to touch the encoding and generate Unicode Exceptions */
@@ -49,18 +50,25 @@ static PyObject * py_waddch(PyObject *self, PyObject *args)
         Py_RETURN_NONE;
     }
 
+    getyx(win, y, x);
+
     if((unsigned char) message[0] > 0x7F) {
 	wchar_t dest[2];
 	int bytes;
 
 	bytes = mbtowc(dest, &message[0], 3);
 
-	if (bytes >= 1)
+	if (bytes > 0) {
 	    waddwstr(win, dest);
-	ret_s = &message[bytes];
+	    ret_s = &message[bytes];
+	    wmove(win, y, x + wcwidth(dest[0]));
+	} else
+	    ret_s = &message[1];
+
     } else {
 	waddch(win, message[0]);
 	ret_s = &message[1];
+	wmove(win, y, x + 1);
     }
 
     ret_o = Py_BuildValue("s", ret_s);
