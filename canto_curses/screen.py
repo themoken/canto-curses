@@ -14,6 +14,7 @@ from reader import Reader
 from threading import Thread, Event
 import logging
 import curses
+import time
 
 log = logging.getLogger("SCREEN")
 
@@ -36,6 +37,7 @@ class Screen(CommandHandler):
 
         self.pseudo_input_box = curses.newpad(1,1)
         self.pseudo_input_box.keypad(1)
+        self.pseudo_input_box.nodelay(1)
 
         self.input_box = None
         self.sub_edit = False
@@ -283,6 +285,7 @@ class Screen(CommandHandler):
         # (you get raw bytes).
 
         self.pseudo_input_box.keypad(1)
+        self.pseudo_input_box.nodelay(1)
         self.stdscr.refresh()
 
         self.curses_setup()
@@ -345,6 +348,10 @@ class Screen(CommandHandler):
     def input_thread(self):
         while True:
             r = self.pseudo_input_box.getch()
+
+            if r == -1:
+                time.sleep(0.01)
+                continue
 
             log.debug("R = %s" % r)
 
