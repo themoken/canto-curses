@@ -192,13 +192,13 @@ def theme_print(pad, uni, mwidth, pre = "", post = ""):
     pad.clrtoeol()
 
     if post:
-        pad.move(pad.getyx()[0], mwidth - postl)
+        pad.move(y, mwidth - postl)
         theme_print_one(pad, post, postl)
-    else:
-        try:
-            pad.move(y + 1, 0)
-        except:
-            pass
+
+    try:
+	pad.move(y + 1, 0)
+    except:
+	pass
 
     if r == uni:
         raise Exception("theme_print: didn't advance!")
