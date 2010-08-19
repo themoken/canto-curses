@@ -1,0 +1,9 @@
+
+- Possible fix for sleo's remaining terminal issues.
+
+- Text browser support
+	[CantoCurses]
+	...
+	txt_browser = True
+
+== Alpha 1 - 17 Aug. 2010 ==
