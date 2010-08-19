@@ -11,6 +11,7 @@ from utility import silentfork
 
 import logging
 import curses
+import os
 
 log = logging.getLogger("TAGLIST")
 
@@ -156,12 +157,22 @@ class TagList(CommandHandler):
     @generic_parse_error
     def goto(self, **kwargs):
         browser = self.callbacks["get_opt"]("browser")
+        txt_browser = self.callbacks["get_opt"]("txt_browser") == "True"
+
         if not browser:
             log.error("No browser defined! Cannot goto.")
             return
 
+        if txt_browser:
+            self.callbacks["pause_interface"]()
+
         for item in kwargs["items"]:
-            silentfork(browser, item.content["link"])
+            pid = silentfork(browser, item.content["link"])
+            if txt_browser:
+                os.waitpid(pid, 0)
+
+        if txt_browser:
+            self.callbacks["unpause_interface"]()
 
     @command_format("tag-state", [("state", "state"),("tags","listof_tags")])
     @generic_parse_error

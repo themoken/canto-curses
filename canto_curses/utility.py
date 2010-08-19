@@ -30,3 +30,5 @@ def silentfork(path, href):
 
         # Just in case.
         sys.exit(0)
+
+    return pid

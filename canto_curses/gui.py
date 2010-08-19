@@ -49,6 +49,7 @@ class CantoCursesGui(CommandHandler):
 
         self.config = {
             "browser" : "firefox %u",
+            "txt_browser" : "False",
             "tags_enumerated" : "False",
             "enumerated" : "False",
             "hide_empty_tags" : "True",

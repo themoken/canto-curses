@@ -11,7 +11,7 @@ from taglist import TagList
 from input import InputBox
 from reader import Reader
 
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 import logging
 import curses
 import time
@@ -38,6 +38,7 @@ class Screen(CommandHandler):
         self.pseudo_input_box = curses.newpad(1,1)
         self.pseudo_input_box.keypad(1)
         self.pseudo_input_box.nodelay(1)
+        self.input_lock = Lock()
 
         self.input_box = None
         self.sub_edit = False
@@ -93,6 +94,8 @@ class Screen(CommandHandler):
         callbacks["refresh"] = refcb
         callbacks["input"] = self.input_callback
         callbacks["die"] = self.die_callback
+        callbacks["pause_interface" ] = self.pause_interface_callback
+        callbacks["unpause_interface"] = self.unpause_interface_callback
 
         ci.init(pad, callbacks)
 
@@ -236,6 +239,15 @@ class Screen(CommandHandler):
             self._focus(0)
         self.refresh()
 
+    def pause_interface_callback(self):
+        log.debug("Pausing interface.")
+        self.input_lock.acquire()
+
+    def unpause_interface_callback(self):
+        log.debug("Unpausing interface.")
+        self.input_lock.release()
+        self._resize()
+
     def classtype(self, args):
         t, r = self._first_term(args, lambda : self.input_callback("class: "))
 
@@ -273,6 +285,9 @@ class Screen(CommandHandler):
     @command_format("resize", [])
     @generic_parse_error
     def resize(self, **kwargs):
+        self._resize()
+
+    def _resize(self):
         try:
             curses.endwin()
         except:
@@ -346,11 +361,14 @@ class Screen(CommandHandler):
         return None
 
     def input_thread(self):
+        self.input_lock.acquire()
         while True:
             r = self.pseudo_input_box.getch()
 
             if r == -1:
+                self.input_lock.release()
                 time.sleep(0.01)
+                self.input_lock.acquire()
                 continue
 
             log.debug("R = %s" % r)
