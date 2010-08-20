@@ -468,6 +468,9 @@ class TagList(CommandHandler):
     def is_input(self):
         return False
 
+    def get_opt_name(self):
+        return "taglist"
+
     def get_height(self, mheight):
         return mheight
 

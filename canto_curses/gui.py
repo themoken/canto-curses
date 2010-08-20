@@ -53,6 +53,18 @@ class CantoCursesGui(CommandHandler):
             "tags_enumerated" : "False",
             "enumerated" : "False",
             "hide_empty_tags" : "True",
+            "reader.maxwidth" : 20,
+            "reader.maxheight" : 0,
+            "reader.float" : "False",
+            "reader.align" : "topright",
+            "taglist.maxwidth" : 0,
+            "taglist.maxheight" : 0,
+            "taglist.float" : "False",
+            "taglist.align" : "neutral",
+            "input.maxwidth" : 0,
+            "input.maxheight" : 0,
+            "input.float" : "False",
+            "input.align" : "bottom"
         }
 
         self.backend.write("CONFIGS", [ "CantoCurses" ])

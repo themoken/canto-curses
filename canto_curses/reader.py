@@ -61,6 +61,9 @@ class Reader(CommandHandler):
     def is_input(self):
         return False
 
+    def get_opt_name(self):
+        return "reader"
+
     def get_height(self, mheight):
         return mheight
 

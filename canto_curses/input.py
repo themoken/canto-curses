@@ -101,11 +101,14 @@ class InputBox(CommandHandler):
         self.refresh()
         curses.doupdate()
 
+    def is_input(self):
+        return True
+
+    def get_opt_name(self):
+        return "input"
+
     def get_height(self, mheight):
         return 1
 
     def get_width(self, mwidth):
         return mwidth
-
-    def is_input(self):
-        return True
