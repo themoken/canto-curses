@@ -98,7 +98,7 @@ class TagList(CommandHandler):
     def _cfg_set_prompt(self, option, prompt):
         # Ensure the items are enumerated
         t = self.callbacks["get_opt"](option)
-        self.callbacks["set_opt"](option, "True")
+        self.callbacks["set_opt"](option, True)
 
         r = self.input(prompt)
 
@@ -157,7 +157,7 @@ class TagList(CommandHandler):
     @generic_parse_error
     def goto(self, **kwargs):
         browser = self.callbacks["get_opt"]("browser")
-        txt_browser = self.callbacks["get_opt"]("txt_browser") == "True"
+        txt_browser = self.callbacks["get_opt"]("txt_browser")
 
         if not browser:
             log.error("No browser defined! Cannot goto.")
@@ -344,7 +344,7 @@ class TagList(CommandHandler):
             self.clearitems(args=cmd)
 
     def visible_tags(self, tags):
-        hide_empty = self.callbacks["get_opt"]("hide_empty_tags") == "True"
+        hide_empty = self.callbacks["get_opt"]("hide_empty_tags")
 
         t = []
         for tag in tags:

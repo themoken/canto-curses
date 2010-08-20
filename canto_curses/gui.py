@@ -47,28 +47,30 @@ class CantoCursesGui(CommandHandler):
             "q" : "quit"
         }
 
-        self.config = {
+        self.def_config = {
             "browser" : "firefox %u",
-            "txt_browser" : "False",
-            "tags_enumerated" : "False",
-            "enumerated" : "False",
-            "hide_empty_tags" : "True",
-            "reader.maxwidth" : 20,
+            "txt_browser" : False,
+            "tags_enumerated" : False,
+            "enumerated" : False,
+            "hide_empty_tags" : True,
+            "reader.maxwidth" : 0,
             "reader.maxheight" : 0,
-            "reader.float" : "False",
+            "reader.float" : False,
             "reader.align" : "topright",
             "taglist.maxwidth" : 0,
             "taglist.maxheight" : 0,
-            "taglist.float" : "False",
+            "taglist.float" : False,
             "taglist.align" : "neutral",
             "input.maxwidth" : 0,
             "input.maxheight" : 0,
-            "input.float" : "False",
+            "input.float" : False,
             "input.align" : "bottom"
         }
 
         self.backend.write("CONFIGS", [ "CantoCurses" ])
+        self.config = self.def_config.copy()
         self.config.update(self.wait_response("CONFIGS")[1]["CantoCurses"])
+        self.validate_config()
 
         log.debug("FINAL CONFIG:\n%s" % self.config)
 
@@ -121,6 +123,73 @@ class CantoCursesGui(CommandHandler):
                 return r
             else:
                 log.debug("waiting: %s != %s" % (r[0], cmd))
+
+    def _val_bool(self, attr):
+        if type(self.config[attr]) != bool:
+            if self.config[attr].lower() == "true":
+                self.config[attr] = True
+            elif self.config[attr].lower() == "false":
+                self.config[attr] = False
+            else:
+                self.config[attr] = self.def_config[attr]
+                log.error("%s must be boolean. Resetting to %s" %
+                        (attr, self.def_config[attr]))
+
+    def _val_uint(self, attr):
+        if type(self.config[attr]) != int:
+            try:
+                self.config[attr] = int(self.config[attr])
+            except:
+                self.config[attr] = self.def_config[attr]
+                log.error("%s must be integer. Resetting to %s" %
+                        (attr, self.def_config[attr]))
+        elif int < 0:
+            self.config[attr] = self.def_config[attr]
+            log.error("%s must be >= 0. Resetting to %s" %
+                    (attr, self.def_config[attr]))
+
+    def validate_config(self):
+        self._val_bool("enumerated")
+        self._val_bool("tags_enumerated")
+        self._val_bool("hide_empty_tags")
+        self._val_bool("txt_browser")
+
+        # Make sure various window configurations make sense.
+        for wintype in [ "reader", "input", "taglist" ]:
+            # Ensure float attributes are boolean
+            float_attr = wintype + ".float"
+            self._val_bool(float_attr)
+
+            # Ensure alignment jive with float.
+            float_aligns = [ "topleft", "topright", "center", "neutral",\
+                    "bottomleft", "bottomright"]
+
+            tile_aligns = [ "top", "left", "bottom", "right", "neutral" ]
+
+            align_attr = wintype + ".align"
+            if self.config[float_attr]:
+                if self.config[align_attr] not in float_aligns:
+
+                    # Translate tile aligns to float aligns.
+                    if self.config[align_attr] in tile_aligns:
+                        if self.config[align_attr] in ["top","bottom"]:
+                            self.config[align_attr] += "left"
+                        elif self.config[align_attr] in ["left","right"]:
+                            self.config[align_attr] = "top" +\
+                                    self.config[align_attr]
+                        log.info("Translated %s alignment for float: %s" %
+                                (align_attr, self.config[align_attr]))
+                    else:
+                        # Got nonsense, revert to default.
+                        if self.def_config[align_attr] not in float_aligns:
+                            self.config[float_attr] = False
+                        self.config[align_attr] = self.def_config[align_attr]
+                        log.error("%s unknown alignment. Resetting to %s" %
+                                (align_attr, self.config[align_attr]))
+
+            # Make sure size restrictions are positive integers
+            for subattr in [".maxheight", ".maxwidth"]:
+                self._val_uint(wintype + subattr)
 
     def attributes(self, d):
         for given_id in d:
@@ -201,13 +270,10 @@ class CantoCursesGui(CommandHandler):
         if opt not in self.config:
             log.error("Unknown option: %s" % opt)
             return
-        if self.config[opt] not in ["True", "False"]:
+        if type(self.config[opt]) != bool:
             log.error("Option %s isn't boolean." % opt)
             return
-        if self.config[opt] == "True":
-            self.set_opt(opt, "False")
-        else:
-            self.set_opt(opt, "True")
+        self.set_opt(opt, not self.config[opt])
 
     def set_opt(self, option, value):
         changed = False
@@ -221,7 +287,7 @@ class CantoCursesGui(CommandHandler):
                 self.screen.refresh()
 
             self.backend.write("SETCONFIGS",\
-                    { "CantoCurses." + option : value })
+                    { "CantoCurses." + option : unicode(value) })
 
     def get_opt(self, option):
         return self.config[option]

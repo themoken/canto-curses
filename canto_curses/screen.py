@@ -472,7 +472,7 @@ class Screen(CommandHandler):
 
         # Enforce window.float
         optname = ci.get_opt_name()
-        flt = self.callbacks["get_opt"](optname + ".float") == "True"
+        flt = self.callbacks["get_opt"](optname + ".float")
         if flt:
             self.floats.append(ci)
         else:
