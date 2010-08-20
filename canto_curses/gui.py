@@ -55,8 +55,8 @@ class CantoCursesGui(CommandHandler):
             "hide_empty_tags" : True,
             "reader.maxwidth" : 0,
             "reader.maxheight" : 0,
-            "reader.float" : False,
-            "reader.align" : "topright",
+            "reader.float" : True,
+            "reader.align" : "topleft",
             "taglist.maxwidth" : 0,
             "taglist.maxheight" : 0,
             "taglist.float" : False,
@@ -161,12 +161,14 @@ class CantoCursesGui(CommandHandler):
             self._val_bool(float_attr)
 
             # Ensure alignment jive with float.
+
             float_aligns = [ "topleft", "topright", "center", "neutral",\
                     "bottomleft", "bottomright"]
 
             tile_aligns = [ "top", "left", "bottom", "right", "neutral" ]
 
             align_attr = wintype + ".align"
+
             if self.config[float_attr]:
                 if self.config[align_attr] not in float_aligns:
 
@@ -181,11 +183,25 @@ class CantoCursesGui(CommandHandler):
                                 (align_attr, self.config[align_attr]))
                     else:
                         # Got nonsense, revert to default.
+                        err = "%s unknown float alignment. Resetting to "
                         if self.def_config[align_attr] not in float_aligns:
                             self.config[float_attr] = False
+                            err += "!float/"
+
                         self.config[align_attr] = self.def_config[align_attr]
-                        log.error("%s unknown alignment. Resetting to %s" %
-                                (align_attr, self.config[align_attr]))
+                        err += self.def_config[align_attr]
+                        log.error(err % align_attr)
+            # !floating
+            else:
+                # No translation since it would be ambiguous.
+                if self.config[align_attr] not in tile_aligns:
+                    err = "%s unknown nonfloat alignment. Resetting to "
+                    if self.def_config[align_attr] in float_aligns:
+                        self.config[float_attr] = True
+                        err += "float/"
+                    self.config[align_attr] = self.def_config[align_attr]
+                    err += self.def_config[align_attr]
+                    log.error(err % align_attr)
 
             # Make sure size restrictions are positive integers
             for subattr in [".maxheight", ".maxwidth"]:
