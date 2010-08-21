@@ -6,16 +6,17 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from command import CommandHandler, command_format, generic_parse_error
+from command import command_format, generic_parse_error
 from theme import FakePad, WrapPad, theme_print
 from html import htmlparser
+from common import GuiBase
 
 import logging
 import curses
 
 log = logging.getLogger("READER")
 
-class Reader(CommandHandler):
+class Reader(GuiBase):
     def init(self, pad, callbacks):
         self.pad = pad
         self.callbacks = callbacks
@@ -50,13 +51,9 @@ class Reader(CommandHandler):
 
         self.callbacks["refresh"]()
 
-    @command_format("destroy", [])
-    def destroy(self, **kwargs):
-        self.callbacks["die"](self)
 
     def command(self, cmd):
-        if cmd.startswith("destroy"):
-            self.destroy(args=cmd)
+        GuiBase.command(self, cmd)
 
     def is_input(self):
         return False

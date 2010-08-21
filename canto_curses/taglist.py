@@ -6,8 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from command import CommandHandler, command_format, generic_parse_error
-from utility import silentfork
+from command import command_format, generic_parse_error
+from common import GuiBase
 
 import logging
 import curses
@@ -20,7 +20,7 @@ log = logging.getLogger("TAGLIST")
 # This is the level at which commands are taken and the backend is communicated
 # with.
 
-class TagList(CommandHandler):
+class TagList(GuiBase):
     def init(self, pad, callbacks):
         # Drawing information
         self.pad = pad
@@ -83,10 +83,6 @@ class TagList(CommandHandler):
             for story in reversed(tag):
                 yield story
 
-    # For Command processing
-    def input(self, prompt):
-        return self.callbacks["input"](prompt)
-
     # Prompt that ensures the items are enumerated first
     def eprompt(self):
         return self._cfg_set_prompt("enumerated", "items: ")
@@ -94,23 +90,6 @@ class TagList(CommandHandler):
     # Will enumerate tags in the future.
     def teprompt(self):
         return self._cfg_set_prompt("tags_enumerated", "tags: ")
-
-    def _cfg_set_prompt(self, option, prompt):
-        # Ensure the items are enumerated
-        t = self.callbacks["get_opt"](option)
-        self.callbacks["set_opt"](option, True)
-
-        r = self.input(prompt)
-
-        # Reset option to previous value
-        self.callbacks["set_opt"](option, t)
-        return r
-
-    def uint(self, args):
-        t, r = self._int(args, lambda : self.input("uint: "))
-        if t:
-            return (True, t, r)
-        return (False, None, None)
 
     def listof_items(self, args):
         if not args:
@@ -156,23 +135,7 @@ class TagList(CommandHandler):
     @command_format("goto", [("items", "listof_items")])
     @generic_parse_error
     def goto(self, **kwargs):
-        browser = self.callbacks["get_opt"]("browser")
-        txt_browser = self.callbacks["get_opt"]("txt_browser")
-
-        if not browser:
-            log.error("No browser defined! Cannot goto.")
-            return
-
-        if txt_browser:
-            self.callbacks["pause_interface"]()
-
-        for item in kwargs["items"]:
-            pid = silentfork(browser, item.content["link"])
-            if txt_browser:
-                os.waitpid(pid, 0)
-
-        if txt_browser:
-            self.callbacks["unpause_interface"]()
+        self._goto([item.content["link"] for item in kwargs["items"]])
 
     @command_format("tag-state", [("state", "state"),("tags","listof_tags")])
     @generic_parse_error
@@ -216,7 +179,7 @@ class TagList(CommandHandler):
     # unlike set-cursor, it will both not allow the selection to be set to None
     # by going off-list.
 
-    @command_format("rel-set-cursor", [("relidx", "uint")])
+    @command_format("rel-set-cursor", [("relidx", "int")])
     @generic_parse_error
     def rel_set_cursor(self, **kwargs):
         sel = self.callbacks["get_var"]("selected")
@@ -342,6 +305,7 @@ class TagList(CommandHandler):
             self.foritems(args=cmd)
         elif cmd.startswith("clearitems"):
             self.clearitems(args=cmd)
+        GuiBase.command(self, cmd)
 
     def visible_tags(self, tags):
         hide_empty = self.callbacks["get_opt"]("hide_empty_tags")

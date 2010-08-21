@@ -24,7 +24,7 @@
 # based on Textbox.
 
 from canto_next.encoding import encoder
-from command import CommandHandler
+from common import GuiBase
 
 import logging
 log = logging.getLogger("INPUT")
@@ -32,7 +32,7 @@ log = logging.getLogger("INPUT")
 import curses
 from curses import ascii
 
-class InputBox(CommandHandler):
+class InputBox(GuiBase):
     def init(self, pad, callbacks):
         self.pad = pad
 
