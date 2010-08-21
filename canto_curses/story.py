@@ -53,7 +53,7 @@ class Story():
 
     def refresh(self, mwidth, idx):
         # Do we need the enumerated form?
-        enumerated = self.callbacks["get_opt"]("enumerated")
+        enumerated = self.callbacks["get_opt"]("story.enumerated")
 
         # These are the only things that affect the drawing
         # of this item.

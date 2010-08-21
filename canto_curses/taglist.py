@@ -38,8 +38,8 @@ class TagList(GuiBase):
         self.keys = {
             " " : "add-window reader",
             "g" : "foritems & goto & item-state read & clearitems",
-            "E" : "toggle-opt tags_enumerated",
-            "e" : "toggle-opt enumerated",
+            "E" : "toggle-opt taglist.tags_enumerated",
+            "e" : "toggle-opt taglist.enumerated",
             "R" : "item-state read *",
             "U" : "item-state -read *",
             "r" : "tag-state read",
@@ -85,11 +85,11 @@ class TagList(GuiBase):
 
     # Prompt that ensures the items are enumerated first
     def eprompt(self):
-        return self._cfg_set_prompt("enumerated", "items: ")
+        return self._cfg_set_prompt("taglist.enumerated", "items: ")
 
     # Will enumerate tags in the future.
     def teprompt(self):
-        return self._cfg_set_prompt("tags_enumerated", "tags: ")
+        return self._cfg_set_prompt("taglist.tags_enumerated", "tags: ")
 
     def listof_items(self, args):
         if not args:
@@ -98,10 +98,9 @@ class TagList(GuiBase):
                 return (True, [s], "")
             if self.got_items:
                 return (True, self.got_items, "")
-            else:
-                args = self.eprompt()
 
-        ints = self._listof_int(args, len(list(self.all_items())), self.eprompt)
+        ints = self._listof_int(args, len(list(self.all_items())),\
+                lambda : self.eprompt("items:"))
         return (True, filter(None, [ self.item_by_idx(i) for i in ints ]), "")
 
     def listof_tags(self, args):
@@ -308,7 +307,7 @@ class TagList(GuiBase):
         GuiBase.command(self, cmd)
 
     def visible_tags(self, tags):
-        hide_empty = self.callbacks["get_opt"]("hide_empty_tags")
+        hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")
 
         t = []
         for tag in tags:

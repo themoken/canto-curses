@@ -50,17 +50,19 @@ class CantoCursesGui(CommandHandler):
         self.def_config = {
             "browser" : "firefox %u",
             "txt_browser" : False,
-            "tags_enumerated" : False,
-            "enumerated" : False,
-            "hide_empty_tags" : True,
             "reader.maxwidth" : 0,
             "reader.maxheight" : 0,
             "reader.float" : True,
             "reader.align" : "topleft",
+            "reader.enumerate_links" : False,
+            "reader.show_description" : True,
             "taglist.maxwidth" : 0,
             "taglist.maxheight" : 0,
             "taglist.float" : False,
             "taglist.align" : "neutral",
+            "taglist.tags_enumerated" : False,
+            "taglist.hide_empty_tags" : True,
+            "story.enumerated" : False,
             "input.maxwidth" : 0,
             "input.maxheight" : 0,
             "input.float" : False,
@@ -149,9 +151,11 @@ class CantoCursesGui(CommandHandler):
                     (attr, self.def_config[attr]))
 
     def validate_config(self):
-        self._val_bool("enumerated")
-        self._val_bool("tags_enumerated")
-        self._val_bool("hide_empty_tags")
+        self._val_bool("reader.show_description")
+        self._val_bool("reader.enumerate_links")
+        self._val_bool("story.enumerated")
+        self._val_bool("taglist.tags_enumerated")
+        self._val_bool("taglist.hide_empty_tags")
         self._val_bool("txt_browser")
 
         # Make sure various window configurations make sense.
@@ -299,9 +303,7 @@ class CantoCursesGui(CommandHandler):
 
         # Special actions on certain opt changes.
         if changed:
-            if option in ["tags_enumerated", "enumerated"]:
-                self.screen.refresh()
-
+            self.screen.refresh()
             self.backend.write("SETCONFIGS",\
                     { "CantoCurses." + option : unicode(value) })
 
