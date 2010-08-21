@@ -20,13 +20,19 @@ class Reader(GuiBase):
     def init(self, pad, callbacks):
         self.pad = pad
         self.callbacks = callbacks
-        self.keys = {" " : "destroy"}
+        self.keys = {
+            " " : "destroy",
+            "d" : "toggle-opt reader.show_description",
+            "l" : "toggle-opt reader.enumerate_links",
+            "g" : "goto",
+        }
 
     def refresh(self):
         self.redraw()
 
     def redraw(self):
         self.pad.erase()
+        self.links = []
 
         mwidth = self.pad.getmaxyx()[1]
         pad = WrapPad(self.pad)
@@ -35,15 +41,50 @@ class Reader(GuiBase):
         if not sel:
             self.pad.addstr("No selected story.")
         else:
+            self.links = [("link",sel.content["link"],"mainlink")]
+
+            show_description =\
+                self.callbacks["get_opt"]("reader.show_description")
+            enumerate_links =\
+                self.callbacks["get_opt"]("reader.enumerate_links")
+
+            s = "%B" + sel.content["title"] + "%b\n"
+
+            # We use the description for most reader content, so if it hasn't
+            # been fetched yet then grab that from the server now and set
+            # needs_deferred_redraw so that we consistently get re-called until
+            # description appears thanks to the ATTRIBUTES response.
+
             if "description" not in sel.content:
-                self.callbacks["write"]("ATTRIBUTES", { sel.id : [
-                    "description" ] } )
+                self.callbacks["write"]("ATTRIBUTES",\
+                        { sel.id : ["description" ] })
                 self.callbacks["set_var"]("needs_deferred_redraw", True)
-                s = "%BWaiting for content...%b"
+                s += "%BWaiting for content...%b\n"
             else:
-                s = "%B" + sel.content["title"] + "%b\n"
-                c, l = htmlparser.convert(sel.content["description"])
-                s += c
+                content, links =\
+                        htmlparser.convert(sel.content["description"])
+
+                # 0 always is the mainlink, append other links
+                # to the list.
+
+                self.links += links
+
+                if show_description:
+                    s += content
+
+                if enumerate_links:
+                    s += "\n\n"
+
+                    for idx, (t, url, text) in enumerate(self.links):
+                        link_text = "[%B" + unicode(idx) + "%b][" +\
+                                text + "]: " + url + "\n\n"
+
+                        if t == "link":
+                            link_text = "%5" + link_text + "%0"
+                        elif t == "img":
+                            link_text = "%4" + link_text + "%0"
+
+                        s += link_text
 
             while s:
                 s = s.lstrip(" \t\v").rstrip(" \t\v")
@@ -51,8 +92,23 @@ class Reader(GuiBase):
 
         self.callbacks["refresh"]()
 
+    def eprompt(self, prompt):
+        return self._cfg_set_prompt("reader.enumerate_links", "links: ")
+
+    def listof_links(self, args):
+        ints = self._listof_int(args, len(self.links),\
+                lambda : self.eprompt("links: "))
+        return (True, [ self.links[i] for i in ints ], "")
+
+    @command_format("goto", [("links", "listof_links")])
+    def goto(self, **kwargs):
+        # link = ( type, url, text ) 
+        links = [ l[1] for l in kwargs["links"] ]
+        self._goto(links)
 
     def command(self, cmd):
+        if cmd.startswith("goto"):
+            self.goto(args=cmd)
         GuiBase.command(self, cmd)
 
     def is_input(self):
