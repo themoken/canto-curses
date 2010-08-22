@@ -69,7 +69,7 @@ class Tag(list):
         return self.render(mwidth, WrapPad(self.pad))
 
     def render_header(self, mwidth, pad):
-        enumerated = self.callbacks["get_opt"]("taglist.tags_enumerated") == "True"
+        enumerated = self.callbacks["get_opt"]("taglist.tags_enumerated")
         header = self.tag + u"\n"
         if enumerated:
             curtags = self.callbacks["get_var"]("curtags")
