@@ -19,6 +19,12 @@ log = logging.getLogger("READER")
 class Reader(GuiBase):
     def init(self, pad, callbacks):
         self.pad = pad
+
+        self.offset = 0
+        self.maxoffset = 0
+        self.saved = {}
+        self.waiting_on_content = False
+
         self.callbacks = callbacks
         self.keys = {
             " " : "destroy",
@@ -28,25 +34,47 @@ class Reader(GuiBase):
         }
 
     def refresh(self):
-        self.redraw()
+        self.height, self.width = self.pad.getmaxyx()
+        show_desc = self.callbacks["get_opt"]("reader.show_description")
+        enum_links = self.callbacks["get_opt"]("reader.enumerate_links")
+
+        save = { "desc" : show_desc,
+                 "enum" : enum_links,
+                 "offset" : self.offset }
+
+        # Particulars have changed, re-render.
+        if self.saved != save or self.waiting_on_content:
+            self.saved = save
+
+            fp = FakePad(self.width)
+            lines = self.render(fp, show_desc, enum_links)
+
+            # Create pre-rendered pad
+            self.fullpad = curses.newpad(lines + 1, self.width)
+            self.render(WrapPad(self.fullpad), show_desc, enum_links)
+
+            # Update offset based on new display properties.
+            self.max_offset = max(lines - self.height, 0)
+            self.offset = min(self.offset, self.max_offset)
+
+        # Overwrite visible pad with relevant area of pre-rendered pad.
+        self.pad.erase()
+        self.fullpad.overwrite(self.pad, self.offset, 0, 0, 0,\
+                min(self.height,self.fullpad.getmaxyx()[0]) - 1, self.width - 1)
+
+        self.callbacks["refresh"]()
 
     def redraw(self):
-        self.pad.erase()
+        self.refresh()
+
+    def render(self, pad, show_description, enumerate_links):
         self.links = []
 
-        mwidth = self.pad.getmaxyx()[1]
-        pad = WrapPad(self.pad)
+        s = "No selected story.\n"
 
-        sel = self.callbacks["get_var"]("selected")
-        if not sel:
-            self.pad.addstr("No selected story.")
-        else:
+        sel = self.callbacks["get_var"]("reader_item")
+        if sel:
             self.links = [("link",sel.content["link"],"mainlink")]
-
-            show_description =\
-                self.callbacks["get_opt"]("reader.show_description")
-            enumerate_links =\
-                self.callbacks["get_opt"]("reader.enumerate_links")
 
             s = "%B" + sel.content["title"] + "%b\n"
 
@@ -60,7 +88,9 @@ class Reader(GuiBase):
                         { sel.id : ["description" ] })
                 self.callbacks["set_var"]("needs_deferred_redraw", True)
                 s += "%BWaiting for content...%b\n"
+                self.waiting_on_content = True
             else:
+                self.waiting_on_content = False
                 content, links =\
                         htmlparser.convert(sel.content["description"])
 
@@ -86,11 +116,13 @@ class Reader(GuiBase):
 
                         s += link_text
 
-            while s:
-                s = s.lstrip(" \t\v").rstrip(" \t\v")
-                s = theme_print(pad, s, mwidth, " ", " ")
+        lines = 0
+        while s:
+            s = s.lstrip(" \t\v").rstrip(" \t\v")
+            s = theme_print(pad, s, self.width, " ", " ")
+            lines += 1
 
-        self.callbacks["refresh"]()
+        return lines
 
     def eprompt(self, prompt):
         return self._cfg_set_prompt("reader.enumerate_links", "links: ")
