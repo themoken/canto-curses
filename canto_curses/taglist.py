@@ -36,7 +36,7 @@ class TagList(GuiBase):
         self.got_items = None
 
         self.keys = {
-            " " : "add-window reader",
+            " " : "item-state read & add-window reader",
             "g" : "foritems & goto & item-state read & clearitems",
             "E" : "toggle-opt taglist.tags_enumerated",
             "e" : "toggle-opt taglist.enumerated",
