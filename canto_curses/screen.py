@@ -9,7 +9,6 @@
 from command import CommandHandler, command_format, generic_parse_error
 from taglist import TagList
 from input import InputBox
-from reader import Reader
 
 from threading import Thread, Event, Lock
 import logging
@@ -164,6 +163,7 @@ class Screen(CommandHandler):
         callbacks["die"] = self.die_callback
         callbacks["pause_interface" ] = self.pause_interface_callback
         callbacks["unpause_interface"] = self.unpause_interface_callback
+        callbacks["add_window"] = self.add_window_callback
 
         ci.init(pad, callbacks)
 
@@ -385,19 +385,23 @@ class Screen(CommandHandler):
         # All of our window information could be stale.
         self._resize()
 
-    # Command selector for a class. (For add-window command line).
-    def classtype(self, args):
-        t, r = self._first_term(args, lambda : self.input_callback("class: "))
+    def add_window_callback(self, cls):
+        ci = cls()
 
-        if t == "taglist":
-            return (True, TagList, r)
-        elif t == "reader":
-            return (True, Reader, r)
-        elif t == "inputbox":
-            return (True, InputBox, r)
+        # Enforce window.float
+        optname = ci.get_opt_name()
+        flt = self.callbacks["get_opt"](optname + ".float")
+        if flt:
+            self.floats.append(ci)
+        else:
+            self.windows.append(ci)
 
-        log.error("Unknown class: %s" % t)
-        return (False, None, None)
+        self.subwindows()
+
+        # Focus new window
+        self._focus(0)
+
+        self.refresh()
 
     # Optional integer return, if no arg, returns 0. (For focus)
     def optint(self, args):
@@ -461,29 +465,6 @@ class Screen(CommandHandler):
             log.debug("Focusing window %d (%s)" % (idx, self.focused))
         else:
             log.debug("Couldn't find window %d" % idx)
-
-    @command_format("add-window", [("cls","classtype")])
-    @generic_parse_error
-    def add_window(self, **kwargs):
-        self._add_window(kwargs["cls"])
-
-    def _add_window(self, cls):
-        ci = cls()
-
-        # Enforce window.float
-        optname = ci.get_opt_name()
-        flt = self.callbacks["get_opt"](optname + ".float")
-        if flt:
-            self.floats.append(ci)
-        else:
-            self.windows.append(ci)
-
-        self.subwindows()
-
-        # Focus new window
-        self._focus(0)
-
-        self.refresh()
 
     # Pass a command to focused window:
 

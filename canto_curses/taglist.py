@@ -8,6 +8,7 @@
 
 from command import command_format, generic_parse_error
 from common import GuiBase
+from reader import Reader
 
 import logging
 import curses
@@ -36,7 +37,7 @@ class TagList(GuiBase):
         self.got_items = None
 
         self.keys = {
-            " " : "item-state read & add-window reader",
+            " " : "foritem & item-state read & reader",
             "g" : "foritems & goto & item-state read & clearitems",
             "E" : "toggle-opt taglist.tags_enumerated",
             "e" : "toggle-opt taglist.enumerated",
@@ -84,12 +85,12 @@ class TagList(GuiBase):
                 yield story
 
     # Prompt that ensures the items are enumerated first
-    def eprompt(self):
-        return self._cfg_set_prompt("taglist.enumerated", "items: ")
+    def eprompt(self, prompt):
+        return self._cfg_set_prompt("story.enumerated", prompt)
 
     # Will enumerate tags in the future.
-    def teprompt(self):
-        return self._cfg_set_prompt("taglist.tags_enumerated", "tags: ")
+    def teprompt(self, prompt):
+        return self._cfg_set_prompt("taglist.tags_enumerated", prompt)
 
     def listof_items(self, args):
         if not args:
@@ -97,10 +98,11 @@ class TagList(GuiBase):
             if s:
                 return (True, [s], "")
             if self.got_items:
+                log.debug("listof_items falling back on got_items")
                 return (True, self.got_items, "")
 
         ints = self._listof_int(args, len(list(self.all_items())),\
-                lambda : self.eprompt("items:"))
+                lambda : self.eprompt("items: "))
         return (True, filter(None, [ self.item_by_idx(i) for i in ints ]), "")
 
     def listof_tags(self, args):
@@ -111,10 +113,9 @@ class TagList(GuiBase):
                     if s in tag:
                         return (True, [tag], "")
                 raise Exception("Couldn't find tag of selection!")
-            else:
-                args = self.teprompt()
 
-        ints = self._listof_int(args, len(self.tags), self.teprompt)
+        ints = self._listof_int(args, len(self.tags),\
+                lambda : self.teprompt("tags: "))
         return(True, [ self.tags[i] for i in ints ], "")
 
     def state(self, args):
@@ -122,14 +123,25 @@ class TagList(GuiBase):
         return (True, t, r)
 
     def item(self, args):
-        t, r = self._int(args, lambda : self.input("item :"))
-        if t:
+        t, r = self._int(args, lambda : self.eprompt("item: "))
+        if t != None:
             item = self.item_by_idx(t)
             if not item:
                 log.error("There is no item %d" % t)
                 return (False, None, None)
             return (True, item, r)
         return (False, None, None)
+
+    def sel_or_item(self, args):
+        if not args:
+            s = self.callbacks["get_var"]("selected")
+            if s:
+                return (True, s, "")
+            if self.got_items:
+                if len(self.got_items) > 1:
+                    log.info("NOTE: Only using first of selected items.")
+                return (True, self.got_items[0], "")
+        return self.item(args)
 
     @command_format("goto", [("items", "listof_items")])
     @generic_parse_error
@@ -227,6 +239,12 @@ class TagList(GuiBase):
     def foritems(self, **kwargs):
         self.got_items = kwargs["items"]
 
+    @command_format("foritem", [("item", "sel_or_item")])
+    @generic_parse_error
+    def foritem(self, **kwargs):
+        log.debug("setting got_items: %s" % [ kwargs["item"] ])
+        self.got_items = [ kwargs["item"] ]
+
     # clearitems clears all the items set by foritems.
 
     @command_format("clearitems", [])
@@ -281,6 +299,12 @@ class TagList(GuiBase):
         self.offset = min(self.offset, self.max_offset)
         self.callbacks["set_var"]("needs_redraw", True)
 
+    @command_format("reader", [("item", "sel_or_item")])
+    @generic_parse_error
+    def reader(self, **kwargs):
+        self.callbacks["set_var"]("reader_item", kwargs["item"])
+        self.callbacks["add_window"](Reader)
+
     # simple command dispatcher.
     # TODO: This whole function could be made generic in CommandHandler
 
@@ -302,8 +326,12 @@ class TagList(GuiBase):
             self.rel_set_cursor(args=cmd)
         elif cmd.startswith("foritems"):
             self.foritems(args=cmd)
+        elif cmd.startswith("foritem"):
+            self.foritem(args=cmd)
         elif cmd.startswith("clearitems"):
             self.clearitems(args=cmd)
+        elif cmd.startswith("reader"):
+            self.reader(args=cmd)
         GuiBase.command(self, cmd)
 
     def visible_tags(self, tags):
