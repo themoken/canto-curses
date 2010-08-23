@@ -7,7 +7,11 @@
 #   published by the Free Software Foundation.
 
 from command import CommandHandler, command_format, generic_parse_error
-from utility import silentfork
+
+from canto_next.encoding import encoder
+
+import sys
+import os
 
 class GuiBase(CommandHandler):
 
@@ -40,6 +44,31 @@ class GuiBase(CommandHandler):
         self.callbacks["set_opt"](option, t)
         return r
 
+    def _fork(self, path, href, text):
+        href = encoder(href)
+
+        pid = os.fork()
+        if not pid :
+            # A lot of programs don't appreciate
+            # having their fds closed, so instead
+            # we dup them to /dev/null.
+
+            fd = os.open("/dev/null", os.O_RDWR)
+            os.dup2(fd, sys.stderr.fileno())
+
+            if not text:
+                os.setpgid(os.getpid(), os.getpid())
+                os.dup2(fd, sys.stdout.fileno())
+
+            path = path.replace("%u", href)
+
+            os.execv("/bin/sh", ["/bin/sh", "-c", path])
+
+            # Just in case.
+            sys.exit(0)
+
+        return pid
+
     def _goto(self, urls):
         browser = self.callbacks["get_opt"]("browser")
         txt_browser = self.callbacks["get_opt"]("txt_browser")
@@ -52,7 +81,7 @@ class GuiBase(CommandHandler):
             self.callbacks["pause_interface"]()
 
         for url in urls:
-            pid = silentfork(browser, url)
+            pid = self._fork(browser, url, txt_browser)
             if txt_browser:
                 os.waitpid(pid, 0)
 
