@@ -67,6 +67,8 @@ class CantoCurses(CantoClient):
         if self.ensure_files():
             sys.exit(-1)
 
+        self.try_plugins()
+
         if do_log:
             self.set_log()
 
@@ -198,6 +200,28 @@ class CantoCurses(CantoClient):
                     return -1
 
         self.log_path = self.conf_dir + "/curses-log"
+
+    def try_plugins(self):
+        p = self.conf_dir + "/plugins"
+        if not os.path.exists(p):
+            log.info("No plugins directory found.")
+            return
+        if not os.path.isdir(p):
+            log.warn("Plugins file is not directory.")
+            return
+
+        # Add plugin path to front of Python path.
+        sys.path.insert(0, p)
+
+        # Go ahead and import all .py
+        for fname in os.listdir(p):
+            if fname.endswith(".py"):
+                try:
+                    __import__(fname[:-3])
+                except Exception, e:
+                    tb = traceback.format_exc(e)
+                    log.error("Exception importing file %s" % fname)
+                    log.error("\n" + "".join(tb))
 
     def set_log(self):
         f = open(self.log_path, "w")
