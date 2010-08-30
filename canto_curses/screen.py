@@ -32,7 +32,7 @@ log = logging.getLogger("SCREEN")
 # configuration options. Like window.{maxwidth,maxheight,float}.
 
 class Screen(CommandHandler):
-    def init(self, user_queue, callbacks, types = [InputBox, TagList]):
+    def __init__(self, user_queue, callbacks, types = [InputBox, TagList]):
         self.user_queue = user_queue
         self.callbacks = callbacks
         self.layout = "default"

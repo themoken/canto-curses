@@ -5,5 +5,4 @@ import sys
 
 if __name__ == "__main__" :
     c = CantoCurses()
-    c.start()
     sys.exit(0)

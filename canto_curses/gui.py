@@ -16,7 +16,7 @@ import logging
 log = logging.getLogger("GUI")
 
 class CantoCursesGui(CommandHandler):
-    def init(self, backend, do_curses=True):
+    def __init__(self, backend):
         self.backend = backend
 
         # Variables that affect the overall operation.
@@ -108,20 +108,14 @@ class CantoCursesGui(CommandHandler):
         r = self.wait_response("ATTRIBUTES")
         self.attributes(r[1])
 
-        # Short circuit for testing the above setup.
-        if do_curses:
-            log.debug("Starting curses.")
-            self.screen = Screen()
-            self.screen.init(self.backend.responses, callbacks)
-            self.screen.refresh()
-
-    def next_response(self, timeout=0):
-        return self.backend.responses.get()
+        log.debug("Starting curses.")
+        self.screen = Screen(self.backend.responses, callbacks)
+        self.screen.refresh()
 
     def wait_response(self, cmd):
         log.debug("waiting on %s" % cmd)
         while True:
-            r = self.next_response()
+            r = self.backend.responses.get()
             if r[0] == cmd:
                 return r
             else:

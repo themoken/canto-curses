@@ -35,13 +35,14 @@ import time
 import sys
 import os
 
+# It's the CantoCurses class' responsibility to provide the subsequent Gui
+# object with a solid foundation with other components. This includes parsing
+# command line arguments, starting a canto-daemon instance if necessary, signal
+# handling, and wrapping the socket communication.
+
 class CantoCurses(CantoClient):
 
-    # Init separate from instantiation for test purposes.
-    def __init__(self):
-        pass
-
-    def init(self, args=None, do_log=True):
+    def init(self):
 
         # For good curses behavior.
         locale.setlocale(locale.LC_ALL, '')
@@ -50,13 +51,13 @@ class CantoCurses(CantoClient):
         self.pid = os.getpid()
         self.done = False
 
-        if self.args(args):
+        if self.args():
             sys.exit(-1)
 
         self.start_daemon()
 
-        # The daemon is backed, init our base class,
-        # start trying to connect to the daemon.
+        # The daemon is running, init our base class, start trying to connect to
+        # the daemon.
 
         try:
             CantoClient.__init__(self, self.socket_path)
@@ -64,13 +65,20 @@ class CantoCurses(CantoClient):
             log.error("Error: %s" % e)
             sys.exit(-1)
 
+        # Make sure we have permissions on the relevant, non-daemon files in
+        # the target directory (None of these will be used until we set_log)
+
         if self.ensure_files():
             sys.exit(-1)
 
+        self.set_log()
+
+        # Evaluate anything in the target /plugins directory.
         self.try_plugins()
 
-        if do_log:
-            self.set_log()
+    # The response_thread takes anything received from the socket and puts it
+    # onto the responses queue. This queue is expected to be used by the Gui
+    # object as its main event queue.
 
     def response_thread(self):
         try:
@@ -95,6 +103,7 @@ class CantoCurses(CantoClient):
 
         # Thead *must* be running before gui instantiated
         # so the __init__ can ram some discovery requests through.
+
         thread = Thread(target=self.response_thread)
         thread.daemon = True
         thread.start()
@@ -111,30 +120,31 @@ class CantoCurses(CantoClient):
         pass
 
     def run(self):
+        # Initial response thread setup.
         self.start_rthread()
 
-        self.gui = CantoCursesGui()
-        self.gui.init(self)
+        # Initial Gui setup.
+        self.gui = CantoCursesGui(self)
         self.start_gthread()
 
+        # Initial signal setup.
         signal.signal(signal.SIGUSR1, self.sigusr1)
         signal.signal(signal.SIGWINCH, self.winch)
 
+        # Block on signals.
         while not self.done:
             signal.pause()
 
-        log.debug("Run exiting.")
+    # Exit signals ourselves with SIGUSR1 so that the above
+    # signal.pause() call will wake up and let run() return.
 
     def exit(self):
         self.done = True
         os.kill(self.pid, signal.SIGUSR1)
 
-    def args(self, args):
-        if not args:
-            args = sys.argv[1:]
-
+    def args(self):
         try:
-            optlist = getopt.getopt(args, 'D:', ["dir="])[0]
+            optlist = getopt.getopt(sys.argv[1:], 'D:', ["dir="])[0]
         except getopt.GetoptError, e:
             log.error("Error: %s" % e.msg)
 
@@ -148,6 +158,9 @@ class CantoCurses(CantoClient):
         self.socket_path = self.conf_dir + "/.canto_socket"
 
         return 0
+
+    # Test whether we can lock the pidfile, and if we can, fork the daemon
+    # with the proper arguments.
 
     def start_daemon(self):
         pidfile = self.conf_dir + "/pid"
@@ -165,9 +178,8 @@ class CantoCurses(CantoClient):
 
         pid = os.fork()
         if not pid:
-            # Shutup any log output before canto-daemon
-            # sets up it's log (particularly the error that
-            # one is already running)
+            # Shutup any log output before canto-daemon sets up it's log
+            # (particularly the error that one is already running)
 
             fd = os.open("/dev/null", os.O_RDWR)
             os.dup2(fd, sys.stderr.fileno())
@@ -184,6 +196,8 @@ class CantoCurses(CantoClient):
             time.sleep(0.1)
 
         return pid
+
+    # For now, make sure the log is writable.
 
     def ensure_files(self):
         for f in [ "curses-log" ] :
@@ -227,9 +241,9 @@ class CantoCurses(CantoClient):
         f = open(self.log_path, "w")
         os.dup2(f.fileno(), sys.stderr.fileno())
 
-    def start(self, args=None):
+    def start(self):
         try:
-            self.init(args)
+            self.init()
             self.run()
         except KeyboardInterrupt:
             pass
@@ -241,9 +255,9 @@ class CantoCurses(CantoClient):
 
         self.write("PING", "")
 
-        # Exploit the fact that requests are
-        # made in order and PING/PONG to ensure
-        # all previous traffic is done.
+        # Exploit the fact that requests are made in order and PING/PONG to
+        # ensure all previous traffic is done. Strictly this is unnecessary, but
+        # perhaps useful to know the daemon state on the way out.
 
         while True:
             if not self.responses.empty():
@@ -259,3 +273,6 @@ class CantoCurses(CantoClient):
 
         log.info("Exiting.")
         sys.exit(0)
+
+    def __init__(self):
+        self.start()
