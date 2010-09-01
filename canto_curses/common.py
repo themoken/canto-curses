@@ -10,6 +10,10 @@ from command import CommandHandler, command_format
 
 from canto_next.encoding import encoder
 
+import logging
+
+log = logging.getLogger("COMMON")
+
 import sys
 import os
 
