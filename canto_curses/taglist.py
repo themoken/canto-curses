@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from command import command_format, generic_parse_error
+from command import command_format
 from common import GuiBase
 from reader import Reader
 
@@ -143,14 +143,12 @@ class TagList(GuiBase):
                 return (True, self.got_items[0], "")
         return self.item(args)
 
-    @command_format("goto", [("items", "listof_items")])
-    @generic_parse_error
-    def goto(self, **kwargs):
+    @command_format([("items", "listof_items")])
+    def cmd_goto(self, **kwargs):
         self._goto([item.content["link"] for item in kwargs["items"]])
 
-    @command_format("tag-state", [("state", "state"),("tags","listof_tags")])
-    @generic_parse_error
-    def tag_state(self, **kwargs):
+    @command_format([("state", "state"),("tags","listof_tags")])
+    def cmd_tag_state(self, **kwargs):
         attributes = {}
         for tag in kwargs["tags"]:
             for item in tag:
@@ -165,9 +163,8 @@ class TagList(GuiBase):
 
     # item-state: Add/remove state for multiple items.
 
-    @command_format("item-state", [("state", "state"),("items","listof_items")])
-    @generic_parse_error
-    def item_state(self, **kwargs):
+    @command_format([("state", "state"),("items","listof_items")])
+    def cmd_item_state(self, **kwargs):
         attributes = {}
         for item in kwargs["items"]:
             if item.handle_state(kwargs["state"]):
@@ -181,18 +178,16 @@ class TagList(GuiBase):
             self.callbacks["set_var"]("needs_redraw", True)
             self.callbacks["write"]("SETATTRIBUTES", attributes)
 
-    @command_format("set-cursor", [("idx", "item")])
-    @generic_parse_error
-    def set_cursor(self, **kwargs):
+    @command_format([("idx", "item")])
+    def cmd_set_cursor(self, **kwargs):
         self._set_cursor(kwargs["item"])
 
     # rel-set-cursor will move the cursor relative to its current position.
     # unlike set-cursor, it will both not allow the selection to be set to None
     # by going off-list.
 
-    @command_format("rel-set-cursor", [("relidx", "int")])
-    @generic_parse_error
-    def rel_set_cursor(self, **kwargs):
+    @command_format([("relidx", "int")])
+    def cmd_rel_set_cursor(self, **kwargs):
         sel = self.callbacks["get_var"]("selected")
         if sel:
             curidx = self.idx_by_item(sel)
@@ -234,27 +229,23 @@ class TagList(GuiBase):
 
     # foritems gets a valid list of items by index.
 
-    @command_format("foritems", [("items", "listof_items")])
-    @generic_parse_error
-    def foritems(self, **kwargs):
+    @command_format([("items", "listof_items")])
+    def cmd_foritems(self, **kwargs):
         self.got_items = kwargs["items"]
 
-    @command_format("foritem", [("item", "sel_or_item")])
-    @generic_parse_error
-    def foritem(self, **kwargs):
+    @command_format([("item", "sel_or_item")])
+    def cmd_foritem(self, **kwargs):
         log.debug("setting got_items: %s" % [ kwargs["item"] ])
         self.got_items = [ kwargs["item"] ]
 
     # clearitems clears all the items set by foritems.
 
-    @command_format("clearitems", [])
-    @generic_parse_error
-    def clearitems(self, **kwargs):
+    @command_format([])
+    def cmd_clearitems(self, **kwargs):
         self.got_items = None
 
-    @command_format("page-up", [])
-    @generic_parse_error
-    def page_up(self, **kwargs):
+    @command_format([])
+    def cmd_page_up(self, **kwargs):
         scroll = self.height - 1
 
         sel = self.callbacks["get_var"]("selected")
@@ -276,9 +267,8 @@ class TagList(GuiBase):
         self.offset = max(self.offset, 0)
         self.callbacks["set_var"]("needs_redraw", True)
 
-    @command_format("page-down", [])
-    @generic_parse_error
-    def page_down(self, **kwargs):
+    @command_format([])
+    def cmd_page_down(self, **kwargs):
         scroll = self.height - 1
 
         sel = self.callbacks["get_var"]("selected")
@@ -299,40 +289,10 @@ class TagList(GuiBase):
         self.offset = min(self.offset, self.max_offset)
         self.callbacks["set_var"]("needs_redraw", True)
 
-    @command_format("reader", [("item", "sel_or_item")])
-    @generic_parse_error
-    def reader(self, **kwargs):
+    @command_format([("item", "sel_or_item")])
+    def cmd_reader(self, **kwargs):
         self.callbacks["set_var"]("reader_item", kwargs["item"])
         self.callbacks["add_window"](Reader)
-
-    # simple command dispatcher.
-    # TODO: This whole function could be made generic in CommandHandler
-
-    def command(self, cmd):
-        log.debug("TagList command: %s" % cmd)
-        if cmd.startswith("page-up"):
-            self.page_up(args=cmd)
-        elif cmd.startswith("page-down"):
-            self.page_down(args=cmd)
-        elif cmd.startswith("goto"):
-            self.goto(args=cmd)
-        elif cmd.startswith("tag-state"):
-            self.tag_state(args=cmd)
-        elif cmd.startswith("item-state"):
-            self.item_state(args=cmd)
-        elif cmd.startswith("set-cursor"):
-            self.set_cursor(args=cmd)
-        elif cmd.startswith("rel-set-cursor"):
-            self.rel_set_cursor(args=cmd)
-        elif cmd.startswith("foritems"):
-            self.foritems(args=cmd)
-        elif cmd.startswith("foritem"):
-            self.foritem(args=cmd)
-        elif cmd.startswith("clearitems"):
-            self.clearitems(args=cmd)
-        elif cmd.startswith("reader"):
-            self.reader(args=cmd)
-        GuiBase.command(self, cmd)
 
     def visible_tags(self, tags):
         hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")

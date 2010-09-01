@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from command import command_format, generic_parse_error
+from command import command_format
 from theme import FakePad, WrapPad, theme_print
 from html import htmlparser
 from common import GuiBase
@@ -136,26 +136,26 @@ class Reader(GuiBase):
                 lambda : self.eprompt("links: "))
         return (True, [ self.links[i] for i in ints ], "")
 
-    @command_format("goto", [("links", "listof_links")])
-    def goto(self, **kwargs):
+    @command_format([("links", "listof_links")])
+    def cmd_goto(self, **kwargs):
         # link = ( type, url, text ) 
         links = [ l[1] for l in kwargs["links"] ]
         self._goto(links)
 
-    @command_format("scroll-up", [])
-    def scroll_up(self, **kwargs):
+    @command_format([])
+    def cmd_scroll_up(self, **kwargs):
         self._relscroll(-1)
 
-    @command_format("scroll-down", [])
-    def scroll_down(self, **kwargs):
+    @command_format([])
+    def cmd_scroll_down(self, **kwargs):
         self._relscroll(1)
 
-    @command_format("page-up", [])
-    def page_up(self, **kwargs):
+    @command_format([])
+    def cmd_page_up(self, **kwargs):
         self._relscroll(-1 * (self.height - 1))
 
-    @command_format("page-down", [])
-    def page_down(self, **kwargs):
+    @command_format([])
+    def cmd_page_down(self, **kwargs):
         self._relscroll(self.height - 1)
 
     def _relscroll(self, factor):
@@ -166,19 +166,6 @@ class Reader(GuiBase):
         self.offset = max(self.offset, 0)
         self.callbacks["set_var"]("needs_redraw", True)
         log.debug("-->: %d" % self.offset)
-
-    def command(self, cmd):
-        if cmd.startswith("goto"):
-            self.goto(args=cmd)
-        elif cmd.startswith("scroll-up"):
-            self.scroll_up(args=cmd)
-        elif cmd.startswith("scroll-down"):
-            self.scroll_down(args=cmd)
-        elif cmd.startswith("page-up"):
-            self.page_up(args=cmd)
-        elif cmd.startswith("page-down"):
-            self.page_down(args=cmd)
-        GuiBase.command(self, cmd)
 
     def is_input(self):
         return False

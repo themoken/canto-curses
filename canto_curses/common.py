@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from command import CommandHandler, command_format, generic_parse_error
+from command import CommandHandler, command_format
 
 from canto_next.encoding import encoder
 
@@ -24,14 +24,9 @@ class GuiBase(CommandHandler):
             return (True, t, r)
         return (False, None, None)
 
-    @command_format("destroy", [])
-    @generic_parse_error
-    def destroy(self, **kwargs):
+    @command_format([])
+    def cmd_destroy(self, **kwargs):
         self.callbacks["die"](self)
-
-    def command(self, cmd):
-        if cmd.startswith("destroy"):
-            self.destroy(args=cmd)
 
     def _cfg_set_prompt(self, option, prompt):
         # Ensure the items are enumerated

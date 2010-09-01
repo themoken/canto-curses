@@ -10,46 +10,37 @@ import logging
 
 log = logging.getLogger("COMMAND")
 
-def command_format(command, types):
+def command_format(types):
     def cf(fn):
         def cfdec(self, **kwargs):
 
-            # If this command has been parsed without error,
-            # then just pass the args on to the next function
-
-            if "error" in kwargs and not kwargs["error"]:
-                return fn(self, **kwargs)
-
-            if not kwargs["args"].startswith(command):
-                kwargs["error"] = True
-                return fn(self, **kwargs)
-
-            rem = kwargs["args"][len(command):]
+            rem = kwargs["args"]
             realkwargs = {}
 
             for kw, validator in types:
                 validator = getattr(self, validator)
                 valid, result, rem = validator(rem.lstrip())
                 if not valid:
-                    kwargs["error"] = True
-                    return fn(self, **kwargs)
+                    log.debug("Couldn't properly parse %s" % kwargs["args"])
+                    return
 
                 realkwargs[kw] = result
 
-            realkwargs["error"] = False
             return fn(self, **realkwargs)
         return cfdec
     return cf
 
-def generic_parse_error(fn):
-    def gpedec(self, **kwargs):
-        if kwargs["error"]:
-            log.debug("Couldn't properly parse %s" % kwargs["args"])
-            return
-        return fn(self, **kwargs)
-    return gpedec
-
 class CommandHandler():
+
+    def command(self, command):
+        for attr in dir(self):
+            if attr.startswith("cmd_"):
+                name = attr[4:].replace("_","-")
+                if command == name or command.startswith(name + " "):
+                    func = getattr(self, attr)
+                    func(args=command[len(name):])
+                    return True
+        return False
 
     def key(self, k):
         if k in self.keys:

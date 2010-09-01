@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from command import CommandHandler, command_format, generic_parse_error
+from command import CommandHandler, command_format
 from taglist import TagList
 from input import InputBox
 
@@ -429,9 +429,8 @@ class Screen(CommandHandler):
             c.redraw()
         curses.doupdate()
 
-    @command_format("resize", [])
-    @generic_parse_error
-    def resize(self, **kwargs):
+    @command_format([])
+    def cmd_resize(self, **kwargs):
         self._resize()
 
     # Typical curses resize, endwin and re-setup.
@@ -450,9 +449,8 @@ class Screen(CommandHandler):
         self.refresh()
 
     # Focus idx-th window.
-    @command_format("focus", [("idx", "optint")])
-    @generic_parse_error
-    def focus(self, **kwargs):
+    @command_format([("idx", "optint")])
+    def cmd_focus(self, **kwargs):
         self._focus(kwargs["idx"])
 
     def _focus(self, idx):
@@ -469,15 +467,7 @@ class Screen(CommandHandler):
     # Pass a command to focused window:
 
     def command(self, cmd):
-        if cmd.startswith("focus"):
-            self.focus(args=cmd)
-        elif cmd.startswith("resize"):
-            self.resize(args=cmd)
-        elif cmd.startswith("add-window"):
-            self.add_window(args=cmd)
-
-        # Propagate command to focused window
-        else:
+        if not CommandHandler.command(self, cmd) and self.focused:
             self.focused.command(cmd)
 
     def key(self, k):

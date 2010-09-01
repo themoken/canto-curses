@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from command import CommandHandler, command_format, generic_parse_error
+from command import CommandHandler, command_format
 from html import html_entity_convert, char_ref_convert
 from screen import Screen
 from tag import Tag
@@ -235,25 +235,22 @@ class CantoCursesGui(CommandHandler):
         log.error("Unknown variable: %s" % t)
         return (False, None, None)
 
-    @command_format("set", [("var","var")])
-    @generic_parse_error
-    def set(self, **kwargs):
+    @command_format([("var","var")])
+    def cmd_set(self, **kwargs):
         if self.vars[kwargs["var"]] in [ True, False]:
             self.set_var(kwargs["var"], True)
         else:
             log.error("Variable %s is not boolean." % kwargs["var"])
 
-    @command_format("unset", [("var","var")])
-    @generic_parse_error
-    def unset(self, **kwargs):
+    @command_format([("var","var")])
+    def cmd_unset(self, **kwargs):
         if self.vars[kwargs["var"]] in [True, False]:
             self.set_var(kwargs["var"], False)
         else:
             log.error("Variable %s is not boolean." % kwargs["var"])
 
-    @command_format("toggle", [("var","var")])
-    @generic_parse_error
-    def toggle(self, **kwargs):
+    @command_format([("var","var")])
+    def cmd_toggle(self, **kwargs):
         var = kwargs["var"]
         self.set_var(var, not self.get_var(var))
 
@@ -278,9 +275,8 @@ class CantoCursesGui(CommandHandler):
         log.error("Unknown option: %s" % t)
         return (False, None, None)
 
-    @command_format("toggle-opt", [("opt","opt")])
-    @generic_parse_error
-    def toggle_opt(self, **kwargs):
+    @command_format([("opt","opt")])
+    def cmd_toggle_opt(self, **kwargs):
         opt = kwargs["opt"]
         if opt not in self.config:
             log.error("Unknown option: %s" % opt)
@@ -315,7 +311,7 @@ class CantoCursesGui(CommandHandler):
         return self.screen.key(k)
 
     # Search for unescaped & to split up multiple commands.
-    def cmd_split(self, cmd):
+    def cmdsplit(self, cmd):
         r = []
         escaped = False
         acc = ""
@@ -364,7 +360,7 @@ class CantoCursesGui(CommandHandler):
                     cmd = ("CMD", self.screen.input_callback(":"))
                     log.debug("command resolved to: %s" % cmd[1])
 
-                cmds = self.cmd_split(cmd[1])
+                cmds = self.cmdsplit(cmd[1])
 
                 # If this is actually multiple commands,
                 # then append them to the priority queue
@@ -381,17 +377,7 @@ class CantoCursesGui(CommandHandler):
                     return
 
                 # Variable Operations
-                elif cmd[1].startswith("set"):
-                    self.set(args=cmd[1])
-                elif cmd[1].startswith("unset"):
-                    self.unset(args=cmd[1])
-                elif cmd[1].startswith("toggle-opt"):
-                    self.toggle_opt(args=cmd[1])
-                elif cmd[1].startswith("toggle"):
-                    self.toggle(args=cmd[1])
-
-                # Propagate command to screen / subwindows
-                elif cmd[1] != "noop":
+                if not self.command(cmd[1]):
                     self.screen.command(cmd[1])
 
             elif cmd[0] == "ATTRIBUTES":
