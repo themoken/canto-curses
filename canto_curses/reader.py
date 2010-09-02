@@ -63,9 +63,12 @@ class Reader(GuiBase):
 
         # Overwrite visible pad with relevant area of pre-rendered pad.
         self.pad.erase()
-        self.fullpad.overwrite(self.pad, self.offset, 0, 0, 0,\
-                min(self.height,self.fullpad.getmaxyx()[0]) - 1, self.width - 1)
 
+        realheight = min(self.height,self.fullpad.getmaxyx()[0]) - 1
+        self.fullpad.overwrite(self.pad, self.offset, 0, 0, 0,\
+                realheight, self.width - 1)
+
+        self.pad.move(realheight, 0)
         self.callbacks["refresh"]()
 
     def redraw(self):

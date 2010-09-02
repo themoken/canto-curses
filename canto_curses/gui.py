@@ -278,8 +278,6 @@ class CantoCursesGui(CommandHandler):
             self.vars[tweak] = value
             changed = True
 
-        # XXX use changed on vars needing refresh
-
     def get_var(self, tweak):
         if tweak in self.vars:
             return self.vars[tweak]
