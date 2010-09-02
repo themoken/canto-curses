@@ -36,7 +36,7 @@ class CantoCursesGui(CommandHandler):
             "needs_deferred_redraw" : False
         }
 
-        callbacks = {
+        self.callbacks = {
             "set_var" : self.set_var,
             "get_var" : self.get_var,
             "set_opt" : self.set_opt,
@@ -68,7 +68,32 @@ class CantoCursesGui(CommandHandler):
             "input.maxwidth" : 0,
             "input.maxheight" : 0,
             "input.float" : False,
-            "input.align" : "bottom"
+            "input.align" : "bottom",
+
+            "main.key.colon" : "command",
+            "main.key.q" : "quit",
+
+            "taglist.key.space" : "foritem & item-state read & reader",
+            "taglist.key.g" : "foritems & goto & item-state read & clearitems",
+            "taglist.key.E" : "toggle-opt taglist.tags_enumerated",
+            "taglist.key.e" : "toggle-opt story.enumerated",
+            "taglist.key.R" : "item-state read *",
+            "taglist.key.U" : "item-state -read *",
+            "taglist.key.r" : "tag-state read",
+            "taglist.key.u" : "tag-state -read",
+            "taglist.key.npage" : "page-down",
+            "taglist.key.ppage" : "page-up",
+            "taglist.key.down" : "rel-set-cursor 1",
+            "taglist.key.up" : "rel-set-cursor -1",
+
+            "reader.key.space" : "destroy",
+            "reader.key.d" : "toggle-opt reader.show_description",
+            "reader.key.l" : "toggle-opt reader.enumerate_links",
+            "reader.key.g" : "goto",
+            "reader.key.down" : "scroll-down",
+            "reader.key.up" : "scroll-up",
+            "reader.key.npage" : "page-down",
+            "reader.key.ppage" : "page-up"
         }
 
         self.backend.write("WATCHCONFIGS", u"")
@@ -87,7 +112,7 @@ class CantoCursesGui(CommandHandler):
         item_tags = []
         for tag, URL in self.tracked_feeds:
             log.info("Tracking [%s] (%s)" % (tag, URL))
-            t = Tag(tag, callbacks)
+            t = Tag(tag, self.callbacks)
             item_tags.append(tag)
 
         self.backend.write("ITEMS", item_tags)
@@ -110,7 +135,7 @@ class CantoCursesGui(CommandHandler):
         self.attributes(r[1])
 
         log.debug("Starting curses.")
-        self.screen = Screen(self.backend.responses, callbacks)
+        self.screen = Screen(self.backend.responses, self.callbacks)
         self.screen.refresh()
 
     def wait_response(self, cmd):
@@ -314,7 +339,9 @@ class CantoCursesGui(CommandHandler):
                     { "CantoCurses" : { option : unicode(value) } })
 
     def get_opt(self, option):
-        return self.config[option]
+        if option in self.config:
+            return self.config[option]
+        return None
 
     def winch(self):
         self.backend.responses.put(("CMD", "resize"))
@@ -415,3 +442,6 @@ class CantoCursesGui(CommandHandler):
             if self.vars["needs_deferred_redraw"]:
                 self.vars["needs_deferred_redraw"] = False
                 self.vars["needs_redraw"] = True
+
+    def get_opt_name(self):
+        return "main"

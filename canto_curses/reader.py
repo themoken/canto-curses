@@ -26,16 +26,6 @@ class Reader(GuiBase):
         self.waiting_on_content = False
 
         self.callbacks = callbacks
-        self.keys = {
-            " " : "destroy",
-            "d" : "toggle-opt reader.show_description",
-            "l" : "toggle-opt reader.enumerate_links",
-            "g" : "goto",
-            curses.KEY_DOWN : "scroll-down",
-            curses.KEY_UP : "scroll-up",
-            curses.KEY_NPAGE : "page-down",
-            curses.KEY_PPAGE : "page-up"
-        }
 
     def refresh(self):
         self.height, self.width = self.pad.getmaxyx()

@@ -7,6 +7,7 @@
 #   published by the Free Software Foundation.
 
 import logging
+import curses
 
 log = logging.getLogger("COMMAND")
 
@@ -43,8 +44,46 @@ class CommandHandler():
         return False
 
     def key(self, k):
-        if k in self.keys:
-            return self.keys[k]
+
+        # Translate numeric key into config friendly keyname
+
+        optname = self.get_opt_name() + ".key."
+        if k < 256:
+            k = chr(k)
+
+            # Need translation because they're invisible in config
+            if k == " ":
+                k = "space"
+            elif k == "\t":
+                k = "tab"
+
+            # Need translation because they're special characters in config
+            # (i.e. they end the name of the setting and start the setting
+            # itself)
+
+            elif k == "=":
+                k = "equal"
+            elif k == ":":
+                k = "colon"
+
+            optname += k
+        else:
+            for attr in dir(curses):
+                if not attr.startswith("KEY_"):
+                    continue
+
+                if k == getattr(curses, attr):
+                    optname += attr[4:].lower()
+
+        log.debug("trying key: %s" % optname)
+        r = self.callbacks["get_opt"](optname)
+
+        # None happens if the option is unset
+        # "None" can be used by the user to ignore
+        # a keybind without any chatter.
+        if r and r != "None":
+            return r
+
         return None
 
     def _listof_int(self, args, maxint, prompt):

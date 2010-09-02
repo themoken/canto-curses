@@ -40,8 +40,6 @@ class Screen(CommandHandler):
         self.windows = [t() for t in types]
         self.floats = []
 
-        self.keys = {}
-
         self.stdscr = curses.initscr()
         if self.curses_setup() < 0:
             return -1
@@ -510,10 +508,6 @@ class Screen(CommandHandler):
 
             # We're not in an edit box.
 
-            # Convert to a writable character, if in the ASCII range
-            if r < 256:
-                r = chr(r)
-
             self.user_queue.put(("KEY", r))
 
     def start_input_thread(self):
@@ -526,3 +520,6 @@ class Screen(CommandHandler):
 
     def exit(self):
         curses.endwin()
+
+    def get_opt_name(self):
+        return "screen"

@@ -36,21 +36,6 @@ class TagList(GuiBase):
         # Holster for a list of items for batch operations.
         self.got_items = None
 
-        self.keys = {
-            " " : "foritem & item-state read & reader",
-            "g" : "foritems & goto & item-state read & clearitems",
-            "E" : "toggle-opt taglist.tags_enumerated",
-            "e" : "toggle-opt story.enumerated",
-            "R" : "item-state read *",
-            "U" : "item-state -read *",
-            "r" : "tag-state read",
-            "u" : "tag-state -read",
-            curses.KEY_NPAGE : "page-down",
-            curses.KEY_PPAGE : "page-up",
-            curses.KEY_DOWN : "rel-set-cursor 1",
-            curses.KEY_UP : "rel-set-cursor -1",
-        }
-
         self.refresh()
 
     def item_by_idx(self, idx):
