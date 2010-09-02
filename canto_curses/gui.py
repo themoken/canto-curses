@@ -18,6 +18,7 @@ log = logging.getLogger("GUI")
 class CantoCursesGui(CommandHandler):
     def __init__(self, backend):
         self.backend = backend
+        self.screen = None
 
         # Variables that affect the overall operation.
         # We use the same list for alltags and curtags
@@ -48,7 +49,7 @@ class CantoCursesGui(CommandHandler):
             "q" : "quit"
         }
 
-        self.def_config = {
+        self.config = {
             "browser" : "firefox %u",
             "txt_browser" : False,
             "reader.maxwidth" : 0,
@@ -70,10 +71,10 @@ class CantoCursesGui(CommandHandler):
             "input.align" : "bottom"
         }
 
-        self.backend.write("CONFIGS", [ "CantoCurses" ])
-        self.config = self.def_config.copy()
-        self.config.update(self.wait_response("CONFIGS")[1]["CantoCurses"])
-        self.validate_config()
+        self.backend.write("WATCHCONFIGS", u"")
+
+        self.backend.write("CONFIGS", [])
+        self.configs(self.wait_response("CONFIGS")[1])
 
         log.debug("FINAL CONFIG:\n%s" % self.config)
 
@@ -206,6 +207,23 @@ class CantoCursesGui(CommandHandler):
             for subattr in [".maxheight", ".maxwidth"]:
                 self._val_uint(wintype + subattr)
 
+    def configs(self, given):
+        if "CantoCurses" not in given:
+            return
+
+        self.def_config = self.config.copy()
+
+        for k in given["CantoCurses"]:
+            self.config[k] = given["CantoCurses"][k]
+
+        self.validate_config()
+
+        self.def_config = None
+
+        # This can be called before screen exists (initial pop.)
+        if self.screen:
+            self.screen.refresh()
+
     def attributes(self, d):
         for given_id in d:
             if not d[given_id]:
@@ -288,15 +306,14 @@ class CantoCursesGui(CommandHandler):
 
     def set_opt(self, option, value):
         changed = False
-        if self.config[option] != value:
+        if option not in self.config or self.config[option] != value:
             self.config[option] = value
             changed = True
 
-        # Special actions on certain opt changes.
         if changed:
             self.screen.refresh()
             self.backend.write("SETCONFIGS",\
-                    { "CantoCurses." + option : unicode(value) })
+                    { "CantoCurses" : { option : unicode(value) } })
 
     def get_opt(self, option):
         return self.config[option]
@@ -382,6 +399,8 @@ class CantoCursesGui(CommandHandler):
 
             elif cmd[0] == "ATTRIBUTES":
                 self.attributes(cmd[1])
+            elif cmd[0] == "CONFIGS":
+                self.configs(cmd[1])
 
             # XXX Server notification/reply
 
