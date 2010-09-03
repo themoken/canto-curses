@@ -398,8 +398,6 @@ class TagList(GuiBase):
 
         if not spent_lines:
             self.pad.addstr("All tags empty.")
-        else:
-            self.pad.move(spent_lines, 0)
 
         self.callbacks["refresh"]()
 
