@@ -79,8 +79,35 @@ class Screen(CommandHandler):
 
         self.height, self.width = self.stdscr.getmaxyx()
 
-        for i, c in enumerate([ 7, 4, 3, 4, 2 ]):
-            curses.init_pair(i + 1, c, -1)
+        defbg = self.callbacks["get_opt"]("color.defbg")
+        if not defbg:
+            defbg = -1
+        deffg = self.callbacks["get_opt"]("color.deffg")
+        if not deffg:
+            deffg = curses.COLOR_WHITE
+
+        # Use config colors that can be specified like:
+        # Background is the only option that can't be
+        # specified alone.
+        #
+        # color.x.fg will override color.x settings
+        # color.x will override color.deffg
+        # color.x.bg will override color.defbg
+
+        for i in xrange(curses.COLOR_PAIRS):
+            optprefix = "color.%s" % i
+
+            fg = self.callbacks["get_opt"](optprefix + ".fg")
+            if not fg:
+                fg = self.callbacks["get_opt"](optprefix)
+                if not fg:
+                    fg = deffg
+
+            bg = self.callbacks["get_opt"](optprefix + ".bg")
+            if not bg:
+                bg = defbg
+
+            curses.init_pair(i + 1, fg, bg)
 
         return 0
 

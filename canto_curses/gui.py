@@ -12,6 +12,7 @@ from screen import Screen
 from tag import Tag
 
 import logging
+import curses
 
 log = logging.getLogger("GUI")
 
@@ -93,7 +94,13 @@ class CantoCursesGui(CommandHandler):
             "reader.key.down" : "scroll-down",
             "reader.key.up" : "scroll-up",
             "reader.key.npage" : "page-down",
-            "reader.key.ppage" : "page-up"
+            "reader.key.ppage" : "page-up",
+
+            "color.0" : curses.COLOR_WHITE,
+            "color.1" : curses.COLOR_BLUE,
+            "color.2" : curses.COLOR_YELLOW,
+            "color.3" : curses.COLOR_BLUE,
+            "color.4" : curses.COLOR_GREEN,
         }
 
         self.backend.write("WATCHCONFIGS", u"")
@@ -171,6 +178,36 @@ class CantoCursesGui(CommandHandler):
             log.error("%s must be >= 0. Resetting to %s" %
                     (attr, self.def_config[attr]))
 
+    def _val_color(self, attr): 
+        if type(self.config[attr]) != int:
+            try:
+                self.config[attr] = int(self.config[attr])
+            except:
+                # Convert natural color into curses color #
+                if self.config[attr] == "pink":
+                    self.config[attr] == "magenta"
+                for color_attr in dir(curses):
+                    if color_attr.startswith("COLOR_") and\
+                            self.config[attr] == color_attr[6:].lower():
+                        self.config[attr] = getattr(curses, color_attr)
+                        return
+
+        # If we got an int from above, make sure it's ok.
+        if type(self.config[attr]) == int:
+            if -1 <= self.config[attr] <= 255:
+                if self.config[attr] == -1 and not attr.endswith("bg"):
+                    log.error("Only background elements can be -1.")
+                else:
+                    return
+
+        # Couldn't parse, revert.
+        if attr in self.def_config:
+            log.error("Reverting %s to default: %s" %\
+                    (attr, self.def_config[attr]))
+            self.config[attr] = self.def_config[attr]
+        else:
+            del self.config[attr]
+
     def validate_config(self):
         self._val_bool("reader.show_description")
         self._val_bool("reader.enumerate_links")
@@ -178,6 +215,10 @@ class CantoCursesGui(CommandHandler):
         self._val_bool("taglist.tags_enumerated")
         self._val_bool("taglist.hide_empty_tags")
         self._val_bool("txt_browser")
+
+        # Make sure colors are all integers.
+        for attr in [k for k in self.config.keys() if k.startswith("color.")]:
+            self._val_color(attr)
 
         # Make sure various window configurations make sense.
         for wintype in [ "reader", "input", "taglist" ]:
