@@ -152,13 +152,10 @@ class Reader(GuiBase):
         self._relscroll(self.height - 1)
 
     def _relscroll(self, factor):
-        log.debug("relscroll: %d" % factor)
-        log.debug("maxoffset: %d" % self.max_offset)
         self.offset = self.offset + factor
         self.offset = min(self.offset, self.max_offset)
         self.offset = max(self.offset, 0)
         self.callbacks["set_var"]("needs_redraw", True)
-        log.debug("-->: %d" % self.offset)
 
     def is_input(self):
         return False
