@@ -46,17 +46,18 @@ class Reader(GuiBase):
             lines = self.render(fp, show_desc, enum_links)
 
             # Create pre-rendered pad
-            self.fullpad = curses.newpad(lines + 1, self.width)
+            self.fullpad = curses.newpad(lines, self.width)
             self.render(WrapPad(self.fullpad), show_desc, enum_links)
 
             # Update offset based on new display properties.
-            self.max_offset = max(lines - self.height, 0)
+            self.max_offset = max(lines - (self.height - 1), 0)
             self.offset = min(self.offset, self.max_offset)
 
         # Overwrite visible pad with relevant area of pre-rendered pad.
         self.pad.erase()
 
-        realheight = min(self.height,self.fullpad.getmaxyx()[0]) - 1
+        realheight = min(self.height, self.fullpad.getmaxyx()[0]) - 1
+
         self.fullpad.overwrite(self.pad, self.offset, 0, 0, 0,\
                 realheight, self.width - 1)
 

@@ -361,7 +361,7 @@ class Screen(CommandHandler):
 
     def refresh_callback(self, c, t, l, b, r):
         if c in self.floats:
-            b = min(b, t + c.pad.getyx()[0] + 1)
+            b = min(b, t + c.pad.getyx()[0])
         c.pad.noutrefresh(0, 0, t, l, b, r)
 
     def input_callback(self, prompt):
