@@ -51,7 +51,7 @@ class CantoCurses(CantoClient):
         self.pid = os.getpid()
         self.done = False
 
-        if self.args():
+        if self.common_args():
             sys.exit(-1)
 
         self.start_daemon()
@@ -141,61 +141,6 @@ class CantoCurses(CantoClient):
     def exit(self):
         self.done = True
         os.kill(self.pid, signal.SIGUSR1)
-
-    def args(self):
-        try:
-            optlist = getopt.getopt(sys.argv[1:], 'D:', ["dir="])[0]
-        except getopt.GetoptError, e:
-            log.error("Error: %s" % e.msg)
-
-        self.conf_dir = os.path.expanduser(u"~/.canto-ng/")
-
-        for opt, arg in optlist:
-            if opt in [ "-D", "--dir"]:
-                self.conf_dir = os.path.expanduser(decoder(arg))
-                self.conf_dir = os.path.realpath(self.conf_dir)
-
-        self.socket_path = self.conf_dir + "/.canto_socket"
-
-        return 0
-
-    # Test whether we can lock the pidfile, and if we can, fork the daemon
-    # with the proper arguments.
-
-    def start_daemon(self):
-        pidfile = self.conf_dir + "/pid"
-        if os.path.exists(pidfile) and os.path.isfile(pidfile):
-            try:
-                pf = open(pidfile, "a+")
-                fcntl.flock(pf.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                fcntl.flock(pf.fileno(), fcntl.LOCK_UN)
-                pf.close()
-            except IOError, e:
-                if e.errno == errno.EAGAIN:
-                    # If we failed to get a lock, then the daemon is running
-                    # and we're done.
-                    return
-
-        pid = os.fork()
-        if not pid:
-            # Shutup any log output before canto-daemon sets up it's log
-            # (particularly the error that one is already running)
-
-            fd = os.open("/dev/null", os.O_RDWR)
-            os.dup2(fd, sys.stderr.fileno())
-
-            os.setpgid(os.getpid(), os.getpid())
-            os.execve("/bin/sh",
-                     ["/bin/sh", "-c", "canto-daemon -D " + self.conf_dir],
-                     os.environ)
-
-            # Should never get here, but just in case.
-            sys.exit(-1)
-
-        while not os.path.exists(self.socket_path):
-            time.sleep(0.1)
-
-        return pid
 
     # For now, make sure the log is writable.
 
