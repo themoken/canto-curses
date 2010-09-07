@@ -6,6 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+import traceback
 import logging
 import curses
 
@@ -13,34 +14,86 @@ log = logging.getLogger("COMMAND")
 
 def command_format(types):
     def cf(fn):
-        def cfdec(self, **kwargs):
+        def cfdec(self, obj, **kwargs):
 
             rem = kwargs["args"]
             realkwargs = {}
 
             for kw, validator in types:
-                validator = getattr(self, validator)
+                if hasattr(obj, validator):
+                    validator = getattr(obj, validator)
+                elif hasattr(self, validator):
+                    validator = getattr(self, validator)
+                else:
+                    log.warn("Couldn't get validator: %s, skipping" % validator)
+                    continue
+
                 valid, result, rem = validator(rem.lstrip())
                 if not valid:
-                    log.debug("Couldn't properly parse %s" % kwargs["args"])
+                    log.error("Couldn't properly parse %s" % kwargs["args"])
                     return
 
                 realkwargs[kw] = result
 
-            return fn(self, **realkwargs)
+            # Builtin command signature.
+            if self == obj:
+                return fn(self, **realkwargs)
+
+            # Plugin command signature.
+            else:
+                return fn(self, obj, **realkwargs)
+
         return cfdec
     return cf
 
+# CommandPlugin is the base class for all of the separate
+# plugin classes for each Gui object. Essentially this is
+# only so 'object' is in the class hierarchy so we can
+# use __subclasses__ on them.
+
+class CommandPlugin(object):
+    pass
+
 class CommandHandler():
 
-    def command(self, command):
-        for attr in dir(self):
+    def _command_try_class(self, cls, command):
+        for attr in dir(cls):
             if attr.startswith("cmd_"):
                 name = attr[4:].replace("_","-")
                 if command == name or command.startswith(name + " "):
-                    func = getattr(self, attr)
-                    func(args=command[len(name):])
+                    func = getattr(cls, attr)
+                    func(self, args=command[len(name):])
                     return True
+        return False
+
+    def command(self, command):
+        # self is the first class to check for commands. This behavior
+        # means that plugins can't override built-in behavior. It seems to me
+        # that overriding would be more of a place for a full Gui subclass.
+
+        clses = [self]
+
+        # Add (and, if necessary instantiate) any subclasses of the
+        # cmd plugin class. These attribute names are intentionally
+        # verbose to ensure that they aren't clobbered by anything else.
+
+        if hasattr(self, "plugin_cmd_class"):
+            if not hasattr(self, "plugin_cmd_subclass_instances"):
+                self.plugin_cmd_subclass_instances =\
+                        [c() for c in self.plugin_cmd_class.__subclasses__()]
+            clses += self.plugin_cmd_subclass_instances
+
+        for cls in clses:
+            try:
+                if self._command_try_class(cls, command):
+                    return True
+            except Exception, e:
+                tb = traceback.format_exc(e)
+                log.error("Exception running command %s by class %s" %\
+                        (command, cls))
+                log.error("\n" + "".join(tb))
+                log.error("Continuing...")
+
         return False
 
     def key(self, k):

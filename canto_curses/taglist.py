@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from command import command_format
+from command import CommandPlugin, command_format
 from common import GuiBase
 from reader import Reader
 
@@ -20,6 +20,9 @@ log = logging.getLogger("TAGLIST")
 # panel. It defers to the Tag class for the actual individual tag rendering.
 # This is the level at which commands are taken and the backend is communicated
 # with.
+
+class TagListCommand(CommandPlugin):
+    pass
 
 class TagList(GuiBase):
     def init(self, pad, callbacks):
@@ -35,6 +38,8 @@ class TagList(GuiBase):
 
         # Holster for a list of items for batch operations.
         self.got_items = None
+
+        self.plugin_cmd_class = TagListCommand
 
         self.refresh()
 
