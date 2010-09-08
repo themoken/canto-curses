@@ -286,9 +286,12 @@ class CantoCursesGui(CommandHandler):
 
         self.def_config = None
 
-        # This can be called before screen exists (initial pop.)
+        # This can be called before screen exists (initial pop.).
+        # Simulate a resize so that any curses options, window
+        # size stuff automatically takes effect.
+
         if self.screen:
-            self.screen.refresh()
+            self.winch()
 
     def attributes(self, d):
         for given_id in d:
