@@ -107,7 +107,11 @@ class Screen(CommandHandler):
             if not bg:
                 bg = defbg
 
-            curses.init_pair(i + 1, fg, bg)
+            try:
+                curses.init_pair(i + 1, fg, bg)
+            except:
+                log.error("color pair failed!: %d fg: %d bg: %d" %
+                        (i + 1, fg, bg))
 
         return 0
 
