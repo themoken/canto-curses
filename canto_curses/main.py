@@ -9,7 +9,6 @@
 from canto_next.client import CantoClient
 from canto_next.encoding import decoder
 from gui import CantoCursesGui
-from consts import *
 
 from threading import Thread
 from Queue import Queue
