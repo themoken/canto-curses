@@ -22,7 +22,7 @@ log = logging.getLogger("SCREEN")
 # screen and get input should come through it.
 
 # There are two types of windows that the Screen class handles. The first are
-# normal windows (in self.windows). These windows are all tiled in a single
+# normal windows (in self.tiles). These windows are all tiled in a single
 # layout (determined by self.layout and self.fill_layout()) and rendered first.
 
 # The other types are floats that are rendered on top of the window layout.
@@ -37,8 +37,7 @@ class Screen(CommandHandler):
         self.callbacks = callbacks
         self.layout = "default"
 
-        self.windows = [t() for t in types]
-        self.floats = []
+        self.window_types = types
 
         self.stdscr = curses.initscr()
         if self.curses_setup() < 0:
@@ -337,14 +336,31 @@ class Screen(CommandHandler):
     # level tiled window layout as well as the floats.
 
     def subwindows(self):
+        self.floats = []
+        self.tiles = []
+        self.windows = []
+
+        # Instantiate new windows, separating them into
+        # floating and tiling windows.
+
+        for wt in self.window_types:
+            w = wt()
+            optname = w.get_opt_name()
+            flt = self.callbacks["get_opt"](optname + ".float")
+            if flt:
+                self.floats.append(w)
+            else:
+                self.tiles.append(w)
+            self.windows.append(w)
+
         # Focused window will no longer exist.
         self.focused = None
 
-        # Generate tiled windows.
-        l = self.fill_layout(self.layout, self.windows)
+        # Init tiled windows.
+        l = self.fill_layout(self.layout, self.tiles)
         self._subw(l, 0, 0, self.height, self.width, "vertical")
 
-        # Generate floating windows.
+        # Init floating windows.
         for f in self.floats: 
             align = self.callbacks["get_opt"](f.get_opt_name() + ".align")
             height = self._subw_size_height(f, self.height)
@@ -383,16 +399,13 @@ class Screen(CommandHandler):
         return r
 
     def die_callback(self, window):
-        # Remove window from either window list or floating list.
-        self.windows = [ w for w in self.windows if w != window ]
-        self.floats = [ w for w in self.floats if w != window ]
+        # Remove window from both window_types and the general window list
+        idx = self.windows.index(window)
+        del self.windows[idx]
+        del self.window_types[idx]
 
         # Regenerate layout with remaining windows.
         self.subwindows()
-
-        # If we lost focus, reset.
-        if self.focused == window:
-            self._focus(0)
 
         self.refresh()
 
@@ -417,15 +430,7 @@ class Screen(CommandHandler):
         self._resize()
 
     def add_window_callback(self, cls):
-        ci = cls()
-
-        # Enforce window.float
-        optname = ci.get_opt_name()
-        flt = self.callbacks["get_opt"](optname + ".float")
-        if flt:
-            self.floats.append(ci)
-        else:
-            self.windows.append(ci)
+        self.window_types.append(cls)
 
         self.subwindows()
 
@@ -451,12 +456,12 @@ class Screen(CommandHandler):
     # floating window is rendered on top of all others.
 
     def refresh(self):
-        for c in self.windows + self.floats:
+        for c in self.tiles + self.floats:
             c.refresh()
         curses.doupdate()
 
     def redraw(self):
-        for c in self.windows + self.floats:
+        for c in self.tiles + self.floats:
             c.redraw()
         curses.doupdate()
 
@@ -485,7 +490,7 @@ class Screen(CommandHandler):
         self._focus(kwargs["idx"])
 
     def _focus(self, idx):
-        focus_order = self.windows + self.floats
+        focus_order = self.tiles + self.floats
         focus_order.reverse()
         l = len(focus_order)
 
