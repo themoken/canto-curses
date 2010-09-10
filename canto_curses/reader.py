@@ -50,7 +50,7 @@ class Reader(GuiBase):
             self.render(WrapPad(self.fullpad), show_desc, enum_links)
 
             # Update offset based on new display properties.
-            self.max_offset = max(lines - (self.height - 1), 0)
+            self.max_offset = max((lines - 1) - (self.height - 1), 0)
             self.offset = min(self.offset, self.max_offset)
 
         # Overwrite visible pad with relevant area of pre-rendered pad.
