@@ -100,8 +100,7 @@ class Story():
             pre = "%R" + pre
             post = post + "%r"
 
-        if self.content["canto-state"] and\
-                "read" in self.content["canto-state"]:
+        if "read" in self.content["canto-state"]:
             pre = pre + "%3"
             post = "%0" + post
         else:

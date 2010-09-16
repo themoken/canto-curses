@@ -143,7 +143,7 @@ def theme_print_one(pad, uni, width):
                 for attr in attr_map:
                     pad.attroff(attr_map[attr])
 
-            # Restory attributes
+            # Restore attributes
             elif c == "c":
                 for attr in attr_map:
                     if attr_count[attr]:
@@ -176,7 +176,7 @@ def theme_print_one(pad, uni, width):
 
     return None
 
-def theme_print(pad, uni, mwidth, pre = "", post = ""):
+def theme_print(pad, uni, mwidth, pre = "", post = "", cursorbash=True):
     prel = theme_len(pre)
     postl = theme_len(post)
     y = pad.getyx()[0]
@@ -195,10 +195,11 @@ def theme_print(pad, uni, mwidth, pre = "", post = ""):
         pad.move(y, mwidth - postl)
         theme_print_one(pad, post, postl)
 
-    try:
-	pad.move(y + 1, 0)
-    except:
-	pass
+    if cursorbash:
+        try:
+            pad.move(y + 1, 0)
+        except:
+            pass
 
     if r == uni:
         raise Exception("theme_print: didn't advance!")
@@ -253,4 +254,40 @@ def theme_process(pad, uni):
             only_codes += "%"
 
     # NOTE: len works because codes never use widechars.
-    theme_print(pad, only_codes, len(only_codes))
+    theme_print(pad, only_codes, len(only_codes), "", "", False)
+
+# Strip more than two newlines from the front of the input, processing escapes
+# as we discard characters.
+
+def theme_lstrip(pad, uni):
+    newlines = 0
+    codes = u""
+    escaped = False
+
+    for i, c in enumerate(uni):
+        # Discard
+        if c in " \t\v":
+            continue
+
+        if c == "\n":
+            newlines = 1
+        elif c == "%":
+            escaped = True
+            codes += "%"
+        elif escaped:
+            escaped = False
+            codes += c
+        else:
+            r = uni[i:]
+            break
+
+    # No content found.
+    else:
+        newlines = 0
+        r = ""
+
+    # Process dangling codes.
+    if codes:
+        theme_process(pad, codes)
+
+    return (newlines * "\n") + r

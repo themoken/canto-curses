@@ -6,20 +6,18 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from theme import FakePad, WrapPad, theme_print, theme_lstrip
 from command import command_format
-from theme import FakePad, WrapPad, theme_print
 from html import htmlparser
 from common import GuiBase
 
 import logging
 import curses
-import re
 
 log = logging.getLogger("READER")
 
 class Reader(GuiBase):
     def init(self, pad, callbacks):
-        self.tripleline_regex = re.compile("(\n(\s|%.)*){3,}", re.M)
         self.pad = pad
 
         self.offset = 0
@@ -119,14 +117,14 @@ class Reader(GuiBase):
         # After we have generated the entirety of the content,
         # strip out any egregious spacing.
 
-        s = self.tripleline_regex.sub("\n\n", s)
         s = s.rstrip(" \t\v\n")
 
         lines = 0
         while s:
-            s = s.lstrip(" \t\v")
-            s = theme_print(pad, s, self.width, " ", " ")
-            lines += 1
+            s = theme_lstrip(pad, s)
+            if s:
+                s = theme_print(pad, s, self.width, " ", " ")
+                lines += 1
 
         return lines
 
