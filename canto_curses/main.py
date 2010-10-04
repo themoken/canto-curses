@@ -112,6 +112,10 @@ class CantoCurses(CantoClient):
         thread.daemon = True
         thread.start()
 
+    def alarm(self, a = None, b = None):
+        self.gui.tick()
+        signal.alarm(1)
+
     def winch(self, a = None, b = None):
         self.gui.winch()
 
@@ -129,6 +133,8 @@ class CantoCurses(CantoClient):
         # Initial signal setup.
         signal.signal(signal.SIGUSR1, self.sigusr1)
         signal.signal(signal.SIGWINCH, self.winch)
+        signal.signal(signal.SIGALRM, self.alarm)
+        signal.alarm(1)
 
         # Block on signals.
         while not self.done:

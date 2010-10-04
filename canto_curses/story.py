@@ -52,6 +52,17 @@ class Story():
         self.selected = False
 
     def refresh(self, mwidth, idx):
+
+        # Make sure we actually have all of the attributes needed
+        # to complete the render.
+
+        for attr in self.needed_attributes():
+            if attr not in self.content:
+                self.pad = curses.newpad(1, mwidth)
+                self.pad.addstr("Waiting on content...")
+                self.callbacks["set_var"]("needs_deferred_refresh", True)
+                return 1
+
         # Do we need the enumerated form?
         enumerated = self.callbacks["get_opt"]("story.enumerated")
 

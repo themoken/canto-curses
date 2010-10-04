@@ -43,15 +43,27 @@ class Tag(list):
         return list.__eq__(self, other)
 
     # Create Story from ID before appending to list.
+
     def append(self, id):
         s = Story(id, self.callbacks)
         list.append(self, s)
+
+    # Remove Story based on ID
+
+    def remove(self, id):
+        log.debug("removing: %s" % (id,))
+        for item in self:
+            if item.id == id:
+                list.remove(self, item)
 
     def get_id(self, id):
         for item in self:
             if item.id == id:
                 return item
         return None
+
+    def get_ids(self):
+        return [ s.id for s in self ]
 
     def refresh(self, mwidth, idx_offset):
 

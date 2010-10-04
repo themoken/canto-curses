@@ -34,7 +34,10 @@ class CantoCursesGui(CommandHandler):
             "alltags" : td,
             "needs_refresh" : False,
             "needs_redraw" : False,
-            "needs_deferred_redraw" : False
+            "needs_deferred_refresh" : False,
+            "needs_deferred_redraw" : False,
+            "update_interval" : 0,
+            "protected_ids" : []
         }
 
         self.callbacks = {
@@ -53,6 +56,7 @@ class CantoCursesGui(CommandHandler):
         self.config = {
             "browser" : "firefox %u",
             "txt_browser" : False,
+            "update.auto.interval" : 60,
             "reader.maxwidth" : 0,
             "reader.maxheight" : 0,
             "reader.float" : True,
@@ -73,6 +77,7 @@ class CantoCursesGui(CommandHandler):
 
             "main.key.colon" : "command",
             "main.key.q" : "quit",
+            "main.key.\\" : "refresh",
 
             "taglist.key.space" : "foritem & item-state read & reader",
             "taglist.key.g" : "foritems & goto & item-state read & clearitems",
@@ -122,24 +127,12 @@ class CantoCursesGui(CommandHandler):
             t = Tag(tag, self.callbacks)
             item_tags.append(tag)
 
+        self.updates = []
         self.backend.write("ITEMS", item_tags)
-        r = self.wait_response("ITEMS")
+        self.items(self.wait_response("ITEMS")[1])
 
-        for tag in self.vars["alltags"]:
-            for item in r[1][tag.tag]:
-                tag.append(item)
-
-        # Initial story attribute populate.
-
-        attribute_stories = {}
-
-        for tag in self.vars["alltags"]:
-            for story in tag:
-                attribute_stories[story.id] = story.needed_attributes()
-
-        self.backend.write("ATTRIBUTES", attribute_stories)
-        r = self.wait_response("ATTRIBUTES")
-        self.attributes(r[1])
+        # Start watching all given tags.
+        self.backend.write("WATCHTAGS", item_tags)
 
         log.debug("Starting curses.")
         self.screen = Screen(self.backend.responses, self.callbacks)
@@ -209,6 +202,7 @@ class CantoCursesGui(CommandHandler):
             del self.config[attr]
 
     def validate_config(self):
+        self._val_uint("update.auto.interval")
         self._val_bool("reader.show_description")
         self._val_bool("reader.enumerate_links")
         self._val_bool("story.enumerated")
@@ -314,6 +308,36 @@ class CantoCursesGui(CommandHandler):
                         a = char_ref_convert(a)
                     item.content[k] = a
 
+    def items(self, updates):
+        needed_attrs = {}
+
+        for tag in updates:
+            for have_tag in self.vars["alltags"]:
+                if have_tag.tag == tag:
+
+                    # Eliminate discarded items.
+                    for id in have_tag.get_ids():
+                        if id not in self.vars["protected_ids"] and \
+                                id not in updates[tag]:
+                            have_tag.remove(id)
+
+                    # Add new items.
+                    for id in updates[tag]:
+                        if id not in have_tag.get_ids():
+                            have_tag.append(id)
+
+                            story = have_tag.get_id(id)
+                            needed_attrs[story.id] = story.needed_attributes()
+
+        if needed_attrs:
+            self.backend.write("ATTRIBUTES", needed_attrs)
+
+        self.vars["needs_refresh"] = True
+
+    def tagchange(self, tag):
+        if tag not in self.updates:
+            self.updates.append(tag)
+
     def var(self, args):
         t, r = self._first_term(args,\
                 lambda : self.screen.input_callback("var: "))
@@ -342,10 +366,15 @@ class CantoCursesGui(CommandHandler):
         self.set_var(var, not self.get_var(var))
 
     def set_var(self, tweak, value):
-        changed = False
         if self.vars[tweak] != value:
+            # Tweak specific logic
+            if tweak in [ "selected", "reader_item" ]:
+                if self.vars[tweak]:
+                    self.vars["protected_ids"].remove(self.vars[tweak].id)
+                if value:
+                    self.vars["protected_ids"].append(value.id)
+
             self.vars[tweak] = value
-            changed = True
 
     def get_var(self, tweak):
         if tweak in self.vars:
@@ -389,6 +418,22 @@ class CantoCursesGui(CommandHandler):
 
     def winch(self):
         self.backend.responses.put(("CMD", "resize"))
+
+    def tick(self):
+        if self.vars["update_interval"] == 0:
+            if self.updates:
+                # TODO: use self.updates or self.vars["curtags"] based on config
+                self.backend.write("ITEMS",\
+                        [ t.tag for t in self.vars["curtags"]])
+                self.vars["update_interval"] =\
+                        self.config["update.auto.interval"]
+                self.updates = []
+        else:
+            self.vars["update_interval"] -= 1
+
+    @command_format([])
+    def cmd_refresh(self, **kwargs):
+        self.backend.write("ITEMS", [ t.tag for t in self.vars["curtags"]])
 
     def key(self, k):
         r = CommandHandler.key(self, k)
@@ -470,8 +515,10 @@ class CantoCursesGui(CommandHandler):
                 self.attributes(cmd[1])
             elif cmd[0] == "CONFIGS":
                 self.configs(cmd[1])
-
-            # XXX Server notification/reply
+            elif cmd[0] == "ITEMS":
+                self.items(cmd[1])
+            elif cmd[0] == "TAGCHANGE":
+                self.tagchange(cmd[1])
 
             if self.vars["needs_refresh"]:
                 log.debug("Needed refresh")
@@ -483,7 +530,11 @@ class CantoCursesGui(CommandHandler):
                 self.screen.redraw()
                 self.vars["needs_redraw"] = False
 
-            if self.vars["needs_deferred_redraw"]:
+            if self.vars["needs_deferred_refresh"]:
+                self.vars["needs_deferred_refresh"] = False
+                self.vars["needs_deferred_redraw"] = False
+                self.vars["needs_refresh"] = True
+            elif self.vars["needs_deferred_redraw"]:
                 self.vars["needs_deferred_redraw"] = False
                 self.vars["needs_redraw"] = True
 
