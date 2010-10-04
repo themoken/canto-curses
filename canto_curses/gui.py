@@ -310,6 +310,7 @@ class CantoCursesGui(CommandHandler):
 
     def items(self, updates):
         needed_attrs = {}
+        unprotect = {"auto":[]}
 
         for tag in updates:
             for have_tag in self.vars["alltags"]:
@@ -320,6 +321,7 @@ class CantoCursesGui(CommandHandler):
                         if id not in self.vars["protected_ids"] and \
                                 id not in updates[tag]:
                             have_tag.remove(id)
+                            unprotect["auto"].append(id)
 
                     # Add new items.
                     for id in updates[tag]:
@@ -331,6 +333,9 @@ class CantoCursesGui(CommandHandler):
 
         if needed_attrs:
             self.backend.write("ATTRIBUTES", needed_attrs)
+
+        if unprotect:
+            self.backend.write("UNPROTECT", unprotect)
 
         self.vars["needs_refresh"] = True
 
