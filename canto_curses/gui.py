@@ -18,6 +18,7 @@ log = logging.getLogger("GUI")
 
 class CantoCursesGui(CommandHandler):
     def __init__(self, backend):
+        CommandHandler.__init__(self)
         self.backend = backend
         self.screen = None
 

@@ -55,6 +55,8 @@ class CommandPlugin(object):
     pass
 
 class CommandHandler():
+    def __init__(self):
+        self.meta = False
 
     def _command_try_class(self, cls, command):
         for attr in dir(cls):
@@ -101,7 +103,32 @@ class CommandHandler():
         # Translate numeric key into config friendly keyname
 
         optname = self.get_opt_name() + ".key."
-        if k < 256:
+
+        # Add meta prefix.
+        if self.meta:
+            if k >= 64:
+                k -= 64
+                optname += "M-"
+            self.meta = False
+
+        if k > 255:
+            for attr in dir(curses):
+                if not attr.startswith("KEY_"):
+                    continue
+
+                if k == getattr(curses, attr):
+                    optname += attr[4:].lower()
+
+        # Remember meta for next keypress.
+        elif curses.ascii.ismeta(k):
+            self.meta = True
+            return None
+        else:
+            # Add ctrl prefix.
+            if curses.ascii.iscntrl(k):
+                optname += "C-"
+                k += 96
+
             k = chr(k)
 
             # Need translation because they're invisible in config
@@ -120,13 +147,6 @@ class CommandHandler():
                 k = "colon"
 
             optname += k
-        else:
-            for attr in dir(curses):
-                if not attr.startswith("KEY_"):
-                    continue
-
-                if k == getattr(curses, attr):
-                    optname += attr[4:].lower()
 
         log.debug("trying key: %s" % optname)
         r = self.callbacks["get_opt"](optname)

@@ -33,6 +33,7 @@ log = logging.getLogger("SCREEN")
 
 class Screen(CommandHandler):
     def __init__(self, user_queue, callbacks, types = [InputBox, TagList]):
+        CommandHandler.__init__(self)
         self.user_queue = user_queue
         self.callbacks = callbacks
         self.layout = "default"
