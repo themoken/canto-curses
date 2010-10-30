@@ -38,7 +38,8 @@ class CantoCursesGui(CommandHandler):
             "needs_deferred_refresh" : False,
             "needs_deferred_redraw" : False,
             "update_interval" : 0,
-            "protected_ids" : []
+            "protected_ids" : [],
+            "transforms" : [],
         }
 
         self.callbacks = {
@@ -119,6 +120,10 @@ class CantoCursesGui(CommandHandler):
         self.backend.write("LISTFEEDS", u"")
         r = self.wait_response("LISTFEEDS")
         self.tracked_feeds = r[1]
+
+        self.backend.write("LISTTRANSFORMS", u"")
+        r = self.wait_response("LISTTRANSFORMS")
+        self.vars["transforms"] = r[1]
 
         # Initial tag populate.
 
@@ -422,6 +427,19 @@ class CantoCursesGui(CommandHandler):
             return self.config[option]
         return None
 
+    def transform(self, args):
+        if not args:
+            args = self.screen.input("transform: ")
+        return (True, args, None)
+
+    @command_format([("transform","transform")])
+    def cmd_transform(self, **kwargs):
+        self.backend.write("SETCONFIGS",\
+                    { "defaults" :
+                        { "global_transform" : kwargs["transform"] }
+                    })
+        self._refresh()
+
     def winch(self):
         self.backend.responses.put(("CMD", "resize"))
 
@@ -439,6 +457,9 @@ class CantoCursesGui(CommandHandler):
 
     @command_format([])
     def cmd_refresh(self, **kwargs):
+        self._refresh()
+
+    def _refresh(self):
         self.backend.write("ITEMS", [ t.tag for t in self.vars["curtags"]])
 
     def key(self, k):
