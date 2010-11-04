@@ -74,6 +74,12 @@ class TagList(GuiBase):
             for story in reversed(tag):
                 yield story
 
+    def first_visible_item(self):
+        for item in self.all_items():
+            if self.offset >= item.min_offset and\
+                    self.offset <= item.max_offset:
+                return item
+
     # Prompt that ensures the items are enumerated first
     def eprompt(self, prompt):
         return self._cfg_set_prompt("story.enumerated", prompt)
@@ -182,10 +188,17 @@ class TagList(GuiBase):
         if sel:
             curidx = self.idx_by_item(sel)
 
-        # curidx = -1 so that a `rel_set_cursor 1` (i.e. next) will 
-        # select item 0
+        # If unset, try to set curidx such that a 'next' (rel_set_cursor +1)
+        # will select the first item on screen.
+
         else:
-            curidx = -1
+            fi = self.first_visible_item()
+            if fi:
+                curidx = self.idx_by_item(fi) - 1
+
+            # No visible items.
+            else:
+                curidx = -1
 
         item = self.item_by_idx(curidx + kwargs["relidx"])
         if not item:
