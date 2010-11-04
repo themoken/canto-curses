@@ -19,7 +19,7 @@ logging.basicConfig(
         filemode = "w",
         format = "%(asctime)s : %(name)s -> %(message)s",
         datefmt = "%H:%M:%S",
-        level = logging.DEBUG
+        level = logging.INFO
 )
 
 log = logging.getLogger("CANTO-CURSES")
@@ -50,7 +50,11 @@ class CantoCurses(CantoClient):
         self.pid = os.getpid()
         self.done = False
 
-        if self.common_args():
+        self.short_args = 'v'
+        if self.common_args(self.short_args):
+            sys.exit(-1)
+
+        if self.args():
             sys.exit(-1)
 
         self.start_daemon()
@@ -71,9 +75,23 @@ class CantoCurses(CantoClient):
             sys.exit(-1)
 
         self.set_log()
+        log.info("Canto-curses started.")
 
         # Evaluate anything in the target /plugins directory.
         self.try_plugins()
+
+    def args(self):
+        try:
+            optlist = getopt.getopt(sys.argv[1:], self.short_args, [""])[0]
+        except getopt.GetoptError, e:
+            log.error("Error: %s" % e.msg)
+            return -1
+
+        for opt, arg in optlist:
+            if opt in ["-v"]:
+                rootlog = logging.getLogger()
+                rootlog.setLevel(max(rootlog.level - 10,0))
+        return 0
 
     # The response_thread takes anything received from the socket and puts it
     # onto the responses queue. This queue is expected to be used by the Gui
