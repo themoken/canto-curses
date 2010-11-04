@@ -90,7 +90,7 @@ class Tag(list):
         lines = 0
 
         while header:
-            header = theme_print(pad, header, mwidth, u"│", u"│")
+            header = theme_print(pad, header, mwidth, u"", u"")
             lines += 1
 
         return lines

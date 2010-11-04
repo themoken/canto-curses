@@ -128,9 +128,9 @@ class Story():
 
         lines = 0
 
-        left = u"%C%1│%0 %c"
-        left_more = u"%C%1│%0     %c"
-        right = u"%C %1│%0%c"
+        left = u"%C %c"
+        left_more = u"%C     %c"
+        right = u"%C %c"
 
         try:
             while s:
