@@ -93,6 +93,7 @@ class CantoCursesGui(CommandHandler):
             "taglist.key.ppage" : "page-up",
             "taglist.key.down" : "rel-set-cursor 1",
             "taglist.key.up" : "rel-set-cursor -1",
+            "taglist.key.C-u" : "unset-cursor",
 
             "reader.key.space" : "destroy",
             "reader.key.d" : "toggle-opt reader.show_description",

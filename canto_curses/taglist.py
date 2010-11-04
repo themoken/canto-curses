@@ -174,6 +174,10 @@ class TagList(GuiBase):
             self.callbacks["set_var"]("needs_redraw", True)
             self.callbacks["write"]("SETATTRIBUTES", attributes)
 
+    @command_format([])
+    def cmd_unset_cursor(self, **kwargs):
+        self._set_cursor(None)
+
     @command_format([("idx", "item")])
     def cmd_set_cursor(self, **kwargs):
         self._set_cursor(kwargs["item"])
