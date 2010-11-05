@@ -24,7 +24,7 @@
 # based on Textbox.
 
 from canto_next.encoding import encoder
-from common import GuiBase
+from guibase import GuiBase
 
 import logging
 log = logging.getLogger("INPUT")

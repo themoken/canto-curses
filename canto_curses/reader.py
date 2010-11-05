@@ -9,7 +9,7 @@
 from theme import FakePad, WrapPad, theme_print, theme_lstrip
 from command import command_format
 from html import htmlparser
-from common import GuiBase
+from guibase import GuiBase
 
 import logging
 import curses

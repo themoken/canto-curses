@@ -7,7 +7,7 @@
 #   published by the Free Software Foundation.
 
 from command import CommandPlugin, command_format
-from common import GuiBase
+from guibase import GuiBase
 from reader import Reader
 
 import logging
