@@ -8,6 +8,8 @@
 
 from canto_next.client import CantoClient
 from canto_next.encoding import decoder
+from canto_next.plugins import try_plugins
+
 from gui import CantoCursesGui
 
 from threading import Thread
@@ -78,7 +80,7 @@ class CantoCurses(CantoClient):
         log.info("Canto-curses started.")
 
         # Evaluate anything in the target /plugins directory.
-        self.try_plugins()
+        try_plugins(self.conf_dir)
 
     def args(self):
         try:
@@ -182,28 +184,6 @@ class CantoCurses(CantoClient):
                     return -1
 
         self.log_path = self.conf_dir + "/curses-log"
-
-    def try_plugins(self):
-        p = self.conf_dir + "/plugins"
-        if not os.path.exists(p):
-            log.info("No plugins directory found.")
-            return
-        if not os.path.isdir(p):
-            log.warn("Plugins file is not directory.")
-            return
-
-        # Add plugin path to front of Python path.
-        sys.path.insert(0, p)
-
-        # Go ahead and import all .py
-        for fname in os.listdir(p):
-            if fname.endswith(".py"):
-                try:
-                    __import__(fname[:-3])
-                except Exception, e:
-                    tb = traceback.format_exc(e)
-                    log.error("Exception importing file %s" % fname)
-                    log.error("\n" + "".join(tb))
 
     def set_log(self):
         f = open(self.log_path, "w")
