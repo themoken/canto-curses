@@ -13,6 +13,7 @@ from tag import Tag
 
 import logging
 import curses
+import re
 
 log = logging.getLogger("GUI")
 
@@ -23,16 +24,12 @@ class CantoCursesGui(CommandHandler):
         self.screen = None
 
         # Variables that affect the overall operation.
-        # We use the same list for alltags and curtags
-        # so that, if curtags isn't set explicity, it
-        # automatically equals alltags
 
-        td = []
         self.vars = {
             "reader_item" : None,
             "selected" : None,
-            "curtags" : td,
-            "alltags" : td,
+            "curtags" : [],
+            "alltags" : [],
             "needs_refresh" : False,
             "needs_redraw" : False,
             "needs_deferred_refresh" : False,
@@ -58,6 +55,7 @@ class CantoCursesGui(CommandHandler):
         self.config = {
             "browser" : "firefox %u",
             "txt_browser" : False,
+            "tags" : r".*",
             "update.auto.interval" : 60,
             "reader.maxwidth" : 0,
             "reader.maxheight" : 0,
@@ -128,13 +126,15 @@ class CantoCursesGui(CommandHandler):
 
         # Initial tag populate.
 
-        item_tags = []
+        self.updates = []
+
         for tag, URL in self.tracked_feeds:
             log.info("Tracking [%s] (%s)" % (tag, URL))
             t = Tag(tag, self.callbacks)
-            item_tags.append(tag)
 
-        self.updates = []
+        self.eval_tags()
+        item_tags = [ t.tag for t in self.vars["curtags"]]
+
         self.backend.write("ITEMS", item_tags)
         self.items(self.wait_response("ITEMS")[1])
 
@@ -273,6 +273,15 @@ class CantoCursesGui(CommandHandler):
             # Make sure size restrictions are positive integers
             for subattr in [".maxheight", ".maxwidth"]:
                 self._val_uint(wintype + subattr)
+
+    def eval_tags(self):
+        r = re.compile(self.config["tags"])
+        for tag in self.vars["alltags"]:
+            if r.match(tag.tag):
+                self.vars["curtags"].append(tag)
+
+        if not self.vars["curtags"]:
+            log.warn("NOTE: Current 'tags' setting eliminated all tags!")
 
     def configs(self, given):
         if "CantoCurses" not in given:
