@@ -422,6 +422,10 @@ class CantoCursesGui(CommandHandler):
         self.set_opt(opt, not self.config[opt])
 
     def set_opt(self, option, value):
+
+        # XXX : Note that set_opt performs *no* validation and expects its
+        # (internal) caller to have ensured that it's valid.
+
         changed = False
         if option not in self.config or self.config[option] != value:
             self.config[option] = value
