@@ -34,8 +34,6 @@ class TagList(GuiBase):
         # Callback information
         self.callbacks = callbacks
 
-        self.tags = callbacks["get_var"]("curtags")
-
         # Holster for a list of items for batch operations.
         self.got_items = None
 
@@ -312,8 +310,10 @@ class TagList(GuiBase):
         return t
 
     def refresh(self):
+        self.tags = self.callbacks["get_var"]("curtags")
         self.max_offset = -1 * self.height
         idx = 0
+
         for tag in self.visible_tags(self.tags):
             ml = tag.refresh(self.width, idx)
 

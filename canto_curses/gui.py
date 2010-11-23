@@ -112,7 +112,7 @@ class CantoCursesGui(CommandHandler):
         self.backend.write("WATCHCONFIGS", u"")
 
         self.backend.write("CONFIGS", [])
-        self.configs(self.wait_response("CONFIGS")[1])
+        self.prot_configs(self.wait_response("CONFIGS")[1])
 
         log.debug("FINAL CONFIG:\n%s" % self.config)
 
@@ -136,10 +136,14 @@ class CantoCursesGui(CommandHandler):
         item_tags = [ t.tag for t in self.vars["curtags"]]
 
         self.backend.write("ITEMS", item_tags)
-        self.items(self.wait_response("ITEMS")[1])
+        self.prot_items(self.wait_response("ITEMS")[1])
 
         # Start watching all given tags.
         self.backend.write("WATCHTAGS", item_tags)
+
+        # Start watching for new and deleted tags.
+        self.backend.write("WATCHNEWTAGS", [])
+        self.backend.write("WATCHDELTAGS", [])
 
         log.debug("Starting curses.")
         self.screen = Screen(self.backend.responses, self.callbacks)
@@ -275,6 +279,9 @@ class CantoCursesGui(CommandHandler):
                 self._val_uint(wintype + subattr)
 
     def eval_tags(self):
+        prevtags = self.vars["curtags"]
+        self.vars["curtags"] = []
+
         r = re.compile(self.config["tags"])
         for tag in self.vars["alltags"]:
             if r.match(tag.tag):
@@ -283,7 +290,13 @@ class CantoCursesGui(CommandHandler):
         if not self.vars["curtags"]:
             log.warn("NOTE: Current 'tags' setting eliminated all tags!")
 
-    def configs(self, given):
+        # If evaluated tags differ, we need to refresh.
+
+        if prevtags != self.vars["curtags"] and self.screen:
+            log.debug("Evaluated tags changed, refresh.")
+            self._refresh()
+
+    def prot_configs(self, given):
         if "CantoCurses" not in given:
             return
 
@@ -303,7 +316,7 @@ class CantoCursesGui(CommandHandler):
         if self.screen:
             self.winch()
 
-    def attributes(self, d):
+    def prot_attributes(self, d):
         for given_id in d:
             if not d[given_id]:
                 # As of 08/08 this shouldn't happen ever.
@@ -324,7 +337,7 @@ class CantoCursesGui(CommandHandler):
                         a = char_ref_convert(a)
                     item.content[k] = a
 
-    def items(self, updates):
+    def prot_items(self, updates):
         needed_attrs = {}
         unprotect = {"auto":[]}
 
@@ -355,9 +368,26 @@ class CantoCursesGui(CommandHandler):
 
         self.vars["needs_refresh"] = True
 
-    def tagchange(self, tag):
+    def prot_tagchange(self, tag):
         if tag not in self.updates:
             self.updates.append(tag)
+
+    def prot_newtags(self, tags):
+        for tag in tags:
+            if tag not in [ t.tag for t in self.vars["alltags"] ]:
+                log.debug("Adding tag %s" % tag)
+                Tag(tag, self.callbacks)
+            else:
+                log.warn("Got NEWTAG for already existing tag!")
+        self.eval_tags()
+
+    def prot_deltags(self, tags):
+        for tag in tags:
+            strtags = [ t.tag for t in self.vars["alltags"] ]
+            if tag in strtags:
+                del self.vars["alltags"][strtags.index(tag)]
+                break
+        self.eval_tags()
 
     def var(self, args):
         t, r = self._first_term(args,\
@@ -552,14 +582,9 @@ class CantoCursesGui(CommandHandler):
                 if not self.command(cmd[1]):
                     self.screen.command(cmd[1])
 
-            elif cmd[0] == "ATTRIBUTES":
-                self.attributes(cmd[1])
-            elif cmd[0] == "CONFIGS":
-                self.configs(cmd[1])
-            elif cmd[0] == "ITEMS":
-                self.items(cmd[1])
-            elif cmd[0] == "TAGCHANGE":
-                self.tagchange(cmd[1])
+            protfunc = "prot_" + cmd[0].lower()
+            if hasattr(self, protfunc):
+                getattr(self, protfunc)(cmd[1])
 
             if self.vars["needs_refresh"]:
                 log.debug("Needed refresh")
