@@ -59,13 +59,14 @@ class CantoCurses(CantoClient):
         if self.args():
             sys.exit(-1)
 
-        self.start_daemon()
-
-        # The daemon is running, init our base class, start trying to connect to
-        # the daemon.
-
         try:
-            CantoClient.__init__(self, self.socket_path)
+            if self.port < 0:
+                # If we're running locally, ensure daemon is running
+                self.start_daemon()
+                CantoClient.__init__(self, self.socket_path)
+            else:
+                CantoClient.__init__(self, None,\
+                        port = self.port, address = self.addr)
         except Exception, e:
             log.error("Error: %s" % e)
             sys.exit(-1)
