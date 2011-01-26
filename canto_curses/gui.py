@@ -135,6 +135,13 @@ class CantoCursesGui(CommandHandler):
         self.eval_tags()
         item_tags = [ t.tag for t in self.vars["curtags"]]
 
+        # We've got the config, and the tags, go ahead and
+        # fire up curses.
+
+        log.debug("Starting curses.")
+        self.screen = Screen(self.backend.responses, self.callbacks)
+        self.screen.refresh()
+
         self.backend.write("ITEMS", item_tags)
         self.prot_items(self.wait_response("ITEMS")[1])
 
@@ -144,10 +151,6 @@ class CantoCursesGui(CommandHandler):
         # Start watching for new and deleted tags.
         self.backend.write("WATCHNEWTAGS", [])
         self.backend.write("WATCHDELTAGS", [])
-
-        log.debug("Starting curses.")
-        self.screen = Screen(self.backend.responses, self.callbacks)
-        self.screen.refresh()
 
     def wait_response(self, cmd):
         log.debug("waiting on %s" % cmd)
