@@ -142,8 +142,8 @@ class CantoCursesGui(CommandHandler):
         self.screen = Screen(self.backend.responses, self.callbacks)
         self.screen.refresh()
 
-        self.backend.write("ITEMS", item_tags)
-        self.prot_items(self.wait_response("ITEMS")[1])
+        for tag in item_tags:
+            self.backend.write("ITEMS", [tag])
 
         # Start watching all given tags.
         self.backend.write("WATCHTAGS", item_tags)
