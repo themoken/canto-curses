@@ -33,8 +33,7 @@ class Reader(GuiBase):
         enum_links = self.callbacks["get_opt"]("reader.enumerate_links")
 
         save = { "desc" : show_desc,
-                 "enum" : enum_links,
-                 "offset" : self.offset }
+                 "enum" : enum_links }
 
         # Particulars have changed, re-render.
         if self.saved != save or self.waiting_on_content:
