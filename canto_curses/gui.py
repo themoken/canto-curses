@@ -459,13 +459,8 @@ class CantoCursesGui(CommandHandler):
         # XXX : Note that set_opt performs *no* validation and expects its
         # (internal) caller to have ensured that it's valid.
 
-        changed = False
         if option not in self.config or self.config[option] != value:
             self.config[option] = value
-            changed = True
-
-        if changed:
-            self.screen.refresh()
             self.backend.write("SETCONFIGS",\
                     { "CantoCurses" : { option : unicode(value) } })
 
