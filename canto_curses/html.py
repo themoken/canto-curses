@@ -94,7 +94,7 @@ class CantoHTML(HTMLParser):
                 self.link_text = ""
                 self.link_href = ""
                 self.link_open = False
-                self.result += "%0"
+                self.result += "[" + unicode(len(self.links)) + "]%0"
 
         elif tag in ["img"]:
             if open:
@@ -102,8 +102,9 @@ class CantoHTML(HTMLParser):
                     return
                 if "alt" not in attrs:
                     attrs["alt"] = ""
-                self.handle_data("%4" + attrs["alt"] + "%0")
                 self.links.append(("image", attrs["src"], attrs["alt"]))
+                self.handle_data("%4" + attrs["alt"] +\
+                        "[" + unicode(len(self.links)) + "]%0")
 
         elif tag in [u"h" + unicode(x) for x in xrange(1,7)]:
             if open:
