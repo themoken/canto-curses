@@ -297,6 +297,7 @@ class TagList(GuiBase):
     @command_format([("item", "sel_or_item")])
     def cmd_reader(self, **kwargs):
         self.callbacks["set_var"]("reader_item", kwargs["item"])
+        self.callbacks["set_var"]("reader_offset", 0)
         self.callbacks["add_window"](Reader)
 
     def visible_tags(self, tags):

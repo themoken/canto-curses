@@ -27,6 +27,7 @@ class CantoCursesGui(CommandHandler):
 
         self.vars = {
             "reader_item" : None,
+            "reader_offset" : 0,
             "selected" : None,
             "curtags" : [],
             "alltags" : [],

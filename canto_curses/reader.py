@@ -20,7 +20,6 @@ class Reader(GuiBase):
     def init(self, pad, callbacks):
         self.pad = pad
 
-        self.offset = 0
         self.max_offset = 0
         self.saved = {}
         self.waiting_on_content = False
@@ -31,6 +30,7 @@ class Reader(GuiBase):
         self.height, self.width = self.pad.getmaxyx()
         show_desc = self.callbacks["get_opt"]("reader.show_description")
         enum_links = self.callbacks["get_opt"]("reader.enumerate_links")
+        offset = self.callbacks["get_var"]("reader_offset")
 
         save = { "desc" : show_desc,
                  "enum" : enum_links }
@@ -48,14 +48,16 @@ class Reader(GuiBase):
 
             # Update offset based on new display properties.
             self.max_offset = max((lines - 1) - (self.height - 1), 0)
-            self.offset = min(self.offset, self.max_offset)
+
+            offset = min(offset, self.max_offset)
+            self.callbacks["set_var"]("reader_offset", offset)
 
         # Overwrite visible pad with relevant area of pre-rendered pad.
         self.pad.erase()
 
         realheight = min(self.height, self.fullpad.getmaxyx()[0]) - 1
 
-        self.fullpad.overwrite(self.pad, self.offset, 0, 0, 0,\
+        self.fullpad.overwrite(self.pad, offset, 0, 0, 0,\
                 realheight, self.width - 1)
 
         self.pad.move(realheight, 0)
@@ -158,9 +160,11 @@ class Reader(GuiBase):
         self._relscroll(self.height - 1)
 
     def _relscroll(self, factor):
-        self.offset = self.offset + factor
-        self.offset = min(self.offset, self.max_offset)
-        self.offset = max(self.offset, 0)
+        offset = self.callbacks["get_var"]("reader_offset")
+        offset += factor
+        offset = min(offset, self.max_offset)
+        offset = max(offset, 0)
+        self.callbacks["set_var"]("reader_offset", offset)
         self.callbacks["set_var"]("needs_redraw", True)
 
     def is_input(self):
