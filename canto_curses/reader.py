@@ -74,7 +74,7 @@ class Reader(GuiBase):
         if sel:
             self.links = [("link",sel.content["link"],"mainlink")]
 
-            s = "%B" + sel.content["title"] + "%b\n"
+            s = "%1%B" + sel.content["title"] + "%b\n"
 
             # We use the description for most reader content, so if it hasn't
             # been fetched yet then grab that from the server now and set
@@ -109,7 +109,7 @@ class Reader(GuiBase):
 
                         if t == "link":
                             link_text = "%5" + link_text + "%0"
-                        elif t == "img":
+                        elif t == "image":
                             link_text = "%4" + link_text + "%0"
 
                         s += link_text
