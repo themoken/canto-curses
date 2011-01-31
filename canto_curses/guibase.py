@@ -44,8 +44,6 @@ class GuiBase(CommandHandler):
         return r
 
     def _fork(self, path, href, text):
-        href = encoder(href)
-
         pid = os.fork()
         if not pid :
             # A lot of programs don't appreciate
@@ -60,6 +58,7 @@ class GuiBase(CommandHandler):
                 os.dup2(fd, sys.stdout.fileno())
 
             path = path.replace("%u", href)
+            path = encoder(path)
 
             os.execv("/bin/sh", ["/bin/sh", "-c", path])
 
