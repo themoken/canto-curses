@@ -53,10 +53,12 @@ class CantoCurses(CantoClient):
         self.done = False
 
         self.short_args = 'v'
-        if self.common_args(self.short_args):
+        optl = self.common_args(self.short_args)
+
+        if optl == -1:
             sys.exit(-1)
 
-        if self.args():
+        if self.args(optl):
             sys.exit(-1)
 
         try:
@@ -83,13 +85,7 @@ class CantoCurses(CantoClient):
         # Evaluate anything in the target /plugins directory.
         try_plugins(self.conf_dir)
 
-    def args(self):
-        try:
-            optlist = getopt.getopt(sys.argv[1:], self.short_args, [""])[0]
-        except getopt.GetoptError, e:
-            log.error("Error: %s" % e.msg)
-            return -1
-
+    def args(self, optlist):
         for opt, arg in optlist:
             if opt in ["-v"]:
                 rootlog = logging.getLogger()
