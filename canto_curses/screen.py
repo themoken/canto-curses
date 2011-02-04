@@ -6,6 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from canto_next.plugins import Plugin
+
 from command import CommandHandler, command_format
 from taglist import TagList
 from input import InputBox
@@ -31,9 +33,13 @@ log = logging.getLogger("SCREEN")
 # The Screen class is also in charge of honoring the window specific
 # configuration options. Like window.{maxwidth,maxheight,float}.
 
+class ScreenPlugin(Plugin):
+    pass
+
 class Screen(CommandHandler):
     def __init__(self, user_queue, callbacks, types = [InputBox, TagList]):
         CommandHandler.__init__(self)
+        self.plugin_class = ScreenPlugin
         self.user_queue = user_queue
         self.callbacks = callbacks
         self.layout = "default"

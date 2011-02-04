@@ -6,6 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from canto_next.plugins import Plugin
 from command import CommandHandler, command_format
 from html import html_entity_convert, char_ref_convert
 from screen import Screen
@@ -17,9 +18,13 @@ import re
 
 log = logging.getLogger("GUI")
 
+class GuiPlugin(Plugin):
+    pass
+
 class CantoCursesGui(CommandHandler):
     def __init__(self, backend):
         CommandHandler.__init__(self)
+        self.plugin_class = GuiPlugin
         self.backend = backend
         self.screen = None
 

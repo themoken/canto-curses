@@ -7,9 +7,8 @@
 #   published by the Free Software Foundation.
 
 from command import CommandHandler, command_format
-
 from canto_next.encoding import encoder
-
+from canto_next.plugins import Plugin
 import logging
 
 log = logging.getLogger("COMMON")
@@ -17,7 +16,13 @@ log = logging.getLogger("COMMON")
 import sys
 import os
 
+class BasePlugin(Plugin):
+    pass
+
 class GuiBase(CommandHandler):
+    def __init__(self):
+        CommandHandler.__init__(self)
+        self.plugin_class = BasePlugin
 
     def input(self, prompt):
         return self.callbacks["input"](prompt)

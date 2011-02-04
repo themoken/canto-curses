@@ -24,6 +24,7 @@
 # based on Textbox.
 
 from canto_next.encoding import encoder
+from canto_next.plugins import Plugin
 from guibase import GuiBase
 
 import logging
@@ -32,7 +33,14 @@ log = logging.getLogger("INPUT")
 import curses
 from curses import ascii
 
+class InputPlugin(Plugin):
+    pass
+
 class InputBox(GuiBase):
+    def __init__(self):
+        GuiBase.__init__(self)
+        self.plugin_class = InputPlugin
+
     def init(self, pad, callbacks):
         self.pad = pad
 

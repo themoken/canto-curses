@@ -6,6 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from canto_next.plugins import PluginHandler, Plugin, add_arg_transform
+
 import traceback
 import logging
 import curses
@@ -14,8 +16,7 @@ log = logging.getLogger("COMMAND")
 
 def command_format(types):
     def cf(fn):
-        def cfdec(self, obj, **kwargs):
-
+        def _command_args(self, obj, **kwargs):
             rem = kwargs["args"]
             realkwargs = {}
 
@@ -37,62 +38,39 @@ def command_format(types):
 
             # Builtin command signature.
             if self == obj:
-                return fn(self, **realkwargs)
+                return ([], realkwargs)
 
             # Plugin command signature.
             else:
-                return fn(self, obj, **realkwargs)
+                return ([obj], realkwargs)
 
-        return cfdec
+        add_arg_transform(fn, _command_args)
+        return fn
     return cf
 
-# CommandPlugin is the base class for all of the separate
-# plugin classes for each Gui object. Essentially this is
-# only so 'object' is in the class hierarchy so we can
-# use __subclasses__ on them.
-
-class CommandPlugin(object):
+class CommandPlugin(Plugin):
     pass
 
-class CommandHandler():
+class CommandHandler(PluginHandler):
     def __init__(self):
+        PluginHandler.__init__(self)
+        self.plugin_class = CommandPlugin
         self.meta = False
 
-    def _command_try_class(self, cls, command):
-        for attr in dir(cls):
-            if attr.startswith("cmd_"):
-                name = attr[4:].replace("_","-")
-                if command == name or command.startswith(name + " "):
-                    func = getattr(cls, attr)
-                    func(self, args=command[len(name):])
-                    return True
-        return False
-
     def command(self, command):
-        # self is the first class to check for commands. This behavior
-        # means that plugins can't override built-in behavior. It seems to me
-        # that overriding would be more of a place for a full Gui subclass.
+        if " " in command:
+            command, args = command.split(" ", 1)
+        else:
+            args = ""
 
-        clses = [self]
-
-        # Add (and, if necessary instantiate) any subclasses of the
-        # cmd plugin class. These attribute names are intentionally
-        # verbose to ensure that they aren't clobbered by anything else.
-
-        if hasattr(self, "plugin_cmd_class"):
-            if not hasattr(self, "plugin_cmd_subclass_instances"):
-                self.plugin_cmd_subclass_instances =\
-                        [c() for c in self.plugin_cmd_class.__subclasses__()]
-            clses += self.plugin_cmd_subclass_instances
-
-        for cls in clses:
+        attr = "cmd_" + command.replace("-","_")
+        if hasattr(self, attr):
             try:
-                if self._command_try_class(cls, command):
-                    return True
+                func = getattr(self, attr)
+                func(self, args = args)
             except Exception, e:
                 tb = traceback.format_exc(e)
-                log.error("Exception running command %s by class %s" %\
-                        (command, cls))
+                log.error("Exception running command %s" % command)
                 log.error("\n" + "".join(tb))
                 log.error("Continuing...")
 

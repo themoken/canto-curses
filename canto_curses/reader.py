@@ -6,6 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from canto_next.plugins import Plugin
+
 from theme import FakePad, WrapPad, theme_print, theme_lstrip
 from command import command_format
 from html import htmlparser
@@ -16,7 +18,14 @@ import curses
 
 log = logging.getLogger("READER")
 
+class ReaderPlugin(Plugin):
+    pass
+
 class Reader(GuiBase):
+    def __init__(self):
+        GuiBase.__init__(self)
+        self.plugin_class = ReaderPlugin
+
     def init(self, pad, callbacks):
         self.pad = pad
 

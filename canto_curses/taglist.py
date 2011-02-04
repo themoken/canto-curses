@@ -6,7 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from command import CommandPlugin, command_format
+from canto_next.plugins import Plugin
+from command import command_format
 from guibase import GuiBase
 from reader import Reader
 
@@ -21,10 +22,14 @@ log = logging.getLogger("TAGLIST")
 # This is the level at which commands are taken and the backend is communicated
 # with.
 
-class TagListCommand(CommandPlugin):
+class TagListPlugin(Plugin):
     pass
 
 class TagList(GuiBase):
+    def __init__(self):
+        GuiBase.__init__(self)
+        self.plugin_class = TagListPlugin
+
     def init(self, pad, callbacks):
         # Drawing information
         self.pad = pad
@@ -36,8 +41,6 @@ class TagList(GuiBase):
 
         # Holster for a list of items for batch operations.
         self.got_items = None
-
-        self.plugin_cmd_class = TagListCommand
 
         self.refresh()
 
