@@ -94,7 +94,7 @@ class TagList(GuiBase):
             s = self.callbacks["get_var"]("selected")
             if s:
                 return (True, [s], "")
-            if self.got_items:
+            if self.got_items != None:
                 log.debug("listof_items falling back on got_items")
                 return (True, self.got_items, "")
 
