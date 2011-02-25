@@ -327,11 +327,6 @@ class CantoCursesGui(CommandHandler):
 
     def prot_attributes(self, d):
         for given_id in d:
-            if not d[given_id]:
-                # As of 08/08 this shouldn't happen ever.
-                log.error("Caught item disappearing.")
-                continue
-
             for tag in self.vars["alltags"]:
                 item = tag.get_id(given_id)
                 if not item:
