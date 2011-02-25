@@ -63,16 +63,21 @@ class Screen(CommandHandler):
         # Start grabbing user input
         self.start_input_thread()
 
+    # Wrap curses.curs_set in exception handler
+    # because we don't really care if it's displayed
+    # on terminals that don't like it.
+
+    def curs_set(self, n):
+        try:
+            curses.curs_set(n)
+        except:
+            pass
+
     # Do initial curses setup. This should only be done on init, or after
     # endwin() (i.e. resize).
 
     def curses_setup(self):
-        # This can throw an exception, but we shouldn't care.
-        try:
-            # Turn off cursor.
-            curses.curs_set(0)
-        except:
-            pass
+        self.curs_set(0)
 
         try:
             curses.cbreak()
@@ -393,6 +398,7 @@ class Screen(CommandHandler):
 
     def input_callback(self, prompt):
         # Setup subedit
+        self.curs_set(1)
         self.input_done.clear()
         self.input_box.edit(prompt)
         self.sub_edit = True
@@ -403,6 +409,7 @@ class Screen(CommandHandler):
         # Grab the return and reset
         r = self.input_box.result
         self.input_box.reset()
+        self.curs_set(0)
         return r
 
     def die_callback(self, window):
