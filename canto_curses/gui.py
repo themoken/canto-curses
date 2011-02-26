@@ -115,6 +115,20 @@ class CantoCursesGui(CommandHandler):
             "color.4" : curses.COLOR_GREEN,
         }
 
+        # Configuration options that, on change, require a refresh, in
+        # regexen.
+
+        self.refresh_configs = [re.compile(x) for x in\
+                [ ".*enumerated", ".*hide_empty_tags",
+                    ".*show_description", ".*enumerate_links" ]]
+
+        # Configuration options that, on change, require an ncurses
+        # reset or windows to be redone.
+
+        self.winch_configs = [re.compile(x) for x in\
+                [ "color\.*", ".*align", ".*float", ".*maxheight",
+                    ".*maxwidth"]]
+
         self.backend.write("WATCHCONFIGS", u"")
 
         self.backend.write("CONFIGS", [])
@@ -314,16 +328,21 @@ class CantoCursesGui(CommandHandler):
         for k in given["CantoCurses"]:
             self.config[k] = given["CantoCurses"][k]
 
+        # Need to validate to allow for content changes.
         self.validate_config()
 
-        self.def_config = None
+        changed_opts = []
 
-        # This can be called before screen exists (initial pop.).
-        # Simulate a resize so that any curses options, window
-        # size stuff automatically takes effect.
+        for k in self.config:
+            if k not in self.def_config or\
+                    self.def_config[k] != self.config[k]:
+                changed_opts.append(k)
 
-        if self.screen:
-            self.winch()
+        for k in self.def_config:
+            if k not in self.config:
+                changed_opts.append(k)
+
+        self.check_opt_refresh(changed_opts)
 
     def prot_attributes(self, d):
         for given_id in d:
@@ -455,6 +474,34 @@ class CantoCursesGui(CommandHandler):
             return
         self.set_opt(opt, not self.config[opt])
 
+    # Pretend to SIGWINCH (causing screen to regenerate
+    # all windows) if any of the refresh_configs have changed.
+
+    def check_opt_refresh(self, changed_opts):
+        if not self.screen:
+            return
+
+        should_winch = False
+        for opt in changed_opts:
+            for regx in self.winch_configs:
+                if regx.match(opt):
+                    should_winch = True
+
+        # We only winch once. It would seem that WINCH would make the next loop
+        # (refresh configs) moot and we should return.  However, if we block (as
+        # on input), then the refresh will take place immediately while the
+        # winch has to require queue action.
+
+        if should_winch:
+            self.winch()
+
+        for opt in changed_opts:
+            for regx in self.refresh_configs:
+                if regx.match(opt):
+                    log.info("COR: matched %s" % opt)
+                    self.screen.refresh()
+                    return
+
     def set_opt(self, option, value):
 
         # XXX : Note that set_opt performs *no* validation and expects its
@@ -462,6 +509,7 @@ class CantoCursesGui(CommandHandler):
 
         if option not in self.config or self.config[option] != value:
             self.config[option] = value
+            self.check_opt_refresh([option])
             self.backend.write("SETCONFIGS",\
                     { "CantoCurses" : { option : unicode(value) } })
 
