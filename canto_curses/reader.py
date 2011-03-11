@@ -15,6 +15,7 @@ from guibase import GuiBase
 
 import logging
 import curses
+import re
 
 log = logging.getLogger("READER")
 
@@ -34,6 +35,8 @@ class Reader(GuiBase):
         self.waiting_on_content = False
 
         self.callbacks = callbacks
+
+        self.quote_rgx = re.compile(u"[\\\"](.*?)[\\\"]")
 
     def refresh(self):
         self.height, self.width = self.pad.getmaxyx()
@@ -108,7 +111,7 @@ class Reader(GuiBase):
                 self.links += links
 
                 if show_description:
-                    s += content
+                    s += self.quote_rgx.sub(u"%6\"\\1\"%0", content)
 
                 if enumerate_links:
                     s += "\n\n"

@@ -113,6 +113,7 @@ class CantoCursesGui(CommandHandler):
             "color.2" : curses.COLOR_YELLOW,
             "color.3" : curses.COLOR_BLUE,
             "color.4" : curses.COLOR_GREEN,
+            "color.5" : curses.COLOR_MAGENTA,
         }
 
         # Configuration options that, on change, require a refresh, in
