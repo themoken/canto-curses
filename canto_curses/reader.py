@@ -139,7 +139,11 @@ class Reader(GuiBase):
                 s = theme_print(pad, s, self.width, " ", " ")
                 lines += 1
 
-        return lines
+        # Return one extra line because the rest of the reader
+        # code knows to avoid the dead cell on the bottom right
+        # of every curses pad.
+
+        return lines + 1
 
     def eprompt(self, prompt):
         return self._cfg_set_prompt("reader.enumerate_links", "links: ")
