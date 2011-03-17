@@ -61,7 +61,7 @@ class CantoCursesGui(CommandHandler):
         self.config = {
             "browser" : "firefox %u",
             "txt_browser" : False,
-            "tags" : r".*",
+            "tags" : r"maintag:.*",
             "update.auto.interval" : 60,
             "reader.maxwidth" : 0,
             "reader.maxheight" : 0,
@@ -137,9 +137,11 @@ class CantoCursesGui(CommandHandler):
 
         log.debug("FINAL CONFIG:\n%s" % self.config)
 
-        self.backend.write("LISTFEEDS", u"")
-        r = self.wait_response("LISTFEEDS")
-        self.tracked_feeds = r[1]
+        self.backend.write("LISTTAGS", u"")
+        r = self.wait_response("LISTTAGS")
+        for tag in r[1]:
+            log.info("Tracking [%s]" % (tag))
+            t = Tag(tag, self.callbacks)
 
         self.backend.write("LISTTRANSFORMS", u"")
         r = self.wait_response("LISTTRANSFORMS")
@@ -147,14 +149,7 @@ class CantoCursesGui(CommandHandler):
 
         # Initial tag populate.
 
-        self.updates = []
-
-        for tag, URL in self.tracked_feeds:
-            log.info("Tracking [%s] (%s)" % (tag, URL))
-            t = Tag(tag, self.callbacks)
-
         self.eval_tags()
-        item_tags = [ t.tag for t in self.vars["curtags"]]
 
         # We've got the config, and the tags, go ahead and
         # fire up curses.
@@ -163,6 +158,7 @@ class CantoCursesGui(CommandHandler):
         self.screen = Screen(self.backend.responses, self.callbacks)
         self.screen.refresh()
 
+        item_tags = [ t.tag for t in self.vars["curtags"]]
         for tag in item_tags:
             self.backend.write("ITEMS", [tag])
 
@@ -172,6 +168,9 @@ class CantoCursesGui(CommandHandler):
         # Start watching for new and deleted tags.
         self.backend.write("WATCHNEWTAGS", [])
         self.backend.write("WATCHDELTAGS", [])
+
+        # Holster for future updated tags.
+        self.updates = []
 
     def wait_response(self, cmd):
         log.debug("waiting on %s" % cmd)

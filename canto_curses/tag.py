@@ -82,7 +82,10 @@ class Tag(list):
 
     def render_header(self, mwidth, pad):
         enumerated = self.callbacks["get_opt"]("taglist.tags_enumerated")
-        header = self.tag + u"\n"
+
+        # Make sure to strip out the category from category:name
+        header = self.tag.split(':', 1)[1] + u"\n"
+
         if enumerated:
             curtags = self.callbacks["get_var"]("curtags")
             header = ("[%d] " % curtags.index(self)) + header
