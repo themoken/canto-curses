@@ -56,6 +56,11 @@ class Tag(list):
             if item.id == id:
                 list.remove(self, item)
 
+    # Remove all stories from this tag.
+
+    def reset(self):
+        del self[:]
+
     def get_id(self, id):
         for item in self:
             if item.id == id:

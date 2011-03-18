@@ -143,10 +143,6 @@ class CantoCursesGui(CommandHandler):
             log.info("Tracking [%s]" % (tag))
             t = Tag(tag, self.callbacks)
 
-        self.backend.write("LISTTRANSFORMS", u"")
-        r = self.wait_response("LISTTRANSFORMS")
-        self.vars["transforms"] = r[1]
-
         # Initial tag populate.
 
         self.eval_tags()
@@ -518,17 +514,25 @@ class CantoCursesGui(CommandHandler):
             return self.config[option]
         return None
 
+    # This accepts arbitrary strings, but gives the right prompt.
     def transform(self, args):
         if not args:
-            args = self.screen.input("transform: ")
+            args = self.screen.input_callback("transform: ")
         return (True, args, None)
 
+    # Setup a permanent, config based transform.
     @command_format([("transform","transform")])
     def cmd_transform(self, **kwargs):
         self.backend.write("SETCONFIGS",\
                     { "defaults" :
                         { "global_transform" : kwargs["transform"] }
                     })
+        self._refresh()
+
+    # Setup a temporary, per socket transform.
+    @command_format([("transform","transform")])
+    def cmd_temp_transform(self, **kwargs):
+        self.backend.write("TRANSFORM", kwargs["transform"])
         self._refresh()
 
     def winch(self):
@@ -551,7 +555,10 @@ class CantoCursesGui(CommandHandler):
         self._refresh()
 
     def _refresh(self):
-        self.backend.write("ITEMS", [ t.tag for t in self.vars["curtags"]])
+        for tag in self.vars["curtags"]:
+            tag.reset()
+            log.debug("empty tag: %s" % tag)
+            self.backend.write("ITEMS", [ tag.tag ])
 
     def key(self, k):
         r = CommandHandler.key(self, k)
