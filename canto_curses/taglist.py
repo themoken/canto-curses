@@ -34,7 +34,6 @@ class TagList(GuiBase):
         # Drawing information
         self.pad = pad
         self.height, self.width = self.pad.getmaxyx()
-        self.offset = 0
 
         # Callback information
         self.callbacks = callbacks
@@ -76,9 +75,10 @@ class TagList(GuiBase):
                 yield story
 
     def first_visible_item(self):
+        offset = self.callbacks["get_var"]("offset")
+
         for item in self.all_items():
-            if self.offset >= item.min_offset and\
-                    self.offset <= item.max_offset:
+            if offset >= item.min_offset and offset <= item.max_offset:
                 return item
 
     # Prompt that ensures the items are enumerated first
@@ -211,11 +211,18 @@ class TagList(GuiBase):
         else:
             self._set_cursor(item)
 
+    # Ensures that offset is set such that the current item
+    # is visible.
+
     def adjust_offset(self, item):
-        if self.offset > item.max_offset:
-            self.offset = min(item.max_offset, self.max_offset)
-        elif self.offset < item.min_offset:
-            self.offset = max(item.min_offset, 0)
+        offset = self.callbacks["get_var"]("offset")
+
+        if offset > item.max_offset:
+            offset = min(item.max_offset, self.max_offset)
+        elif offset < item.min_offset:
+            offset = max(item.min_offset, 0)
+
+        self.callbacks["set_var"]("offset", offset)
 
     def _set_cursor(self, item):
         # May end up as None
@@ -254,6 +261,7 @@ class TagList(GuiBase):
 
     @command_format([])
     def cmd_page_up(self, **kwargs):
+        offset = self.callbacks["get_var"]("offset")
         scroll = self.height - 1
 
         sel = self.callbacks["get_var"]("selected")
@@ -265,18 +273,21 @@ class TagList(GuiBase):
                 newsel = item
 
             if newsel:
-                item_offset = sel.max_offset - self.offset
-                self.offset = min(newsel.max_offset - item_offset,
-                        self.max_offset)
-                self._set_cursor(newsel)
+                item_offset = sel.max_offset - offset
+                offset = min(newsel.max_offset - item_offset, self.max_offset)
         else:
-            self.offset = self.offset - scroll
+            offset -= scroll
 
-        self.offset = max(self.offset, 0)
+        offset = max(offset, 0)
+
+        # _set_cursor relies on the offset var, set it first.
+        self.callbacks["set_var"]("offset", offset)
+        self._set_cursor(newsel)
         self.callbacks["set_var"]("needs_redraw", True)
 
     @command_format([])
     def cmd_page_down(self, **kwargs):
+        offset = self.callbacks["get_var"]("offset")
         scroll = self.height - 1
 
         sel = self.callbacks["get_var"]("selected")
@@ -288,13 +299,16 @@ class TagList(GuiBase):
                 newsel = item
 
             if newsel:
-                item_offset = sel.max_offset - self.offset
-                self.offset = newsel.max_offset - item_offset
-                self._set_cursor(newsel)
+                item_offset = sel.max_offset - offset
+                offset = newsel.max_offset - item_offset
         else:
-            self.offset = self.offset + scroll
+            offset += scroll
 
-        self.offset = min(self.offset, self.max_offset)
+        offset = min(offset, self.max_offset)
+
+        # _set_cursor relies on the offset var, set it first.
+        self.callbacks["set_var"]("offset", offset)
+        self._set_cursor(newsel)
         self.callbacks["set_var"]("needs_redraw", True)
 
     @command_format([("item", "sel_or_item")])
@@ -361,6 +375,7 @@ class TagList(GuiBase):
     def redraw(self):
         self.pad.erase()
 
+        offset = self.callbacks["get_var"]("offset")
         spent_lines = 0
 
         # We use 'done' when we know we've rendered all the
@@ -378,9 +393,8 @@ class TagList(GuiBase):
             # If we're still off screen up after last tag, but this
             # tag will put us over the top, partial render.
 
-            if spent_lines < self.offset and\
-                    taglines > (self.offset - spent_lines):
-                start = (self.offset - spent_lines)
+            if spent_lines < offset and taglines > (offset - spent_lines):
+                start = (offset - spent_lines)
 
                 # min() so we don't try to write too much if the
                 # first tag is also the only tag on screen.
@@ -397,19 +411,18 @@ class TagList(GuiBase):
                         maxr - 1, self.width - 1)
 
             # Elif we're possible visible
-            elif spent_lines >= self.offset:
+            elif spent_lines >= offset:
 
                 # If we're *entirely* visible, render the whole thing
-                if spent_lines < ((self.offset + self.height) - taglines):
-                    dest_start = (spent_lines - self.offset)
+                if spent_lines < ((offset + self.height) - taglines):
+                    dest_start = (spent_lines - offset)
                     tag.pad.overwrite(self.pad, 0, 0, dest_start, 0,\
                             dest_start + taglines - 1 , self.width - 1)
 
                 # Elif we're partially visible (last tag).
-                elif spent_lines < (self.offset + self.height):
-                    dest_start = (spent_lines - self.offset)
-                    maxr = dest_start +\
-                            ((self.offset + self.height) - spent_lines)
+                elif spent_lines < (offset + self.height):
+                    dest_start = (spent_lines - offset)
+                    maxr = dest_start + ((offset + self.height) - spent_lines)
                     tag.pad.overwrite(self.pad, 0, 0, dest_start, 0,\
                             maxr - 1, self.width - 1)
                     done = True

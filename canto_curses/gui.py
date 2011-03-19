@@ -34,6 +34,7 @@ class CantoCursesGui(CommandHandler):
             "reader_item" : None,
             "reader_offset" : 0,
             "selected" : None,
+            "offset" : 0,
             "curtags" : [],
             "alltags" : [],
             "needs_refresh" : False,
