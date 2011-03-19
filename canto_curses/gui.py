@@ -558,7 +558,7 @@ class CantoCursesGui(CommandHandler):
     def _refresh(self):
         for tag in self.vars["curtags"]:
             tag.reset()
-            log.debug("empty tag: %s" % tag)
+            self.vars["selected"] = None
             self.backend.write("ITEMS", [ tag.tag ])
 
     def key(self, k):
