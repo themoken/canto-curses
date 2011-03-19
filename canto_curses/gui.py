@@ -6,6 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+COMPATIBLE_VERSION = 0.1
+
 from canto_next.plugins import Plugin
 from command import CommandHandler, command_format
 from html import html_entity_convert, char_ref_convert
@@ -14,6 +16,7 @@ from tag import Tag
 
 import logging
 import curses
+import sys
 import re
 
 log = logging.getLogger("GUI")
@@ -130,6 +133,19 @@ class CantoCursesGui(CommandHandler):
         self.winch_configs = [re.compile(x) for x in\
                 [ "color\.*", ".*align", ".*float", ".*maxheight",
                     ".*maxwidth"]]
+
+        # Make sure that we're not mismatching versions.
+
+        self.backend.write("VERSION", u"")
+        r = self.wait_response("VERSION")
+        if r[1] != COMPATIBLE_VERSION:
+            s = "Incompatible daemon version (%s) detected! Expected: %s" %\
+                (r[1], COMPATIBLE_VERSION)
+            log.debug(s)
+            print s
+            sys.exit(-1)
+        else:
+            log.debug("Got compatible daemon version.")
 
         self.backend.write("WATCHCONFIGS", u"")
 
