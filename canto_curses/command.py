@@ -192,7 +192,7 @@ class CommandHandler(PluginHandler):
             t = int(t)
         except:
             log.error("Can't parse %s as integer." % t)
-            return (None, None)
+            return (None, "")
         return (t, r)
 
     def _first_term(self, args, prompt):
