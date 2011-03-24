@@ -339,22 +339,24 @@ class TagList(GuiBase):
         self.callbacks["set_var"]("reader_offset", 0)
         self.callbacks["add_window"](Reader)
 
-    def visible_tags(self, tags):
+    def set_visible_tags(self):
         hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")
 
         t = []
-        for tag in tags:
+        for tag in self.tags:
             if hide_empty and len(tag) == 0:
                 continue
             t.append(tag)
-        return t
+
+        self.callbacks["set_var"]("taglist_visible_tags", t)
 
     def refresh(self):
         self.tags = self.callbacks["get_var"]("curtags")
         self.max_offset = -1 * self.height
         idx = 0
 
-        for tag in self.visible_tags(self.tags):
+        self.set_visible_tags()
+        for tag in self.callbacks["get_var"]("taglist_visible_tags"):
             ml = tag.refresh(self.width, idx)
 
             if len(ml) > 1:
@@ -408,7 +410,7 @@ class TagList(GuiBase):
 
         lines = self.height
 
-        for tag in self.visible_tags(self.tags):
+        for tag in self.callbacks["get_var"]("taglist_visible_tags"):
 
             taglines = tag.pad.getmaxyx()[0]
 

@@ -47,6 +47,7 @@ class CantoCursesGui(CommandHandler):
             "update_interval" : 0,
             "protected_ids" : [],
             "transforms" : [],
+            "taglist_visible_tags" : [],
         }
 
         self.callbacks = {
