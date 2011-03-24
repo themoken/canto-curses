@@ -90,28 +90,46 @@ class TagList(GuiBase):
         return self._cfg_set_prompt("taglist.tags_enumerated", prompt)
 
     def listof_items(self, args):
+        s = self.callbacks["get_var"]("selected")
+
         if not args:
-            s = self.callbacks["get_var"]("selected")
             if s:
                 return (True, [s], "")
             if self.got_items != None:
                 log.debug("listof_items falling back on got_items")
                 return (True, self.got_items, "")
 
-        ints = self._listof_int(args, len(list(self.all_items())),\
+        if s:
+            curint = self.idx_by_item(s)
+        else:
+            curint = 0
+
+        ints = self._listof_int(args, curint, len(list(self.all_items())),\
                 lambda : self.eprompt("items: "))
         return (True, filter(None, [ self.item_by_idx(i) for i in ints ]), "")
 
     def listof_tags(self, args):
-        if not args:
-            s = self.callbacks["get_var"]("selected")
-            if s:
-                for tag in self.tags:
-                    if s in tag:
-                        return (True, [tag], "")
+        s = self.callbacks["get_var"]("selected")
+        got_tag = None
+
+        if s:
+            for tag in self.tags:
+                if s in tag:
+                    got_tag = tag
+                    break
+            else:
                 raise Exception("Couldn't find tag of selection!")
 
-        ints = self._listof_int(args, len(self.tags),\
+        # If we have a selected tag and no args, return it automatically.
+        if not args and got_tag:
+            return (True, [got_tag], "")
+
+        if got_tag:
+            curint = self.tags.index(got_tag)
+        else:
+            curint = 0
+
+        ints = self._listof_int(args, curint, len(self.tags),\
                 lambda : self.teprompt("tags: "))
         return(True, [ self.tags[i] for i in ints ], "")
 

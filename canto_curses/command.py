@@ -137,7 +137,21 @@ class CommandHandler(PluginHandler):
 
         return None
 
-    def _listof_int(self, args, maxint, prompt):
+    # Convert a single argument into an integer, with special consideration
+    # for $ as the end of the range and . as the current. This can throw an
+    # exception on bad input.
+
+    def _convert_special(self, item, curint, maxint):
+        item = item.rstrip().lstrip()
+
+        if item == "$":
+            return maxint - 1
+        if item == ".":
+            return curint
+
+        return int(item)
+
+    def _listof_int(self, args, curint, maxint, prompt):
         if not args:
             args = prompt()
 
@@ -156,15 +170,15 @@ class CommandHandler(PluginHandler):
             if "-" in term:
                 a, b = term.split("-",1)
                 try:
-                    a = int(a)
-                    b = int(b)
+                    a = self._convert_special(a, curint, maxint)
+                    b = self._convert_special(b, curint, maxint)
                 except:
                     log.error("Can't parse %s as range" % term)
                     continue
                 r.extend(range(min(a, maxint), min(b + 1, maxint)))
             else:
                 try:
-                    term = int(term)
+                    term = self._convert_special(term, curint, maxint)
                 except:
                     log.error("Can't parse %s as integer" % term)
                     continue

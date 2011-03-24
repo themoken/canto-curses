@@ -149,7 +149,7 @@ class Reader(GuiBase):
         return self._cfg_set_prompt("reader.enumerate_links", "links: ")
 
     def listof_links(self, args):
-        ints = self._listof_int(args, len(self.links),\
+        ints = self._listof_int(args, 0, len(self.links),\
                 lambda : self.eprompt("links: "))
         return (True, [ self.links[i] for i in ints ], "")
 
