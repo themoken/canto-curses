@@ -54,6 +54,8 @@ class CantoCursesGui(CommandHandler):
             "get_var" : self.get_var,
             "set_opt" : self.set_opt,
             "get_opt" : self.get_opt,
+            "set_tag_opt" : self.set_tag_opt,
+            "get_tag_opt" : self.get_tag_opt,
             "write" : self.backend.write
         }
 
@@ -120,6 +122,12 @@ class CantoCursesGui(CommandHandler):
             "color.5" : curses.COLOR_MAGENTA,
         }
 
+        self.tag_config = {}
+
+        self.tag_template_config = {
+            "enumerated" : False,
+        }
+
         # Configuration options that, on change, require a refresh, in
         # regexen.
 
@@ -127,12 +135,17 @@ class CantoCursesGui(CommandHandler):
                 [ ".*enumerated", ".*hide_empty_tags",
                     ".*show_description", ".*enumerate_links" ]]
 
+        self.tag_refresh_configs = [ re.compile(x) for x in\
+                [ "enumerated" ]]
+
         # Configuration options that, on change, require an ncurses
         # reset or windows to be redone.
 
         self.winch_configs = [re.compile(x) for x in\
                 [ "color\.*", ".*align", ".*float", ".*maxheight",
                     ".*maxwidth"]]
+
+        self.tag_winch_configs = []
 
         # Make sure that we're not mismatching versions.
 
@@ -153,16 +166,11 @@ class CantoCursesGui(CommandHandler):
         self.prot_configs(self.wait_response("CONFIGS")[1])
 
         log.debug("FINAL CONFIG:\n%s" % self.config)
+        log.debug("FINAL TAG CONFIG:\n%s" % self.tag_config)
 
         self.backend.write("LISTTAGS", u"")
         r = self.wait_response("LISTTAGS")
-        for tag in r[1]:
-            log.info("Tracking [%s]" % (tag))
-            t = Tag(tag, self.callbacks)
-
-        # Initial tag populate.
-
-        self.eval_tags()
+        self.prot_newtags(r[1])
 
         # We've got the config, and the tags, go ahead and
         # fire up curses.
@@ -318,6 +326,18 @@ class CantoCursesGui(CommandHandler):
 
         return newconfig
 
+    def validate_one_tag_config(self, config, defconfig):
+        self._val_bool(config, defconfig, "enumerated")
+        return config
+
+    def validate_tag_config(self, config, defconfig):
+        for k in config:
+            onetagnew = config[k]
+            onetagdef = defconfig[k]
+            config[k] = self.validate_one_tag_config(onetagnew, onetagdef)
+
+        return config
+
     def eval_tags(self):
         prevtags = self.vars["curtags"]
         self.vars["curtags"] = []
@@ -366,8 +386,28 @@ class CantoCursesGui(CommandHandler):
             changed_opts = self._dict_diff(self.config, def_config)
             self.check_opt_refresh(changed_opts)
 
+        # Check for tag config changes.
 
-        self.check_opt_refresh(changed_opts)
+        given_tag_config = {}
+        for k in given.keys():
+            if k.startswith("Tag "):
+                given_tag_config[k] = given[k]
+
+        # If no changes, we're done here.
+        if not given_tag_config:
+            return
+
+        # Move over new tag configuration.
+        def_config = self.tag_config.copy()
+        for k in given_tag_config:
+            self.tag_config[k] = given_tag_config[k]
+
+        # Validate.
+        self.tag_config = self.validate_tag_config(self.tag_config,
+                def_config)
+
+        changed_opts = self._dict_diff(self.tag_config, def_config)
+        self.check_tag_opt_refresh(changed_opts)
 
     def prot_attributes(self, d):
         for given_id in d:
@@ -425,8 +465,18 @@ class CantoCursesGui(CommandHandler):
             if tag not in [ t.tag for t in self.vars["alltags"] ]:
                 log.debug("Adding tag %s" % tag)
                 Tag(tag, self.callbacks)
+
+                # If we don't have configuration for this
+                # tag already, substitute the default template.
+
+                tagheading = "Tag %s" % tag
+                if tagheading not in self.tag_config:
+                    log.debug("Using default tag config for %s" % tag)
+                    self.tag_config[tagheading] =\
+                        self.tag_template_config.copy()
             else:
                 log.warn("Got NEWTAG for already existing tag!")
+
         self.eval_tags()
 
     def prot_deltags(self, tags):
@@ -502,13 +552,13 @@ class CantoCursesGui(CommandHandler):
     # Pretend to SIGWINCH (causing screen to regenerate
     # all windows) if any of the refresh_configs have changed.
 
-    def check_opt_refresh(self, changed_opts):
+    def _check_opt_refresh(self, winch_configs, refresh_configs, changed_opts):
         if not self.screen:
             return
 
         should_winch = False
         for opt in changed_opts:
-            for regx in self.winch_configs:
+            for regx in winch_configs:
                 if regx.match(opt):
                     should_winch = True
 
@@ -521,11 +571,18 @@ class CantoCursesGui(CommandHandler):
             self.winch()
 
         for opt in changed_opts:
-            for regx in self.refresh_configs:
+            for regx in refresh_configs:
                 if regx.match(opt):
-                    log.info("COR: matched %s" % opt)
                     self.screen.refresh()
                     return
+
+    def check_opt_refresh(self, changed_opts):
+        return self._check_opt_refresh(self.winch_configs,
+                self.refresh_configs, changed_opts)
+
+    def check_tag_opt_refresh(self, changed_opts):
+        return self._check_opt_refresh(self.tag_winch_configs,
+                self.tag_refresh_configs, changed_opts)
 
     def set_opt(self, option, value):
 
@@ -541,6 +598,21 @@ class CantoCursesGui(CommandHandler):
     def get_opt(self, option):
         if option in self.config:
             return self.config[option]
+        return None
+
+    def set_tag_opt(self, tag, option, value):
+        tagheader = "Tag %s" % tag.tag
+        if option not in self.tag_config[tagheader] or\
+                self.tag_config[tagheader][option] != value:
+            self.tag_config[tagheader][option] = value
+            self.check_tag_opt_refresh([option])
+            self.backend.write("SETCONFIGS",\
+                    { tagheader : { option : unicode(value) } } )
+
+    def get_tag_opt(self, tag, option):
+        tagheader = "Tag %s" % tag.tag
+        if option in self.tag_config[tagheader]:
+            return self.tag_config[tagheader][option]
         return None
 
     # This accepts arbitrary strings, but gives the right prompt.
