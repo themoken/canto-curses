@@ -194,48 +194,48 @@ class CantoCursesGui(CommandHandler):
             else:
                 log.debug("waiting: %s != %s" % (r[0], cmd))
 
-    def _val_bool(self, attr):
-        if type(self.config[attr]) != bool:
-            if self.config[attr].lower() == "true":
-                self.config[attr] = True
-            elif self.config[attr].lower() == "false":
-                self.config[attr] = False
+    def _val_bool(self, config, defconfig, attr):
+        if type(config[attr]) != bool:
+            if config[attr].lower() == "true":
+                config[attr] = True
+            elif config[attr].lower() == "false":
+                config[attr] = False
             else:
-                self.config[attr] = self.def_config[attr]
+                config[attr] = def_config[attr]
                 log.error("%s must be boolean. Resetting to %s" %
-                        (attr, self.def_config[attr]))
+                        (attr, def_config[attr]))
 
-    def _val_uint(self, attr):
-        if type(self.config[attr]) != int:
+    def _val_uint(self, config, defconfig, attr):
+        if type(config[attr]) != int:
             try:
-                self.config[attr] = int(self.config[attr])
+                config[attr] = int(self.config[attr])
             except:
-                self.config[attr] = self.def_config[attr]
+                config[attr] = def_config[attr]
                 log.error("%s must be integer. Resetting to %s" %
-                        (attr, self.def_config[attr]))
+                        (attr, def_config[attr]))
         elif int < 0:
-            self.config[attr] = self.def_config[attr]
+            config[attr] = config[attr]
             log.error("%s must be >= 0. Resetting to %s" %
-                    (attr, self.def_config[attr]))
+                    (attr, config[attr]))
 
-    def _val_color(self, attr): 
-        if type(self.config[attr]) != int:
+    def _val_color(self, config, defconfig, attr):
+        if type(config[attr]) != int:
             try:
-                self.config[attr] = int(self.config[attr])
+                config[attr] = int(self.config[attr])
             except:
                 # Convert natural color into curses color #
-                if self.config[attr] == "pink":
-                    self.config[attr] == "magenta"
+                if config[attr] == "pink":
+                    config[attr] == "magenta"
                 for color_attr in dir(curses):
                     if color_attr.startswith("COLOR_") and\
-                            self.config[attr] == color_attr[6:].lower():
-                        self.config[attr] = getattr(curses, color_attr)
+                            config[attr] == color_attr[6:].lower():
+                        config[attr] = getattr(curses, color_attr)
                         return
 
         # If we got an int from above, make sure it's ok.
-        if type(self.config[attr]) == int:
-            if -1 <= self.config[attr] <= 255:
-                if self.config[attr] == -1 and not attr.endswith("bg"):
+        if type(config[attr]) == int:
+            if -1 <= config[attr] <= 255:
+                if config[attr] == -1 and not attr.endswith("bg"):
                     log.error("Only background elements can be -1.")
                 else:
                     return
@@ -244,28 +244,30 @@ class CantoCursesGui(CommandHandler):
         if attr in self.def_config:
             log.error("Reverting %s to default: %s" %\
                     (attr, self.def_config[attr]))
-            self.config[attr] = self.def_config[attr]
+            config[attr] = self.def_config[attr]
         else:
-            del self.config[attr]
+            del config[attr]
 
-    def validate_config(self):
-        self._val_uint("update.auto.interval")
-        self._val_bool("reader.show_description")
-        self._val_bool("reader.enumerate_links")
-        self._val_bool("story.enumerated")
-        self._val_bool("taglist.tags_enumerated")
-        self._val_bool("taglist.hide_empty_tags")
-        self._val_bool("txt_browser")
+    def validate_config(self, newconfig, defconfig):
+        self._val_uint(newconfig, defconfig, "update.auto.interval")
+        self._val_bool(newconfig, defconfig, "reader.show_description")
+        self._val_bool(newconfig, defconfig, "reader.enumerate_links")
+        self._val_bool(newconfig, defconfig, "story.enumerated")
+        self._val_bool(newconfig, defconfig, "taglist.tags_enumerated")
+        self._val_bool(newconfig, defconfig,\
+                "taglist.tags_enumerated_absolute")
+        self._val_bool(newconfig, defconfig, "taglist.hide_empty_tags")
+        self._val_bool(newconfig, defconfig, "txt_browser")
 
         # Make sure colors are all integers.
-        for attr in [k for k in self.config.keys() if k.startswith("color.")]:
-            self._val_color(attr)
+        for attr in [k for k in newconfig.keys() if k.startswith("color.")]:
+            self._val_color(newconfig, defconfig, attr)
 
         # Make sure various window configurations make sense.
         for wintype in [ "reader", "input", "taglist" ]:
             # Ensure float attributes are boolean
             float_attr = wintype + ".float"
-            self._val_bool(float_attr)
+            self._val_bool(newconfig, defconfig, float_attr)
 
             # Ensure alignment jive with float.
 
@@ -276,43 +278,45 @@ class CantoCursesGui(CommandHandler):
 
             align_attr = wintype + ".align"
 
-            if self.config[float_attr]:
-                if self.config[align_attr] not in float_aligns:
+            if newconfig[float_attr]:
+                if newconfig[align_attr] not in float_aligns:
 
                     # Translate tile aligns to float aligns.
-                    if self.config[align_attr] in tile_aligns:
-                        if self.config[align_attr] in ["top","bottom"]:
-                            self.config[align_attr] += "left"
-                        elif self.config[align_attr] in ["left","right"]:
-                            self.config[align_attr] = "top" +\
-                                    self.config[align_attr]
+                    if newconfig[align_attr] in tile_aligns:
+                        if newconfig[align_attr] in ["top","bottom"]:
+                            newconfig[align_attr] += "left"
+                        elif newconfig[align_attr] in ["left","right"]:
+                            newconfig[align_attr] = "top" +\
+                                    newconfig[align_attr]
                         log.info("Translated %s alignment for float: %s" %
-                                (align_attr, self.config[align_attr]))
+                                (align_attr, newconfig[align_attr]))
                     else:
                         # Got nonsense, revert to default.
                         err = "%s unknown float alignment. Resetting to "
-                        if self.def_config[align_attr] not in float_aligns:
-                            self.config[float_attr] = False
+                        if defconfig[align_attr] not in float_aligns:
+                            newconfig[float_attr] = False
                             err += "!float/"
 
-                        self.config[align_attr] = self.def_config[align_attr]
-                        err += self.def_config[align_attr]
+                        newconfig[align_attr] = defconfig[align_attr]
+                        err += defconfig[align_attr]
                         log.error(err % align_attr)
             # !floating
             else:
                 # No translation since it would be ambiguous.
-                if self.config[align_attr] not in tile_aligns:
+                if newconfig[align_attr] not in tile_aligns:
                     err = "%s unknown nonfloat alignment. Resetting to "
-                    if self.def_config[align_attr] in float_aligns:
-                        self.config[float_attr] = True
+                    if defconfig[align_attr] in float_aligns:
+                        newconfig[float_attr] = True
                         err += "float/"
-                    self.config[align_attr] = self.def_config[align_attr]
-                    err += self.def_config[align_attr]
+                    newconfig[align_attr] = defconfig[align_attr]
+                    err += defconfig[align_attr]
                     log.error(err % align_attr)
 
             # Make sure size restrictions are positive integers
             for subattr in [".maxheight", ".maxwidth"]:
-                self._val_uint(wintype + subattr)
+                self._val_uint(newconfig, defconfig, wintype + subattr)
+
+        return newconfig
 
     def eval_tags(self):
         prevtags = self.vars["curtags"]
@@ -332,28 +336,36 @@ class CantoCursesGui(CommandHandler):
             log.debug("Evaluated tags changed, refresh.")
             self._refresh()
 
-    def prot_configs(self, given):
-        if "CantoCurses" not in given:
-            return
-
-        self.def_config = self.config.copy()
-
-        for k in given["CantoCurses"]:
-            self.config[k] = given["CantoCurses"][k]
-
-        # Need to validate to allow for content changes.
-        self.validate_config()
-
+    def _dict_diff(self, d1, d2):
         changed_opts = []
 
-        for k in self.config:
-            if k not in self.def_config or\
-                    self.def_config[k] != self.config[k]:
+        for k in d1:
+            if k not in d2 or d2[k] != d1[k]:
                 changed_opts.append(k)
 
-        for k in self.def_config:
-            if k not in self.config:
+        for k in d2:
+            if k not in d1:
                 changed_opts.append(k)
+
+        return changed_opts
+
+    def prot_configs(self, given):
+
+        # If there are client config changes, validate them
+        # and potentially queue up a redraw/refresh.
+
+        if "CantoCurses" in given:
+            def_config = self.config.copy()
+
+            for k in given["CantoCurses"]:
+                self.config[k] = given["CantoCurses"][k]
+
+            # Need to validate to allow for content changes.
+            self.config = self.validate_config(self.config, def_config)
+
+            changed_opts = self._dict_diff(self.config, def_config)
+            self.check_opt_refresh(changed_opts)
+
 
         self.check_opt_refresh(changed_opts)
 
