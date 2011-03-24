@@ -67,6 +67,12 @@ class TagList(GuiBase):
                 spent += len(tag)
         raise Exception("Couldn't find idx of item: %s" % item)
 
+    def tag_by_item(self, item):
+        for tag in self.tags:
+            if item in tag:
+                return tag
+        raise Exception("Couldn't find tag of item: %s" % item)
+
     def all_items(self):
         for tag in self.tags:
             for story in tag:
@@ -88,9 +94,40 @@ class TagList(GuiBase):
     def eprompt(self, prompt):
         return self._cfg_set_prompt("story.enumerated", prompt)
 
-    # Will enumerate tags in the future.
+    # Prompt that enumerates only items in a single tag.
+    def tag_eprompt(self, tag, prompt):
+        return self._tag_cfg_set_prompt(tag, "enumerated", prompt)
+
+    # Enumerates visible tags.
     def teprompt(self, prompt):
         return self._cfg_set_prompt("taglist.tags_enumerated", prompt)
+
+    # Enumerates all tags.
+    def teprompt_absolute(self, prompt):
+        return self._cfg_set_prompt("taglist.tags_enumerated_absolute",
+                prompt)
+
+    # Following we have a number of command helpers. These allow
+    # commands to take lists of items, tags, or tag subranges of items in
+    # addition to singular items, and possible item states, etc.
+
+    def _single_tag(self, args, taglist, prompt):
+        tag, args = self._int(args, prompt)
+
+        # If we failed to get a valid integer, bail.
+        if tag == None or tag < 0 or tag >= len(taglist):
+            return (None, None, "")
+
+        return (True, taglist[tag], args)
+
+    def single_tag(self, args):
+        vistags = self.callbacks["get_var"]("taglist_visible_tags")
+        prompt = lambda : self.teprompt("tag: ")
+        return self._single_tag(args, vistags, prompt)
+
+    def single_tag_absolute(self, args):
+        prompt = lambda : self.teprompt_absolute("tag: ")
+        return self._single_tag(args, self.tags, prompt)
 
     def listof_items(self, args):
         s = self.callbacks["get_var"]("selected")
@@ -102,26 +139,46 @@ class TagList(GuiBase):
                 log.debug("listof_items falling back on got_items")
                 return (True, self.got_items, "")
 
-        if s:
-            curint = self.idx_by_item(s)
-        else:
-            curint = 0
+        # Lookahead. If the first term is t: then we're going to grab
+        # items relative to a tag.
 
-        ints = self._listof_int(args, curint, len(list(self.all_items())),\
-                lambda : self.eprompt("items: "))
-        return (True, filter(None, [ self.item_by_idx(i) for i in ints ]), "")
+        if args and args.startswith("t:") or args.startswith("T:"):
+            lookup_type, args = args[0], args[2:]
+
+            # Relative tag lookup.
+            if lookup_type == "t":
+                valid, tag, args = self.single_tag(args)
+            else:
+                valid, tag, args = self.single_tag_absolute(args)
+
+            if not valid:
+                log.error("listof_items t: found, but no valid tag!")
+                return (False, None, "")
+
+            if s and s in tag:
+                curint = tag.index(s)
+            else:
+                curint = 0
+
+            ints = self._listof_int(args, curint, len(tag),
+                    lambda : self.tag_eprompt(tag, "items: "))
+            return (True, [ tag[i] for i in ints ], "")
+        else:
+            if s:
+                curint = self.idx_by_item(s)
+            else:
+                curint = 0
+
+            ints = self._listof_int(args, curint, len(list(self.all_items())),\
+                    lambda : self.eprompt("items: "))
+            return (True, [ self.item_by_idx(i) for i in ints ], "")
 
     def listof_tags(self, args):
         s = self.callbacks["get_var"]("selected")
         got_tag = None
 
         if s:
-            for tag in self.tags:
-                if s in tag:
-                    got_tag = tag
-                    break
-            else:
-                raise Exception("Couldn't find tag of selection!")
+            got_tag = self.tag_by_item(s)
 
         # If we have a selected tag and no args, return it automatically.
         if not args and got_tag:

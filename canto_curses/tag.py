@@ -26,7 +26,16 @@ class Tag(list):
         # callbacks as it shouldn't be doing input / refreshing
         # itself.
 
-        self.callbacks = callbacks
+        self.callbacks = callbacks.copy()
+
+        # Modify our own callbacks so that *_tag_opt assumes
+        # the current tag.
+
+        self.callbacks["get_tag_opt"] =\
+                lambda x : callbacks["get_tag_opt"](self, x)
+        self.callbacks["set_tag_opt"] =\
+                lambda x, y : callbacks["set_tag_opt"](self, x, y)
+
         self.tag = tag
 
         # Upon creation, this Tag adds itself to the
@@ -77,7 +86,7 @@ class Tag(list):
         self.header_pad = curses.newpad(lines, mwidth)
 
         for i, item in enumerate(self):
-            lines += item.refresh(mwidth, idx_offset + i)
+            lines += item.refresh(mwidth, idx_offset, i)
 
         # Create a new pad with enough lines to
         # include all story objects.
@@ -87,11 +96,21 @@ class Tag(list):
 
     def render_header(self, mwidth, pad):
         enumerated = self.callbacks["get_opt"]("taglist.tags_enumerated")
+        enumerated_absolute =\
+            self.callbacks["get_opt"]("taglist.tags_enumerated_absolute")
 
         # Make sure to strip out the category from category:name
         header = self.tag.split(':', 1)[1] + u"\n"
 
+        # Tags can be both absolute and relatively enumerated at once,
+        # in this case the absolute enumeration is the first listed and thus
+        # it's added to the front of the string last.
+
         if enumerated:
+            vistags = self.callbacks["get_var"]("taglist_visible_tags")
+            header = ("[%d] " % vistags.index(self)) + header
+
+        if enumerated_absolute:
             curtags = self.callbacks["get_var"]("curtags")
             header = ("[%d] " % curtags.index(self)) + header
 

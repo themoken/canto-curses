@@ -51,7 +51,7 @@ class Story():
     def unselect(self):
         self.selected = False
 
-    def refresh(self, mwidth, idx):
+    def refresh(self, mwidth, tag_offset, rel_idx):
 
         # Make sure we actually have all of the attributes needed
         # to complete the render.
@@ -66,11 +66,16 @@ class Story():
         # Do we need the enumerated form?
         enumerated = self.callbacks["get_opt"]("story.enumerated")
 
+        # Do we need the relative enumerated form?
+        rel_enumerated = self.callbacks["get_tag_opt"]("enumerated")
+
         # These are the only things that affect the drawing
         # of this item.
 
         state = { "mwidth" : mwidth,
-                  "idx" : idx,
+                  "abs_idx" : tag_offset + rel_idx,
+                  "rel_idx" : rel_idx,
+                  "rel_enumerated" : rel_enumerated,
                   "enumerated" : enumerated,
                   "state" : self.content["canto-state"][:],
                   "selected" : self.selected }
@@ -84,21 +89,24 @@ class Story():
         self.cached_state = state
 
         # Render once to a FakePad (no IO) to determine the correct
-        # amount of lines. Force this to enumerated = 0 because
+        # amount of lines. Force this to entirely unenumerated because
         # we don't want the enumerated content to take any more lines
         # than the unenumerated. Render will truncate smartly if we
         # attempt to go over. This avoids insane amounts of line shifting
         # when enumerating items and allows us to get the perfect size
         # for this story's pad.
 
-        lines = self.render(FakePad(mwidth), mwidth, idx, 0)
+        unenum_state = state.copy()
+        unenum_state["enumerated"] = False
+        unenum_state["rel_enumerated"] = False
+        lines = self.render(FakePad(mwidth), unenum_state)
 
         # Create the new pad and actually do the render.
 
         self.pad = curses.newpad(lines, mwidth)
-        return self.render(WrapPad(self.pad), mwidth, idx, enumerated)
+        return self.render(WrapPad(self.pad), state)
 
-    def render(self, pad, mwidth, idx, enumerated):
+    def render(self, pad, state):
 
         # The first render step is to get a big long line
         # describing what we want to render with the
@@ -118,8 +126,15 @@ class Story():
             pre = pre + "%2%B"
             post = "%b%0" + post
 
-        if enumerated:
-            pre = ("[%d] " % idx) + pre
+        # Just like with tags, stories can be both absolute and relatively
+        # enumerated at the same time and the absolute enumeration has to
+        # come first, so it prepended last.
+
+        if state["rel_enumerated"]:
+            pre = ("[%d] " % state["rel_idx"]) + pre
+
+        if state["enumerated"]:
+            pre = ("[%d] " % state["abs_idx"]) + pre
 
         s = pre + self.content["title"] + post
 
@@ -142,10 +157,10 @@ class Story():
                 else:
                     l = left_more
 
-                s = theme_print(pad, s, mwidth, l, right)
+                s = theme_print(pad, s, state["mwidth"], l, right)
 
                 # Avoid line shifting when temporarily enumerating.
-                if s and enumerated and\
+                if s and (state["enumerated"] or state["rel_enumerated"]) and\
                         lines == (self.unenumerated_lines - 1):
                     pad.move(pad.getyx()[0],\
                             pad.getyx()[1] - (theme_len(right) + 3))
@@ -164,7 +179,7 @@ class Story():
             # Keep track of unenumerated lines so that we can
             # do the above shift-avoiding.
 
-            if not enumerated:
+            if not state["enumerated"] and not state["rel_enumerated"]:
                 self.unenumerated_lines = lines
 
         # Render exceptions should be non-fatal. The worst

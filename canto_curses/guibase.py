@@ -38,14 +38,21 @@ class GuiBase(CommandHandler):
         self.callbacks["die"](self)
 
     def _cfg_set_prompt(self, option, prompt):
-        # Ensure the items are enumerated
         t = self.callbacks["get_opt"](option)
         self.callbacks["set_opt"](option, True)
 
         r = self.input(prompt)
 
-        # Reset option to previous value
         self.callbacks["set_opt"](option, t)
+        return r
+
+    def _tag_cfg_set_prompt(self, tag, option, prompt):
+        t = self.callbacks["get_tag_opt"](tag, option)
+        self.callbacks["set_tag_opt"](tag, option, True)
+
+        r = self.input(prompt)
+
+        self.callbacks["set_tag_opt"](tag, option, t)
         return r
 
     def _fork(self, path, href, text):

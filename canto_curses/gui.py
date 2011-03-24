@@ -81,6 +81,7 @@ class CantoCursesGui(CommandHandler):
             "taglist.float" : False,
             "taglist.align" : "neutral",
             "taglist.tags_enumerated" : False,
+            "taglist.tags_enumerated_absolute" : False,
             "taglist.hide_empty_tags" : True,
             "story.enumerated" : False,
             "input.maxwidth" : 0,
