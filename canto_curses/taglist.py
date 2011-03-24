@@ -43,9 +43,12 @@ class TagList(GuiBase):
 
         self.refresh()
 
+    # We start with a number of convenient lookup, listing,
+    # and user prompting functions.
+
     def item_by_idx(self, idx):
         if idx < 0:
-            return None
+            raise Exception("Negative indices not allowed!")
 
         spent = 0
         for tag in self.tags:
@@ -53,7 +56,7 @@ class TagList(GuiBase):
             if spent + ltag > idx:
                 return tag[ idx - spent ]
             spent += ltag
-        return None
+        raise Exception("Couldn't find item with idx: %d" % idx)
 
     def idx_by_item(self, item):
         spent = 0
@@ -62,7 +65,7 @@ class TagList(GuiBase):
                 return spent + tag.index(item)
             else:
                 spent += len(tag)
-        return None
+        raise Exception("Couldn't find idx of item: %s" % item)
 
     def all_items(self):
         for tag in self.tags:
@@ -223,8 +226,9 @@ class TagList(GuiBase):
             else:
                 curidx = -1
 
-        item = self.item_by_idx(curidx + kwargs["relidx"])
-        if not item:
+        try:
+            item = self.item_by_idx(curidx + kwargs["relidx"])
+        except:
             log.info("Will not relative scroll out of list.")
         else:
             self._set_cursor(item)
