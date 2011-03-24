@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-COMPATIBLE_VERSION = 0.1
+COMPATIBLE_VERSION = 0.2
 
 from canto_next.plugins import Plugin
 from command import CommandHandler, command_format
@@ -68,7 +68,7 @@ class CantoCursesGui(CommandHandler):
         self.config = {
             "browser" : "firefox %u",
             "txt_browser" : False,
-            "tags" : r"maintag:.*",
+            "tags" : r"maintag\\:.*",
             "update.auto.interval" : 60,
             "reader.maxwidth" : 0,
             "reader.maxheight" : 0,
@@ -162,17 +162,20 @@ class CantoCursesGui(CommandHandler):
         else:
             log.debug("Got compatible daemon version.")
 
-        self.backend.write("WATCHCONFIGS", u"")
+        # Start watching for new and deleted tags.
+        self.backend.write("WATCHNEWTAGS", [])
+        self.backend.write("WATCHDELTAGS", [])
 
+        self.backend.write("LISTTAGS", u"")
+        r = self.wait_response("LISTTAGS")
+        self.prot_newtags(r[1])
+
+        self.backend.write("WATCHCONFIGS", u"")
         self.backend.write("CONFIGS", [])
         self.prot_configs(self.wait_response("CONFIGS")[1])
 
         log.debug("FINAL CONFIG:\n%s" % self.config)
         log.debug("FINAL TAG CONFIG:\n%s" % self.tag_config)
-
-        self.backend.write("LISTTAGS", u"")
-        r = self.wait_response("LISTTAGS")
-        self.prot_newtags(r[1])
 
         # We've got the config, and the tags, go ahead and
         # fire up curses.
@@ -187,10 +190,6 @@ class CantoCursesGui(CommandHandler):
 
         # Start watching all given tags.
         self.backend.write("WATCHTAGS", item_tags)
-
-        # Start watching for new and deleted tags.
-        self.backend.write("WATCHNEWTAGS", [])
-        self.backend.write("WATCHDELTAGS", [])
 
         # Holster for future updated tags.
         self.updates = []
@@ -465,7 +464,7 @@ class CantoCursesGui(CommandHandler):
     def prot_newtags(self, tags):
         for tag in tags:
             if tag not in [ t.tag for t in self.vars["alltags"] ]:
-                log.debug("Adding tag %s" % tag)
+                log.info("Adding tag %s" % tag)
                 Tag(tag, self.callbacks)
 
                 # If we don't have configuration for this
