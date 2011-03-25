@@ -660,6 +660,7 @@ class CantoCursesGui(CommandHandler):
         for tag in self.vars["curtags"]:
             tag.reset()
             self.vars["selected"] = None
+            self.vars["offset"] = 0
             self.backend.write("ITEMS", [ tag.tag ])
 
     def key(self, k):
