@@ -112,7 +112,15 @@ class TagList(GuiBase):
     # addition to singular items, and possible item states, etc.
 
     def _single_tag(self, args, taglist, prompt):
-        tag, args = self._int(args, prompt)
+        s = self.callbacks["get_var"]("selected")
+
+        curint = 0
+        if s:
+            curtag = self.tag_by_item(s)
+            if curtag in taglist:
+                curint = taglist.index(curtag)
+
+        tag, args = self._int(args, curint, len(taglist), prompt)
 
         # If we failed to get a valid integer, bail.
         if tag == None or tag < 0 or tag >= len(taglist):
@@ -198,7 +206,16 @@ class TagList(GuiBase):
         return (True, t, r)
 
     def item(self, args):
-        t, r = self._int(args, lambda : self.eprompt("item: "))
+        s = self.callbacks["get_var"]("selected")
+
+        if s:
+            curint = self.idx_by_item(s)
+        else:
+            curint = 0
+
+        t, r = self._int(args, curint, len(list(self.allitems())),\
+                lambda : self.eprompt("item: "))
+
         if t != None:
             item = self.item_by_idx(t)
             if not item:

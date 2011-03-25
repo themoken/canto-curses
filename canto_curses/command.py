@@ -144,9 +144,9 @@ class CommandHandler(PluginHandler):
     def _convert_special(self, item, curint, maxint):
         item = item.rstrip().lstrip()
 
-        if item == "$":
+        if item == "$" and maxint:
             return maxint - 1
-        if item == ".":
+        if item == "." and curint:
             return curint
 
         return int(item)
@@ -155,7 +155,7 @@ class CommandHandler(PluginHandler):
         if not args:
             args = prompt()
 
-        if args == "*":
+        if args == "*" and maxint:
             return range(0, maxint)
 
         if " " in args:
@@ -175,21 +175,24 @@ class CommandHandler(PluginHandler):
                 except:
                     log.error("Can't parse %s as range" % term)
                     continue
-                r.extend(range(min(a, maxint), min(b + 1, maxint)))
+                if maxint:
+                    r.extend(range(min(a, maxint), min(b + 1, maxint)))
+                else:
+                    r.extend(range(a, b + 1))
             else:
                 try:
                     term = self._convert_special(term, curint, maxint)
                 except:
                     log.error("Can't parse %s as integer" % term)
                     continue
-                if term < maxint:
+                if not maxint or term < maxint:
                     r.append(term)
         return r
 
-    def _int(self, args, prompt):
+    def _int(self, args, curint, maxint, prompt):
         t, r = self._first_term(args, prompt)
         try:
-            t = int(t)
+            t = self._convert_special(t, curint, maxint)
         except:
             log.error("Can't parse %s as integer." % t)
             return (None, "")
