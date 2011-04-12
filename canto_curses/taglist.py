@@ -7,6 +7,8 @@
 #   published by the Free Software Foundation.
 
 from canto_next.plugins import Plugin
+from canto_next.hooks import on_hook, call_hook
+
 from command import command_format
 from guibase import GuiBase
 from reader import Reader
@@ -40,6 +42,9 @@ class TagList(GuiBase):
 
         # Holster for a list of items for batch operations.
         self.got_items = None
+
+        on_hook("eval_tags_changed", self.update_tag_lists)
+        on_hook("eval_tags_changed", self.redraw)
 
         self.refresh()
 
@@ -415,7 +420,33 @@ class TagList(GuiBase):
         self.callbacks["set_var"]("reader_offset", 0)
         self.callbacks["add_window"](Reader)
 
-    def set_visible_tags(self):
+    @command_format([("tags", "listof_tags")])
+    def cmd_promote(self, **kwargs):
+        for tag in kwargs["tags"]:
+
+            log.debug("Promoting %s\n" % tag.tag)
+
+            # Refetch because a promote call will cause our eval_tag hook to
+            # recreate visible_tags.
+
+            visible_tags = self.callbacks["get_var"]("taglist_visible_tags")
+
+            curidx = visible_tags.index(tag)
+
+            # Obviously makes no sense on top tag.
+            if curidx == 0:
+                return
+
+            # Re-order tags and update internal list order.
+            self.callbacks["promote_tag"](tag, visible_tags[curidx - 1])
+            self.callbacks["set_var"]("needs_redraw", True)
+
+    @command_format([("tags", "listof_tags")])
+    def cmd_demote(self, **kwargs):
+        pass
+
+    def update_tag_lists(self):
+        self.tags = self.callbacks["get_var"]("curtags")
         hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")
 
         t = []
@@ -427,11 +458,10 @@ class TagList(GuiBase):
         self.callbacks["set_var"]("taglist_visible_tags", t)
 
     def refresh(self):
-        self.tags = self.callbacks["get_var"]("curtags")
+        self.update_tag_lists()
         self.max_offset = -1 * self.height
         idx = 0
 
-        self.set_visible_tags()
         for tag in self.callbacks["get_var"]("taglist_visible_tags"):
             ml = tag.refresh(self.width, idx)
 

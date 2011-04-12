@@ -8,7 +8,9 @@
 
 COMPATIBLE_VERSION = 0.2
 
+from canto_next.hooks import call_hook, on_hook
 from canto_next.plugins import Plugin
+
 from command import CommandHandler, command_format
 from html import html_entity_convert, char_ref_convert
 from screen import Screen
@@ -57,6 +59,8 @@ class CantoCursesGui(CommandHandler):
             "get_opt" : self.get_opt,
             "set_tag_opt" : self.set_tag_opt,
             "get_tag_opt" : self.get_tag_opt,
+            "promote_tag" : self.promote_tag,
+            "demote_tag" : self.demote_tag,
             "write" : self.backend.write
         }
 
@@ -69,6 +73,7 @@ class CantoCursesGui(CommandHandler):
             "browser" : "firefox %u",
             "txt_browser" : False,
             "tags" : r"maintag\\:.*",
+            "tagorder" : [],
             "update.auto.interval" : 60,
             "reader.maxwidth" : 0,
             "reader.maxheight" : 0,
@@ -106,6 +111,8 @@ class CantoCursesGui(CommandHandler):
             "taglist.key.down" : "rel-set-cursor 1",
             "taglist.key.up" : "rel-set-cursor -1",
             "taglist.key.C-u" : "unset-cursor",
+            "taglist.key.+" : "promote",
+            "taglist.key.-" : "demote",
 
             "reader.key.space" : "destroy",
             "reader.key.d" : "toggle-opt reader.show_description",
@@ -173,6 +180,12 @@ class CantoCursesGui(CommandHandler):
         self.backend.write("WATCHCONFIGS", u"")
         self.backend.write("CONFIGS", [])
         self.prot_configs(self.wait_response("CONFIGS")[1])
+
+        # Eval tags again, even though it's done in prot_newtags
+        # because config options that were just parsed may effect
+        # the order of tags.
+
+        self.eval_tags()
 
         log.debug("FINAL CONFIG:\n%s" % self.config)
         log.debug("FINAL TAG CONFIG:\n%s" % self.tag_config)
@@ -257,6 +270,22 @@ class CantoCursesGui(CommandHandler):
         else:
             del config[attr]
 
+    # This isn't a validation per se, but it ensures that all tags
+    # that we initially got are list in the order struct so we
+    # can count on them being there.
+
+    def _val_tag_order(self, config, defconfig, attr):
+        try:
+            config[attr] = eval(config[attr])
+            log.debug("TO SET: %s" % config[attr])
+        except:
+            config[attr] = defconfig[attr]
+            log.debug("TO DEFAULT: %s" % defconfig[attr])
+
+        for tag in self.vars["alltags"]:
+            if tag.tag not in config[attr]:
+                config[attr].append(tag.tag)
+
     def validate_config(self, newconfig, defconfig):
         self._val_uint(newconfig, defconfig, "update.auto.interval")
         self._val_bool(newconfig, defconfig, "reader.show_description")
@@ -267,6 +296,7 @@ class CantoCursesGui(CommandHandler):
                 "taglist.tags_enumerated_absolute")
         self._val_bool(newconfig, defconfig, "taglist.hide_empty_tags")
         self._val_bool(newconfig, defconfig, "txt_browser")
+        self._val_tag_order(newconfig, defconfig, "tagorder")
 
         # Make sure colors are all integers.
         for attr in [k for k in newconfig.keys() if k.startswith("color.")]:
@@ -341,12 +371,15 @@ class CantoCursesGui(CommandHandler):
 
     def eval_tags(self):
         prevtags = self.vars["curtags"]
-        self.vars["curtags"] = []
 
+        sorted_tags = []
         r = re.compile(self.config["tags"])
         for tag in self.vars["alltags"]:
             if r.match(tag.tag):
-                self.vars["curtags"].append(tag)
+                sorted_tags.append((self.config["tagorder"].index(tag.tag), tag))
+        sorted_tags.sort()
+
+        self.vars["curtags"] = [ x for (i, x) in sorted_tags ]
 
         if not self.vars["curtags"]:
             log.warn("NOTE: Current 'tags' setting eliminated all tags!")
@@ -354,8 +387,8 @@ class CantoCursesGui(CommandHandler):
         # If evaluated tags differ, we need to refresh.
 
         if prevtags != self.vars["curtags"] and self.screen:
-            log.debug("Evaluated tags changed, refresh.")
-            self._refresh()
+            log.debug("Evaluated Tags Changed")
+            call_hook("eval_tags_changed", [])
 
     def _dict_diff(self, d1, d2):
         changed_opts = []
@@ -388,7 +421,6 @@ class CantoCursesGui(CommandHandler):
             self.check_opt_refresh(changed_opts)
 
         # Check for tag config changes.
-
         given_tag_config = {}
         for k in given.keys():
             if k.startswith("Tag "):
@@ -403,7 +435,6 @@ class CantoCursesGui(CommandHandler):
         for k in given_tag_config:
             self.tag_config[k] = given_tag_config[k]
 
-        # Validate.
         self.tag_config = self.validate_tag_config(self.tag_config,
                 def_config)
 
@@ -478,6 +509,9 @@ class CantoCursesGui(CommandHandler):
             else:
                 log.warn("Got NEWTAG for already existing tag!")
 
+            if tag not in self.config["tagorder"]:
+                self.config["tagorder"].append(tag)
+
         self.eval_tags()
 
     def prot_deltags(self, tags):
@@ -486,6 +520,13 @@ class CantoCursesGui(CommandHandler):
             if tag in strtags:
                 del self.vars["alltags"][strtags.index(tag)]
                 break
+            else:
+                log.warn("Got DELTAG for non-existent tag!")
+
+            if tag in self.config["tagorder"]:
+                self.config["tagorder"] =\
+                        [ x for x in self.config["tagorder"] if x != tag ]
+
         self.eval_tags()
 
     def var(self, args):
@@ -589,8 +630,8 @@ class CantoCursesGui(CommandHandler):
 
         # XXX : Note that set_opt performs *no* validation and expects its
         # (internal) caller to have ensured that it's valid.
-
         if option not in self.config or self.config[option] != value:
+            log.debug("WRITING!")
             self.config[option] = value
             self.check_opt_refresh([option])
             self.backend.write("SETCONFIGS",\
@@ -615,6 +656,23 @@ class CantoCursesGui(CommandHandler):
         if option in self.tag_config[tagheader]:
             return self.tag_config[tagheader][option]
         return None
+
+    def promote_tag(self, tag, beforetag):
+        tagorder = self.config["tagorder"][:]
+        cur_idx = tagorder.index(tag.tag)
+        before_idx = tagorder.index(beforetag.tag)
+
+        if cur_idx <= before_idx:
+            return
+
+        tagorder.insert(before_idx - 1, tag.tag)
+        tagorder.remove(tag.tag)
+        tagorder.insert(before_idx, tag.tag)
+        self.set_opt("tagorder", tagorder)
+        self.eval_tags()
+
+    def demote_tag(self, tag, aftertag):
+        pass
 
     # This accepts arbitrary strings, but gives the right prompt.
     def transform(self, args):
