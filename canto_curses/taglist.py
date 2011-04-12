@@ -7,7 +7,7 @@
 #   published by the Free Software Foundation.
 
 from canto_next.plugins import Plugin
-from canto_next.hooks import on_hook, call_hook
+from canto_next.hooks import on_hook, remove_hook, call_hook
 
 from command import command_format
 from guibase import GuiBase
@@ -47,6 +47,11 @@ class TagList(GuiBase):
         on_hook("eval_tags_changed", self.redraw)
 
         self.refresh()
+
+    def die(self):
+        log.debug("Cleaning up hooks...")
+        remove_hook("eval_tags_changed", self.update_tag_lists)
+        remove_hook("eval_tags_changed", self.redraw)
 
     # We start with a number of convenient lookup, listing,
     # and user prompting functions.

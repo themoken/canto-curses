@@ -37,6 +37,9 @@ class GuiBase(CommandHandler):
     def cmd_destroy(self, **kwargs):
         self.callbacks["die"](self)
 
+    def die(self):
+        pass
+
     def _cfg_set_prompt(self, option, prompt):
         t = self.callbacks["get_opt"](option)
         self.callbacks["set_opt"](option, True)

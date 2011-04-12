@@ -58,6 +58,10 @@ class Screen(CommandHandler):
         self.input_box = None
         self.sub_edit = False
 
+        self.floats = []
+        self.tiles = []
+        self.windows = []
+
         self.subwindows()
 
         # Start grabbing user input
@@ -348,6 +352,11 @@ class Screen(CommandHandler):
     # level tiled window layout as well as the floats.
 
     def subwindows(self):
+
+        # Cleanup any window objects that will be destroyed.
+        for w in self.windows:
+            w.die()
+
         self.floats = []
         self.tiles = []
         self.windows = []
@@ -413,6 +422,9 @@ class Screen(CommandHandler):
         return r
 
     def die_callback(self, window):
+        # Call the window's die function
+        window.die()
+
         # Remove window from both window_types and the general window list
         idx = self.windows.index(window)
         del self.windows[idx]
