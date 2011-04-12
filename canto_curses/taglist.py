@@ -45,6 +45,8 @@ class TagList(GuiBase):
 
         on_hook("eval_tags_changed", self.update_tag_lists)
         on_hook("eval_tags_changed", self.redraw)
+        on_hook("item_add", self.on_item_add)
+        on_hook("item_remove", self.on_item_remove)
 
         self.refresh()
 
@@ -52,6 +54,8 @@ class TagList(GuiBase):
         log.debug("Cleaning up hooks...")
         remove_hook("eval_tags_changed", self.update_tag_lists)
         remove_hook("eval_tags_changed", self.redraw)
+        remove_hook("item_add", self.on_item_add)
+        remove_hook("item_remove", self.on_item_remove)
 
     # We start with a number of convenient lookup, listing,
     # and user prompting functions.
@@ -99,6 +103,31 @@ class TagList(GuiBase):
         for item in self.all_items():
             if offset >= item.min_offset and offset <= item.max_offset:
                 return item
+
+    def on_item_add(self, tag, items):
+        sel = self.callbacks["get_var"]("selected")
+        if sel:
+            return
+
+        old_sel = self.callbacks["get_var"]("old_selected")
+        if not old_sel or old_sel not in items:
+            return
+
+        # Re-reference. The stories equality is based
+        # entirely on its ID value, but we still need
+        # to make sure we have the new item.
+
+        new_sel = items[items.index(old_sel)]
+        new_sel.select()
+
+        self.callbacks["set_var"]("selected", new_sel)
+        self.callbacks["set_var"]("old_selected", None)
+
+    def on_item_remove(self, tag, items):
+        sel = self.callbacks["get_var"]("selected")
+        if sel in items:
+            self.callbacks["set_var"]("selected", None)
+            self.callbacks["set_var"]("old_selected", sel)
 
     # Prompt that ensures the items are enumerated first
     def eprompt(self, prompt):

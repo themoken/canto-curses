@@ -25,6 +25,11 @@ class Story():
         self.selected = False
         self.cached_state = {}
 
+    def __eq__(self, other):
+        if not other:
+            return False
+        return self.id == other.id
+
     # Add / remove state. Return True if an actual change, False otherwise.
 
     def handle_state(self, attr):

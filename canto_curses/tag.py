@@ -6,6 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from canto_next.hooks import call_hook
+
 from theme import FakePad, WrapPad, theme_print
 from story import Story
 
@@ -55,6 +57,7 @@ class Tag(list):
 
     def append(self, id):
         s = Story(id, self.callbacks)
+        call_hook("item_add", [ self, [ s ] ] )
         list.append(self, s)
 
     # Remove Story based on ID
@@ -63,11 +66,13 @@ class Tag(list):
         log.debug("removing: %s" % (id,))
         for item in self:
             if item.id == id:
+                call_hook("item_remove", [ self, [ item ] ] )
                 list.remove(self, item)
 
     # Remove all stories from this tag.
 
     def reset(self):
+        call_hook("item_remove", [ self, self[:] ])
         del self[:]
 
     def get_id(self, id):
