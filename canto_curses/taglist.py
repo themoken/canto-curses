@@ -199,7 +199,9 @@ class TagList(GuiBase):
 
         ints = self._listof_int(args, curint, len(self.tags),\
                 lambda : self.teprompt("tags: "))
-        return(True, [ self.tags[i] for i in ints ], "")
+
+        visible_tags = self.callbacks["get_var"]("taglist_visible_tags")
+        return(True, [ visible_tags[i] for i in ints ], "")
 
     def state(self, args):
         t, r = self._first_term(args, lambda : self.input("state: "))
