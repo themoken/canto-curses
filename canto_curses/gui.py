@@ -33,6 +33,8 @@ class CantoCursesGui(CommandHandler):
         self.backend = backend
         self.screen = None
 
+        self.update_interval = 0
+
         # Variables that affect the overall operation.
 
         self.vars = {
@@ -47,7 +49,6 @@ class CantoCursesGui(CommandHandler):
             "needs_redraw" : False,
             "needs_deferred_refresh" : False,
             "needs_deferred_redraw" : False,
-            "update_interval" : 0,
             "protected_ids" : [],
             "transforms" : [],
             "taglist_visible_tags" : [],
@@ -231,7 +232,7 @@ class CantoCursesGui(CommandHandler):
     def _val_uint(self, config, defconfig, attr):
         if type(config[attr]) != int:
             try:
-                config[attr] = int(self.config[attr])
+                config[attr] = int(config[attr])
             except:
                 config[attr] = def_config[attr]
                 log.error("%s must be integer. Resetting to %s" %
@@ -244,7 +245,7 @@ class CantoCursesGui(CommandHandler):
     def _val_color(self, config, defconfig, attr):
         if type(config[attr]) != int:
             try:
-                config[attr] = int(self.config[attr])
+                config[attr] = int(config[attr])
             except:
                 # Convert natural color into curses color #
                 if config[attr] == "pink":
@@ -380,7 +381,7 @@ class CantoCursesGui(CommandHandler):
                 sorted_tags.append((self.config["tagorder"].index(tag.tag), tag))
         sorted_tags.sort()
 
-        self.vars["curtags"] = [ x for (i, x) in sorted_tags ]
+        self.set_var("curtags", [ x for (i, x) in sorted_tags ])
 
         if not self.vars["curtags"]:
             log.warn("NOTE: Current 'tags' setting eliminated all tags!")
@@ -410,16 +411,17 @@ class CantoCursesGui(CommandHandler):
         # and potentially queue up a redraw/refresh.
 
         if "CantoCurses" in given:
-            def_config = self.config.copy()
+            new_config = self.config.copy()
 
             for k in given["CantoCurses"]:
-                self.config[k] = given["CantoCurses"][k]
+                new_config[k] = given["CantoCurses"][k]
 
             # Need to validate to allow for content changes.
-            self.config = self.validate_config(self.config, def_config)
+            new_config = self.validate_config(new_config, self.config)
 
-            changed_opts = self._dict_diff(self.config, def_config)
-            self.check_opt_refresh(changed_opts)
+            changed_opts = self._dict_diff(new_config, self.config)
+            for opt in changed_opts:
+                self.set_opt(opt, new_config[opt], 0)
 
         # Check for tag config changes.
         given_tag_config = {}
@@ -487,7 +489,7 @@ class CantoCursesGui(CommandHandler):
         if unprotect:
             self.backend.write("UNPROTECT", unprotect)
 
-        self.vars["needs_refresh"] = True
+        self.set_var("needs_refresh", True)
 
     def prot_tagchange(self, tag):
         if tag not in self.updates:
@@ -511,7 +513,7 @@ class CantoCursesGui(CommandHandler):
                 log.warn("Got NEWTAG for already existing tag!")
 
             if tag not in self.config["tagorder"]:
-                self.config["tagorder"].append(tag)
+                self.set_opt("tagorder", self.config["tagorder"] + [ tag ], 0)
 
         self.eval_tags()
 
@@ -519,14 +521,16 @@ class CantoCursesGui(CommandHandler):
         for tag in tags:
             strtags = [ t.tag for t in self.vars["alltags"] ]
             if tag in strtags:
-                del self.vars["alltags"][strtags.index(tag)]
+                new_alltags = self.vars["alltags"]
+                del new_alltags[strtags.index(tag)
+                self.set_var("alltags", new_alltags) 
                 break
             else:
                 log.warn("Got DELTAG for non-existent tag!")
 
             if tag in self.config["tagorder"]:
-                self.config["tagorder"] =\
-                        [ x for x in self.config["tagorder"] if x != tag ]
+                self.set_opt("tagorder",\
+                        [ x for x in self.config["tagorder"] if x != tag ], 0)
 
         self.eval_tags()
 
@@ -560,12 +564,14 @@ class CantoCursesGui(CommandHandler):
     def set_var(self, tweak, value):
         if self.vars[tweak] != value:
             # Tweak specific logic
+            # XXX this needs to be hookified
             if tweak in [ "selected", "reader_item" ]:
                 if self.vars[tweak]:
                     self.vars["protected_ids"].remove(self.vars[tweak].id)
                 if value:
                     self.vars["protected_ids"].append(value.id)
 
+            call_hook("var_change", { tweak : value })
             self.vars[tweak] = value
 
     def get_var(self, tweak):
@@ -627,16 +633,23 @@ class CantoCursesGui(CommandHandler):
         return self._check_opt_refresh(self.tag_winch_configs,
                 self.tag_refresh_configs, changed_opts)
 
-    def set_opt(self, option, value):
+    # Any option changes must go through here, even ones we receive
+    # from elsewhere, so we can call hooks.
+
+    def set_opt(self, option, value, write=True):
 
         # XXX : Note that set_opt performs *no* validation and expects its
         # (internal) caller to have ensured that it's valid.
+
         if option not in self.config or self.config[option] != value:
-            log.debug("WRITING!")
             self.config[option] = value
             self.check_opt_refresh([option])
-            self.backend.write("SETCONFIGS",\
-                    { "CantoCurses" : { option : unicode(value) } })
+
+            call_hook("opt_change", [ { option : value } ])
+
+            if write:
+                self.backend.write("SETCONFIGS",\
+                        { "CantoCurses" : { option : unicode(value) } })
 
     def get_opt(self, option):
         if option in self.config:
@@ -700,16 +713,16 @@ class CantoCursesGui(CommandHandler):
         self.backend.responses.put(("CMD", "resize"))
 
     def tick(self):
-        if self.vars["update_interval"] == 0:
+        if self.update_interval == 0:
             if self.updates:
                 # TODO: use self.updates or self.vars["curtags"] based on config
                 self.backend.write("ITEMS",\
                         [ t.tag for t in self.vars["curtags"]])
-                self.vars["update_interval"] =\
+                self.update_interval =\
                         self.config["update.auto.interval"]
                 self.updates = []
         else:
-            self.vars["update_interval"] -= 1
+            self.update_interval -= 1
 
     @command_format([])
     def cmd_refresh(self, **kwargs):
