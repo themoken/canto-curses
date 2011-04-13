@@ -76,7 +76,7 @@ class InputBox(GuiBase):
         if ch in (ascii.STX, curses.KEY_LEFT):
             if self.x > self.minx:
                 self.x -= 1
-        elif ch in (ascii.BS, curses.KEY_BACKSPACE):
+        elif ch in (ascii.BS, curses.KEY_BACKSPACE, ascii.DEL):
             if self.x > self.minx:
                 idx = self.x - self.minx
                 self.result = self.result[:idx - 1] + self.result[idx:]
