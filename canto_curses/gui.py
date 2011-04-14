@@ -13,6 +13,7 @@ from canto_next.plugins import Plugin
 
 from command import CommandHandler, command_format
 from html import html_entity_convert, char_ref_convert
+from story import DEFAULT_FSTRING
 from screen import Screen
 from tag import Tag
 
@@ -91,6 +92,7 @@ class CantoCursesGui(CommandHandler):
             "taglist.tags_enumerated_absolute" : False,
             "taglist.hide_empty_tags" : True,
             "story.enumerated" : False,
+            "story.format" : DEFAULT_FSTRING,
             "input.maxwidth" : 0,
             "input.maxheight" : 0,
             "input.float" : False,

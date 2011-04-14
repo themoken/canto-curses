@@ -6,19 +6,30 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from theme import FakePad, WrapPad, theme_print, theme_len, theme_process
+from canto_next.plugins import Plugin, PluginHandler
 
+from theme import FakePad, WrapPad, theme_print, theme_len, theme_process
+from parser import parse_conditionals, eval_theme_string
+
+import traceback
 import logging
 import curses
 
 log = logging.getLogger("STORY")
 
+class StoryPlugin(Plugin):
+    pass
+
 # The Story class is the basic wrapper for an item to be displayed. It manages
 # its own state only because it affects its representation, it's up to a higher
 # class to actually communicate state changes to the backend.
 
-class Story():
+DEFAULT_FSTRING = "%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%R:)%?{rd}(%3:%2%B)%t%0%?{rd}(:%b)%?{sel}(%r:)"
+
+class Story(PluginHandler):
     def __init__(self, id, callbacks):
+        PluginHandler.__init__(self)
+        self.plugin_class = StoryPlugin
         self.callbacks = callbacks
         self.content = {}
         self.id = id
@@ -74,6 +85,9 @@ class Story():
         # Do we need the relative enumerated form?
         rel_enumerated = self.callbacks["get_tag_opt"]("enumerated")
 
+        # Get format string
+        fstring = self.callbacks["get_opt"]("story.format")
+
         # These are the only things that affect the drawing
         # of this item.
 
@@ -83,7 +97,8 @@ class Story():
                   "rel_enumerated" : rel_enumerated,
                   "enumerated" : enumerated,
                   "state" : self.content["canto-state"][:],
-                  "selected" : self.selected }
+                  "selected" : self.selected,
+                  "fstring" : fstring }
 
         # If the last refresh call had the same parameters and
         # settings, then we don't need to touch the actual pad.
@@ -113,35 +128,43 @@ class Story():
 
     def render(self, pad, state):
 
-        # The first render step is to get a big long line
-        # describing what we want to render with the
-        # given state.
+        try:
+            parsed = parse_conditionals(state["fstring"])
+        except Exception, e:
+            log.warn("Failed to parse conditionals in fstring: %s" % fstring)
+            log.warn("\n" + "".join(traceback.format_exc(e)))
+            log.warn("Falling back to default.")
+            parsed = parse_conditionals(DEFAULT_FSTRING)
 
-        pre = ""
-        post = ""
+        # These are escapes that are handled in the theme_print
+        # lower in the function and should remain present after
+        # evaluation.
 
-        if self.selected:
-            pre = "%R" + pre
-            post = post + "%r"
+        passthru = {}
+        for c in "RrDdUuBbSs012345678":
+            passthru[c] = "%" + c
 
-        if "read" in self.content["canto-state"]:
-            pre = pre + "%3"
-            post = "%0" + post
-        else:
-            pre = pre + "%2%B"
-            post = "%b%0" + post
+        values = { 'en' : state["enumerated"],
+                    'i' : state["abs_idx"],
+                  'ren' : state["rel_enumerated"],
+                    'x' : state["rel_idx"],
+                  'sel' : self.selected,
+                   'rd' : "read" in self.content["canto-state"],
+                    't' : self.content["title"],
+                    'l' : self.content["link"],
+                 'item' : self }
 
-        # Just like with tags, stories can be both absolute and relatively
-        # enumerated at the same time and the absolute enumeration has to
-        # come first, so it prepended last.
+        values.update(passthru)
 
-        if state["rel_enumerated"]:
-            pre = ("[%d] " % state["rel_idx"]) + pre
+        try:
+            s = eval_theme_string(parsed, values)
+        except Exception, e:
+            log.warn("Failed to evaluate fstring: %s" % fstring)
+            log.warn("\n" + "".join(traceback.format_exc(e)))
+            log.warn("Falling back to default")
 
-        if state["enumerated"]:
-            pre = ("[%d] " % state["abs_idx"]) + pre
-
-        s = pre + self.content["title"] + post
+            parsed = parse_conditional(DEFAULT_STRING)
+            s = eval_theme_string(parsed, values)
 
         # s is now a themed line based on this story.
         # This doesn't include a border.
