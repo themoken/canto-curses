@@ -522,7 +522,7 @@ class CantoCursesGui(CommandHandler):
             strtags = [ t.tag for t in self.vars["alltags"] ]
             if tag in strtags:
                 new_alltags = self.vars["alltags"]
-                del new_alltags[strtags.index(tag)
+                del new_alltags[strtags.index(tag)]
                 self.set_var("alltags", new_alltags) 
                 break
             else:
