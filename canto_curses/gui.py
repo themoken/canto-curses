@@ -80,12 +80,14 @@ class CantoCursesGui(CommandHandler):
             "reader.maxheight" : 0,
             "reader.float" : True,
             "reader.align" : "topleft",
+            "reader.border" : "smart",
             "reader.enumerate_links" : False,
             "reader.show_description" : True,
             "taglist.maxwidth" : 0,
             "taglist.maxheight" : 0,
             "taglist.float" : False,
             "taglist.align" : "neutral",
+            "taglist.border" : "none",
             "taglist.tags_enumerated" : False,
             "taglist.tags_enumerated_absolute" : False,
             "taglist.hide_empty_tags" : True,
@@ -95,6 +97,7 @@ class CantoCursesGui(CommandHandler):
             "input.maxheight" : 0,
             "input.float" : False,
             "input.align" : "bottom",
+            "input.border" : "none",
 
             "main.key.colon" : "command",
             "main.key.q" : "quit",
@@ -305,6 +308,15 @@ class CantoCursesGui(CommandHandler):
 
         # Make sure various window configurations make sense.
         for wintype in [ "reader", "input", "taglist" ]:
+            # Ensure border attributes are sane:
+            border_attr = wintype + ".border"
+            if newconfig[border_attr] not in ["full","none","smart"]:
+                log.error("Unknown border type for %s: %s" %\
+                        (border_attr, newconfig[border_attr]))
+                log.error("Reverting %s to %s" %\
+                        (border_attr, defconfig[border_attr]))
+                newconfig[border_attr] = defconfig[border_attr]
+
             # Ensure float attributes are boolean
             float_attr = wintype + ".float"
             self._val_bool(newconfig, defconfig, float_attr)

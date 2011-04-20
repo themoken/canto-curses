@@ -291,3 +291,26 @@ def theme_lstrip(pad, uni):
         theme_process(pad, codes)
 
     return (newlines * "\n") + r
+
+utf_chars = { "ls" : u"│",
+              "rs" : u"│",
+              "ts" : u"─",
+              "bs" : u"─",
+              "tl" : u"┌",
+              "tr" : u"┐",
+              "bl" : u"└",
+              "br" : u"┘" }
+
+ascii_chars = { "ls" : "|",
+                "rs" : "|",
+                "ts" : "-",
+                "bs" : "-",
+                "tl" : "+",
+                "tr" : "+",
+                "bl" : "+",
+                "br" : "+" }
+
+def theme_border(code):
+    if "UTF-8" in locale_enc:
+        return utf_chars[code]
+    return ascii_chars[code]

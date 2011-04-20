@@ -9,7 +9,7 @@
 from canto_next.plugins import Plugin
 from canto_next.hooks import on_hook, remove_hook
 
-from theme import FakePad, WrapPad, theme_print, theme_lstrip
+from theme import FakePad, WrapPad, theme_print, theme_lstrip, theme_border
 from command import command_format
 from html import htmlparser
 from guibase import GuiBase
@@ -79,20 +79,72 @@ class Reader(GuiBase):
 
     def redraw(self):
         offset = self.callbacks["get_var"]("reader_offset")
+        tb, lb, bb, rb = self.callbacks["border"]()
 
         # Overwrite visible pad with relevant area of pre-rendered pad.
         self.pad.erase()
 
         realheight = min(self.height, self.fullpad.getmaxyx()[0]) - 1
 
-        self.fullpad.overwrite(self.pad, offset, 0, 0, 0,\
+        top = 0
+        if tb:
+            self.pad.move(0, 0)
+            self.render_top_border(WrapPad(self.pad))
+            top += 1
+            realheight -= 1
+
+        self.fullpad.overwrite(self.pad, offset, 0, top, 0,\
                 realheight, self.width - 1)
 
-        self.pad.move(realheight, 0)
+        if bb:
+            # If we're not floating, then the bottom border
+            # belongs at the bottom of the given window.
+
+            if not self.callbacks["floating"]():
+                padheight = self.pad.getmaxyx()[0]
+                self.pad.move(padheight - 2, 0)
+                self.render_bottom_border(WrapPad(self.pad))
+            else:
+                self.pad.move(realheight - 1, 0)
+                self.render_bottom_border(WrapPad(self.pad))
+                self.pad.move(realheight - 1, 0)
+        else:
+            self.pad.move(realheight - 1, 0)
+
         self.callbacks["refresh"]()
+
+    def render_top_border(self, pad):
+        tb, lb, bb, rb = self.callbacks["border"]()
+
+        lc = u" "
+        if lb:
+            lc = "%1%C" + theme_border("tl") + "%c%0"
+
+        rc = u" "
+        if rb:
+            rc = "%1%C" + theme_border("tr") + "%c%0"
+
+        theme_print(pad, theme_border("ts") * (self.width - 1),\
+                self.width, lc, rc)
+
+    def render_bottom_border(self, pad):
+        tb, lb, bb, rb = self.callbacks["border"]()
+
+        lc = u" "
+        if lb:
+            lc = "%1%C" + theme_border("bl") + "%c%0"
+
+        rc = u" "
+        if rb:
+            rc = "%1%C" + theme_border("br") + "%c%0"
+
+        theme_print(pad, theme_border("bs") * (self.width - 1),\
+                self.width, lc, rc)
 
     def render(self, pad, show_description, enumerate_links):
         self.links = []
+
+        tb, lb, bb, rb = self.callbacks["border"]()
 
         s = "No selected story.\n"
 
@@ -143,11 +195,31 @@ class Reader(GuiBase):
         s = s.rstrip(" \t\v\n")
 
         lines = 0
+
+        # Account for potential top border rendered on redraw.
+        if tb:
+            lines += 1
+
+        # Prepare left and right borders
+
+        l = u" "
+        if lb:
+            l = "%1%C" + theme_border("ls") + " %c%0"
+        r = u" "
+        if rb:
+            r = "%1%C " + theme_border("rs") + "%c%0"
+
+        # Render main content
+
         while s:
             s = theme_lstrip(pad, s)
             if s:
-                s = theme_print(pad, s, self.width, " ", " ")
+                s = theme_print(pad, s, self.width, l, r)
                 lines += 1
+
+        # Account for potential bottom rendered on redraw.
+        if bb:
+            lines += 1
 
         # Return one extra line because the rest of the reader
         # code knows to avoid the dead cell on the bottom right

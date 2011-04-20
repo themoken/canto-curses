@@ -193,6 +193,43 @@ class Screen(CommandHandler):
 
         refcb = lambda : self.refresh_callback(ci, top, left, bottom, right)
 
+        # Callback to allow windows to know if they're floating. This is
+        # important because floating windows are only rendered up to their
+        # last cursor position, despite being given a maximal window.
+
+        floatcb = lambda : ci in self.floats
+
+        # Use coordinates and dimensions to determine where borders
+        # are needed. This is independent of whether there are actually
+        # windows there.
+
+        # NOTE: These should only be honored if the window is non-floating.
+        # Floating windows are, by design, given a window the size of the
+        # entire screen, but only actually written lines are drawn.
+
+        border = self.callbacks["get_opt"](ci.get_opt_name() + ".border")
+
+        if border == "smart":
+            top_border = top != 0
+            bottom_border = bottom != (self.height - 1)
+            left_border = left != 0
+            right_border = right != (self.width - 1)
+
+            if ci in self.floats:
+                align = self.callbacks["get_opt"](ci.get_opt_name() + ".align")
+                if "top" in align:
+                    bottom_border = True
+                if "bottom" in align:
+                    top_border = True
+
+        elif border == "full":
+            top_border, bottom_border, left_border, right_border = (True,) * 4
+
+        elif border == "none":
+            top_border, bottom_border, left_border, right_border = (False,) * 4
+
+        bordercb = lambda : (top_border, left_border, bottom_border, right_border)
+
         # Height + 1 to account for the last curses pad line
         # not being fully writable.
 
@@ -203,6 +240,8 @@ class Screen(CommandHandler):
 
         callbacks = self.callbacks.copy()
         callbacks["refresh"] = refcb
+        callbacks["border"] = bordercb
+        callbacks["floating"] = floatcb
         callbacks["input"] = self.input_callback
         callbacks["die"] = self.die_callback
         callbacks["pause_interface" ] = self.pause_interface_callback
