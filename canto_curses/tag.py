@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto_next.hooks import call_hook
+from canto_next.hooks import call_hook, on_hook, remove_hook
 
 from theme import FakePad, WrapPad, theme_print
 from story import Story
@@ -40,10 +40,31 @@ class Tag(list):
 
         self.tag = tag
 
+        # Retain arguments for last refresh call
+        self.width = 0
+
+        self.pad = None
+        self.lines = 0
+
+        # Global indices (for enumeration)
+        self.item_offset = 0
+        self.visible_tag_offset = 0
+        self.tag_offset = 0
+
+        on_hook("opt_change", self.on_opt_change)
+
         # Upon creation, this Tag adds itself to the
         # list of all tags.
 
         callbacks["get_var"]("alltags").append(self)
+
+    def die():
+        remove_hook("opt_change", self.on_opt_change)
+
+    def on_opt_change(self, opts):
+        if "taglist.tags_enumerated" in opts or \
+                "taglist.tags_enumerated_absolute" in opts:
+            self.refresh_self()
 
     # We override eq so that empty tags don't evaluate
     # as equal and screw up things like enumeration.
@@ -55,24 +76,49 @@ class Tag(list):
 
     # Create Story from ID before appending to list.
 
-    def append(self, id):
-        s = Story(id, self.callbacks)
-        call_hook("item_add", [ self, [ s ] ] )
-        list.append(self, s)
+    def add_items(self, ids):
+        added = []
+        for id in ids:
+            s = Story(id, self.callbacks)
+            self.append(s)
+            added.append(s)
+
+            rel = len(self) - 1
+            s.set_rel_offset(rel)
+            s.set_offset(self.item_offset + rel)
+            s.refresh(self.width)
+
+        call_hook("items_added", [ self, added ] )
 
     # Remove Story based on ID
 
-    def remove(self, id):
-        log.debug("removing: %s" % (id,))
-        for item in self:
-            if item.id == id:
-                call_hook("item_remove", [ self, [ item ] ] )
+    def remove_items(self, ids):
+        removed = []
+        low_index = -1
+        for idx, item in enumerate(self):
+            if item.id in ids:
+                log.debug("removing: %s" % (item.id,))
+                if low_index < 0:
+                    low_index = idx
+
                 list.remove(self, item)
+                item.die()
+                removed.append(item)
+
+        # Update indices of items.
+        for i, story in enumerate(self):
+            story.set_rel_offset(i)
+            story.set_offset(self.item_offset + i)
+
+        call_hook("items_removed", [ self, removed ] )
 
     # Remove all stories from this tag.
 
     def reset(self):
-        call_hook("item_remove", [ self, self[:] ])
+        for item in self:
+            item.die()
+
+        call_hook("items_removed", [ self, self[:] ])
         del self[:]
 
     def get_id(self, id):
@@ -84,22 +130,48 @@ class Tag(list):
     def get_ids(self):
         return [ s.id for s in self ]
 
-    def refresh(self, mwidth, idx_offset):
+    # Inform the tag of global index of it's first item.
+    def set_item_offset(self, offset):
+        if self.item_offset != offset:
+            self.item_offset = offset
+            for i, item in enumerate(self):
+                item.set_offset(offset + i)
 
-        lines = self.render_header(mwidth, FakePad(mwidth))
+    def set_visible_tag_offset(self, offset):
+        if self.visible_tag_offset != offset:
+            self.visible_tag_offset = offset
+            self.refresh(self.width)
 
-        self.header_pad = curses.newpad(lines, mwidth)
+    def set_tag_offset(self, offset):
+        if self.tag_offset != offset:
+            self.tag_offset = offset
+            self.refresh(self.width)
 
-        for i, item in enumerate(self):
-            lines += item.refresh(mwidth, idx_offset, i)
+    def refresh_self(self):
+        self.refresh(self.width)
 
-        # Create a new pad with enough lines to
-        # include all story objects.
-        self.pad = curses.newpad(lines, mwidth)
+    def refresh(self, width):
+        # Un-init'd pad, ignore.
+        if width == 0:
+            return
 
-        return self.render(mwidth, WrapPad(self.pad))
+        if self.width != width:
+            for item in self:
+                item.refresh(width)
+            self.width = width
 
-    def render_header(self, mwidth, pad):
+        lines = self.render_header(width, FakePad(width))
+
+        self.pad = curses.newpad(lines, width)
+        self.render_header(width, WrapPad(self.pad))
+
+        if lines != self.lines:
+            self.callbacks["set_var"]("needs_refresh", True)
+            self.lines = lines
+
+        self.callbacks["set_var"]("needs_redraw", True)
+
+    def render_header(self, width, pad):
         enumerated = self.callbacks["get_opt"]("taglist.tags_enumerated")
         enumerated_absolute =\
             self.callbacks["get_opt"]("taglist.tags_enumerated_absolute")
@@ -112,40 +184,15 @@ class Tag(list):
         # it's added to the front of the string last.
 
         if enumerated:
-            vistags = self.callbacks["get_var"]("taglist_visible_tags")
-            header = ("[%d] " % vistags.index(self)) + header
+            header = ("[%d] " % self.visible_tag_offset) + header
 
         if enumerated_absolute:
-            curtags = self.callbacks["get_var"]("curtags")
-            header = ("[%d] " % curtags.index(self)) + header
+            header = ("[%d] " % self.tag_offset) + header
 
         lines = 0
 
         while header:
-            header = theme_print(pad, header, mwidth, u"", u"")
+            header = theme_print(pad, header, width, u"", u"")
             lines += 1
 
         return lines
-
-    def render(self, mwidth, pad):
-        # Update header_pad (used to float tag header)
-        self.render_header(mwidth, WrapPad(self.header_pad))
-
-        # Render to the taglist pad as well.
-        spent_lines = self.render_header(mwidth, pad)
-        mp = [spent_lines]
-
-        for item in self:
-            cur_lines = item.pad.getmaxyx()[0]
-            mp.append(cur_lines)
-
-            # Copy the item pad into the Tag's pad.
-            item.pad.overwrite(self.pad, 0, 0, spent_lines, 0,\
-                spent_lines + cur_lines - 1 , mwidth - 1)
-
-            spent_lines += cur_lines
-
-        # Return a list of integers, the heights of the header,
-        # and all of the stories. The sum must == the height
-        # of the tag's pad.
-        return mp

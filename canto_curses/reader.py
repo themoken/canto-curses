@@ -7,6 +7,7 @@
 #   published by the Free Software Foundation.
 
 from canto_next.plugins import Plugin
+from canto_next.hooks import on_hook, remove_hook
 
 from theme import FakePad, WrapPad, theme_print, theme_lstrip
 from command import command_format
@@ -31,12 +32,30 @@ class Reader(GuiBase):
         self.pad = pad
 
         self.max_offset = 0
-        self.saved = {}
-        self.waiting_on_content = False
 
         self.callbacks = callbacks
 
         self.quote_rgx = re.compile(u"[\\\"](.*?)[\\\"]")
+
+        on_hook("opt_change", self.on_opt_change)
+
+    def die(self):
+        remove_hook("opt_change", self.on_opt_change)
+
+    def on_opt_change(self, change):
+        if "reader.show_description" in change or\
+                "reader.enumerate_links" in change:
+            self.refresh()
+
+    def on_attributes(self, attributes):
+        sel = self.callbacks["get_var"]("reader_item")
+        if sel in attributes:
+            remove_hook("attributes", self.on_attributes)
+
+            # Don't bother checking attributes. If we're still
+            # lacking, refresh  will re-enable this hook
+            self.refresh()
+            self.callbacks["set_var"]("needs_redraw", True)
 
     def refresh(self):
         self.height, self.width = self.pad.getmaxyx()
@@ -44,25 +63,23 @@ class Reader(GuiBase):
         enum_links = self.callbacks["get_opt"]("reader.enumerate_links")
         offset = self.callbacks["get_var"]("reader_offset")
 
-        save = { "desc" : show_desc,
-                 "enum" : enum_links }
+        fp = FakePad(self.width)
+        lines = self.render(fp, show_desc, enum_links)
 
-        # Particulars have changed, re-render.
-        if self.saved != save or self.waiting_on_content:
-            self.saved = save
+        # Create pre-rendered pad
+        self.fullpad = curses.newpad(lines, self.width)
+        self.render(WrapPad(self.fullpad), show_desc, enum_links)
 
-            fp = FakePad(self.width)
-            lines = self.render(fp, show_desc, enum_links)
+        # Update offset based on new display properties.
+        self.max_offset = max((lines - 1) - (self.height - 1), 0)
 
-            # Create pre-rendered pad
-            self.fullpad = curses.newpad(lines, self.width)
-            self.render(WrapPad(self.fullpad), show_desc, enum_links)
+        offset = min(offset, self.max_offset)
+        self.callbacks["set_var"]("reader_offset", offset)
 
-            # Update offset based on new display properties.
-            self.max_offset = max((lines - 1) - (self.height - 1), 0)
+        self.redraw()
 
-            offset = min(offset, self.max_offset)
-            self.callbacks["set_var"]("reader_offset", offset)
+    def redraw(self):
+        offset = self.callbacks["get_var"]("reader_offset")
 
         # Overwrite visible pad with relevant area of pre-rendered pad.
         self.pad.erase()
@@ -74,9 +91,6 @@ class Reader(GuiBase):
 
         self.pad.move(realheight, 0)
         self.callbacks["refresh"]()
-
-    def redraw(self):
-        self.refresh()
 
     def render(self, pad, show_description, enumerate_links):
         self.links = []
@@ -90,18 +104,15 @@ class Reader(GuiBase):
             s = "%1%B" + sel.content["title"] + "%b\n"
 
             # We use the description for most reader content, so if it hasn't
-            # been fetched yet then grab that from the server now and set
-            # needs_deferred_redraw so that we consistently get re-called until
-            # description appears thanks to the ATTRIBUTES response.
+            # been fetched yet then grab that from the server now and setup
+            # a hook to get notified when sel's attributes are changed.
 
             if "description" not in sel.content:
                 self.callbacks["write"]("ATTRIBUTES",\
                         { sel.id : ["description" ] })
-                self.callbacks["set_var"]("needs_deferred_redraw", True)
                 s += "%BWaiting for content...%b\n"
-                self.waiting_on_content = True
+                on_hook("attributes", self.on_attributes)
             else:
-                self.waiting_on_content = False
                 content, links =\
                         htmlparser.convert(sel.content["description"])
 
@@ -181,7 +192,7 @@ class Reader(GuiBase):
         offset = min(offset, self.max_offset)
         offset = max(offset, 0)
         self.callbacks["set_var"]("reader_offset", offset)
-        self.callbacks["set_var"]("needs_redraw", True)
+        self.redraw()
 
     def is_input(self):
         return False

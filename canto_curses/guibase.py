@@ -44,6 +44,12 @@ class GuiBase(CommandHandler):
         t = self.callbacks["get_opt"](option)
         self.callbacks["set_opt"](option, True)
 
+        # It's assumed that if we're wrapping a prompt in this
+        # change, that we want to update the pad.
+
+        if not t:
+            self.redraw()
+
         r = self.input(prompt)
 
         self.callbacks["set_opt"](option, t)
@@ -52,6 +58,12 @@ class GuiBase(CommandHandler):
     def _tag_cfg_set_prompt(self, tag, option, prompt):
         t = self.callbacks["get_tag_opt"](tag, option)
         self.callbacks["set_tag_opt"](tag, option, True)
+
+        # Same as above, if we're wrapping a prompt, we want
+        # to update the screen.
+
+        if not t:
+            self.redraw()
 
         r = self.input(prompt)
 

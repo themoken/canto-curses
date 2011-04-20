@@ -48,8 +48,6 @@ class CantoCursesGui(CommandHandler):
             "alltags" : [],
             "needs_refresh" : False,
             "needs_redraw" : False,
-            "needs_deferred_refresh" : False,
-            "needs_deferred_redraw" : False,
             "protected_ids" : [],
             "transforms" : [],
             "taglist_visible_tags" : [],
@@ -202,8 +200,7 @@ class CantoCursesGui(CommandHandler):
         self.screen.refresh()
 
         item_tags = [ t.tag for t in self.vars["curtags"]]
-        for tag in item_tags:
-            self.backend.write("ITEMS", [tag])
+        self.backend.write("ITEMS", item_tags)
 
         # Start watching all given tags.
         self.backend.write("WATCHTAGS", item_tags)
@@ -436,17 +433,25 @@ class CantoCursesGui(CommandHandler):
             return
 
         # Move over new tag configuration.
-        def_config = self.tag_config.copy()
+        new_config = self.tag_config.copy()
         for k in given_tag_config:
-            self.tag_config[k] = given_tag_config[k]
+            new_config[k] = given_tag_config[k]
 
-        self.tag_config = self.validate_tag_config(self.tag_config,
-                def_config)
+        new_config = self.validate_tag_config(new_config,
+                self.tag_config)
 
-        changed_opts = self._dict_diff(self.tag_config, def_config)
-        self.check_tag_opt_refresh(changed_opts)
+        changed_opts = self._dict_diff(new_config, self.tag_config)
+        for tag_header in changed_opts:
+            tag = tag_header[4:]
+            for cur_tag in self.vars["alltags"]:
+                if curtag.tag == tag:
+                    for k in changed_opts[tag_header]:
+                        self.set_tag_opt(opt, tag, k,\
+                                changed_opts[tag_header][k])
+                    break
 
     def prot_attributes(self, d):
+        atts = {}
         for given_id in d:
             for tag in self.vars["alltags"]:
                 item = tag.get_id(given_id)
@@ -461,6 +466,10 @@ class CantoCursesGui(CommandHandler):
                         a = html_entity_convert(a)
                         a = char_ref_convert(a)
                     item.content[k] = a
+                atts[item] = d[given_id].keys()
+
+        if atts:
+            call_hook("attributes", [ atts ])
 
     def prot_items(self, updates):
         needed_attrs = {}
@@ -469,29 +478,34 @@ class CantoCursesGui(CommandHandler):
         for tag in updates:
             for have_tag in self.vars["alltags"]:
                 if have_tag.tag == tag:
+                    adds = []
+                    removes = []
 
                     # Eliminate discarded items.
                     for id in have_tag.get_ids():
                         if id not in self.vars["protected_ids"] and \
                                 id not in updates[tag]:
-                            have_tag.remove(id)
-                            unprotect["auto"].append(id)
+                            removes.append(id)
 
                     # Add new items.
                     for id in updates[tag]:
                         if id not in have_tag.get_ids():
-                            have_tag.append(id)
+                            adds.append(id)
 
-                            story = have_tag.get_id(id)
-                            needed_attrs[story.id] = story.needed_attributes()
+                    have_tag.add_items(adds)
+                    for id in adds:
+                        story = have_tag.get_id(id)
+                        needed_attrs[id] = story.needed_attributes()
+
+                    have_tag.remove_items(removes)
+                    for id in removes:
+                        unprotect["auto"].append(id)
 
         if needed_attrs:
             self.backend.write("ATTRIBUTES", needed_attrs)
 
         if unprotect:
             self.backend.write("UNPROTECT", unprotect)
-
-        self.set_var("needs_refresh", True)
 
     def prot_tagchange(self, tag):
         if tag not in self.updates:
@@ -524,9 +538,14 @@ class CantoCursesGui(CommandHandler):
             strtags = [ t.tag for t in self.vars["alltags"] ]
             if tag in strtags:
                 new_alltags = self.vars["alltags"]
+
+                # Allow Tag obj to cleanup hooks.
+                tagobj = new_alltags[strtags.index(tag)]
+                tagobj.die()
+
+                # Remove it from alltags.
                 del new_alltags[strtags.index(tag)]
-                self.set_var("alltags", new_alltags) 
-                break
+                self.set_var("alltags", new_alltags)
             else:
                 log.warn("Got DELTAG for non-existent tag!")
 
@@ -664,6 +683,7 @@ class CantoCursesGui(CommandHandler):
                 self.tag_config[tagheader][option] != value:
             self.tag_config[tagheader][option] = value
             self.check_tag_opt_refresh([option])
+            call_hook("tag_opt_change", [ tag, { option : value }])
             self.backend.write("SETCONFIGS",\
                     { tagheader : { option : unicode(value) } } )
 
@@ -763,6 +783,10 @@ class CantoCursesGui(CommandHandler):
         # want to use .startswith instead of a regex.
         return [ s.lstrip() for s in r ]
 
+#    def run(self):
+#        import cProfile
+#        cProfile.runctx("self._run()", globals(), locals(), "canto-out")
+
     def run(self):
         # Priority commands allow a single
         # user inputed string to actually
@@ -819,19 +843,11 @@ class CantoCursesGui(CommandHandler):
                 log.debug("Needed refresh")
                 self.screen.refresh()
                 self.vars["needs_refresh"] = False
-                self.vars["needs_redraw"] = False
-            elif self.vars["needs_redraw"]:
+
+            if self.vars["needs_redraw"]:
                 log.debug("Needed redraw")
                 self.screen.redraw()
                 self.vars["needs_redraw"] = False
-
-            if self.vars["needs_deferred_refresh"]:
-                self.vars["needs_deferred_refresh"] = False
-                self.vars["needs_deferred_redraw"] = False
-                self.vars["needs_refresh"] = True
-            elif self.vars["needs_deferred_redraw"]:
-                self.vars["needs_deferred_redraw"] = False
-                self.vars["needs_redraw"] = True
 
     def get_opt_name(self):
         return "main"

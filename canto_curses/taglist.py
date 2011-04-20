@@ -43,19 +43,28 @@ class TagList(GuiBase):
         # Holster for a list of items for batch operations.
         self.got_items = None
 
-        on_hook("eval_tags_changed", self.update_tag_lists)
-        on_hook("eval_tags_changed", self.redraw)
-        on_hook("item_add", self.on_item_add)
-        on_hook("item_remove", self.on_item_remove)
+        # First (at least partially) visible object
+        self.first_obj = None
 
-        self.refresh()
+        # Hooks
+        on_hook("eval_tags_changed", self.refresh)
+        on_hook("items_added", self.on_items_added)
+        on_hook("items_removed", self.on_items_removed)
+
+        self.update_tag_lists()
+
+        # Inform the tags that our size could now
+        # be different than the last time they were
+        # refreshed.
+
+        for tag in self.tags:
+            tag.refresh(self.width)
 
     def die(self):
         log.debug("Cleaning up hooks...")
-        remove_hook("eval_tags_changed", self.update_tag_lists)
-        remove_hook("eval_tags_changed", self.redraw)
-        remove_hook("item_add", self.on_item_add)
-        remove_hook("item_remove", self.on_item_remove)
+        remove_hook("eval_tags_changed", self.refresh)
+        remove_hook("items_added", self.on_items_added)
+        remove_hook("items_removed", self.on_items_removed)
 
     # We start with a number of convenient lookup, listing,
     # and user prompting functions.
@@ -97,14 +106,26 @@ class TagList(GuiBase):
             for story in reversed(tag):
                 yield story
 
+    def all_visible_tags_and_items(self):
+        for tag in self.callbacks["get_var"]("taglist_visible_tags"):
+            yield tag
+            for story in tag:
+                yield story
+
     def first_visible_item(self):
         offset = self.callbacks["get_var"]("offset")
 
         for item in self.all_items():
-            if offset >= item.min_offset and offset <= item.max_offset:
+            if offset >= item.min_offset:
                 return item
 
-    def on_item_add(self, tag, items):
+    def on_items_added(self, tag, items):
+        # Items being added implies we need to remap them
+        self.callbacks["set_var"]("needs_refresh", True)
+
+        # The rest of this function is about trying to
+        # maintain the selection.
+
         sel = self.callbacks["get_var"]("selected")
         if sel:
             return
@@ -123,7 +144,10 @@ class TagList(GuiBase):
         self.callbacks["set_var"]("selected", new_sel)
         self.callbacks["set_var"]("old_selected", None)
 
-    def on_item_remove(self, tag, items):
+    def on_items_removed(self, tag, items):
+        # Items being removed implies we need to remap them.
+        self.callbacks["set_var"]("needs_refresh", True)
+
         sel = self.callbacks["get_var"]("selected")
         if sel in items:
             self.callbacks["set_var"]("selected", None)
@@ -290,8 +314,6 @@ class TagList(GuiBase):
                             { "canto-state" : item.content["canto-state"]}
 
         if attributes != {}:
-            self.refresh()
-            self.callbacks["set_var"]("needs_redraw", True)
             self.callbacks["write"]("SETATTRIBUTES", attributes)
 
     # item-state: Add/remove state for multiple items.
@@ -307,8 +329,6 @@ class TagList(GuiBase):
         # Propagate state changes to the backend.
 
         if attributes:
-            self.refresh()
-            self.callbacks["set_var"]("needs_redraw", True)
             self.callbacks["write"]("SETATTRIBUTES", attributes)
 
     @command_format([])
@@ -348,6 +368,23 @@ class TagList(GuiBase):
         else:
             self._set_cursor(item)
 
+    # Wrapper that will update self.first_obj.
+
+    def set_offset(self, offset):
+        cur_offset = self.callbacks["get_var"]("offset")
+
+        while self.first_obj:
+            if self.first_obj.next_obj and self.first_obj.max_draw_offset < offset:
+                self.first_obj = self.first_obj.next_obj
+            elif self.first_obj.prev_obj and self.first_obj.prev_obj.max_draw_offset >= offset:
+                self.first_obj = self.first_obj.prev_obj
+            else:
+                break
+
+        self.callbacks["set_var"]("offset", offset)
+        if cur_offset != offset:
+            self.redraw()
+
     # Ensures that offset is set such that the current item
     # is visible.
 
@@ -359,7 +396,7 @@ class TagList(GuiBase):
         elif offset < item.min_offset:
             offset = max(item.min_offset, 0)
 
-        self.callbacks["set_var"]("offset", offset)
+        self.set_offset(offset)
 
     def _set_cursor(self, item):
         # May end up as None
@@ -375,9 +412,6 @@ class TagList(GuiBase):
 
                 # Adjust offset to keep selection on the screen
                 self.adjust_offset(item)
-
-            self.refresh()
-            self.callbacks["set_var"]("needs_redraw", True)
 
     # foritems gets a valid list of items by index.
 
@@ -418,9 +452,8 @@ class TagList(GuiBase):
         offset = max(offset, 0)
 
         # _set_cursor relies on the offset var, set it first.
-        self.callbacks["set_var"]("offset", offset)
+        self.set_offset(offset)
         self._set_cursor(newsel)
-        self.callbacks["set_var"]("needs_redraw", True)
 
     @command_format([])
     def cmd_page_down(self, **kwargs):
@@ -444,9 +477,9 @@ class TagList(GuiBase):
         offset = min(offset, self.max_offset)
 
         # _set_cursor relies on the offset var, set it first.
-        self.callbacks["set_var"]("offset", offset)
-        self._set_cursor(newsel)
-        self.callbacks["set_var"]("needs_redraw", True)
+        self.set_offset(offset)
+        if newsel:
+            self._set_cursor(newsel)
 
     @command_format([("item", "sel_or_item")])
     def cmd_reader(self, **kwargs):
@@ -473,7 +506,6 @@ class TagList(GuiBase):
 
             # Re-order tags and update internal list order.
             self.callbacks["promote_tag"](tag, visible_tags[curidx - 1])
-            self.callbacks["set_var"]("needs_redraw", True)
 
     @command_format([("tags", "listof_tags")])
     def cmd_demote(self, **kwargs):
@@ -484,48 +516,91 @@ class TagList(GuiBase):
         hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")
 
         t = []
-        for tag in self.tags:
+        cur_item_offset = 0
+
+        for i, tag in enumerate(self.tags):
             if hide_empty and len(tag) == 0:
                 continue
+
+            # Update index info
+            tag.set_item_offset(cur_item_offset)
+            tag.set_tag_offset(i)
+            tag.set_visible_tag_offset(len(t))
+
+            cur_item_offset += len(tag)
             t.append(tag)
+
+        if t and not self.first_obj:
+            self.first_obj = t[0]
+        elif not t and self.first_obj:
+            self.first_obj = None
 
         self.callbacks["set_var"]("taglist_visible_tags", t)
 
+    # Refresh updates information used to render the objects.
+    # Effectively, we build a doubly linked list out of all
+    # of the objects by setting obj.prev_obj and obj.next_obj.
+
+    # This is so that set_offset() can start traversing
+    # the list at the current first_obj and search immediately
+    # in the direction of the next first_obj.
+
+    # We also set obj.max_draw_offset which set_offset() uses
+    # to identify when it has searched far enough. This identifier
+    # is entirely about which object needs to be rendered first,
+    # which is not necessarily the first visible object.
+
+    # In addition we update scrolling info. obj.max_offset and
+    # obj.min_offset are used for *visible* items so that
+    # we a new selection is made, the offset can be set correctly
+    # such that the entire item is visible.
+
     def refresh(self):
         self.update_tag_lists()
-        self.max_offset = -1 * self.height
-        idx = 0
+
+        prev_obj = None
 
         for tag in self.callbacks["get_var"]("taglist_visible_tags"):
-            ml = tag.refresh(self.width, idx)
 
-            if len(ml) > 1:
-                # Update each item's {min,max}_offset for being visible in case
-                # they become selections.
+            tag.prev_obj = prev_obj
+            tag.next_obj = None
 
-                # Note: ml[0] == header, so current item's length = ml[i + 1]
+            if not prev_obj:
+                tag.max_offset = 0
+                tag.max_draw_offset = 0 + (tag.lines - 1)
+                tag.min_offset = -1 * ((self.height - 1) - tag.lines)
+            else:
+                tag.max_offset = prev_obj.max_offset + prev_obj.lines
+                tag.max_draw_offset = prev_obj.max_draw_offset + tag.lines 
+                tag.min_offset = prev_obj.min_offset + tag.lines
 
-                # Note: min/max_offsets are theoretical (i.e. they don't
-                # have to exist between 0 and self.max_offset.
+                prev_obj.next_obj = tag
 
-                for i in xrange(len(tag)):
-                    curpos = self.max_offset + sum(ml[0:i + 2])
-                    tag[i].min_offset = curpos + 1
-                    tag[i].max_offset = curpos + (self.height - ml[i + 1])
+            prev_obj = tag
 
-                    # Adjust for the floating header.
-                    tag[i].max_offset -= ml[0]
+            for story in tag:
+                story.prev_obj = prev_obj
+                story.next_obj = None
 
-            self.max_offset += sum(ml)
-            idx += len(tag)
+                story.max_draw_offset = prev_obj.max_draw_offset + story.lines 
+                story.min_offset = prev_obj.min_offset + story.lines
+
+                # Adjust for floating header. We derive the max_offset from
+                # max_draw_offset rather than prev_obj.max_draw_offset because
+                # we don't want to adjust for tag.lines multiple times.
+
+                story.max_offset = (prev_obj.max_draw_offset + 1) - tag.lines
+
+                prev_obj.next_obj = story
+                prev_obj = story
 
         # If we have less than a screenful of
         # content, set max_offset to pin it to the top.
 
-        if self.max_offset <= 0:
-            self.max_offset = 0
+        if prev_obj:
+            self.max_offset = max(prev_obj.min_offset, 0)
         else:
-            self.max_offset += 1
+            self.max_offset = 0
 
         # If we've got a selection make sure it's
         # still going to be onscreen.
@@ -536,71 +611,87 @@ class TagList(GuiBase):
 
         self.redraw()
 
+    # curpos - position in visible windown, can be negative
+    # main_offset - starting line from top of pad
+
+    def _partial_render(self, obj, main_offset, curpos):
+        lines = obj.lines
+        draw_lines = lines
+
+        if curpos + lines > 0:
+            start = 0
+
+            # If we're crossing the boundary to onscreen
+            # trim render window.
+            if curpos < 0:
+                start = -1 * curpos
+                draw_lines += curpos
+
+            # If we're crossing the boundary to offscreen
+            # trim render window.
+            if main_offset + draw_lines > self.height:
+                draw_lines = self.height - main_offset
+
+            if draw_lines:
+                obj.pad.overwrite(self.pad, start, 0, main_offset, 0,
+                        main_offset + (draw_lines - 1), self.width - 2)
+                return (main_offset + draw_lines, curpos + lines)
+
+        return (main_offset, curpos + lines)
+
     def redraw(self):
         self.pad.erase()
 
         offset = self.callbacks["get_var"]("offset")
-        spent_lines = 0
+        w_offset = 0
 
-        # We use 'done' when we know we've rendered all the
-        # tags we can. We can't just 'break' from the loop
-        # or spent_lines accounting will fuck up.
+        obj = self.first_obj
 
-        done = False
+        if not obj:
+            self.pad.addstr("All tags empty.")
+            self.callbacks["refresh"]()
+            return
 
-        lines = self.height
+        # Calculate the offset into the current item. For example,
+        # if offset is 1, and the first item starts at 0 but ends on
+        # line 1, then the first line rendered will be the second line
+        # of the first item, so curpos = -1 (discard the one line).
 
-        for tag in self.callbacks["get_var"]("taglist_visible_tags"):
+        # At first blush, this feels like it should be a simpler
+        # formulate like `offset - obj.max_offset` but you have to
+        # remember that max_offset is for setting the offset when
+        # scrolling and it takes into account the floating header.
+        # Therefore, we have to derive it from max_draw_offset which
+        # is the maximum offset that the item should be the first to
+        # render.
 
-            taglines = tag.pad.getmaxyx()[0]
+        curpos = -1 * ((obj.lines - 1) - (obj.max_draw_offset - offset))
 
-            # If we're still off screen up after last tag, but this
-            # tag will put us over the top, partial render.
+        rendered_header = False
 
-            if spent_lines < offset and taglines > (offset - spent_lines):
-                start = (offset - spent_lines)
+        while obj:
+            # Save offset, curpos in case we need to overwrite.
+            w, c = w_offset, curpos
 
-                # min() so we don't try to write too much if the
-                # first tag is also the only tag on screen.
-                maxr = min(taglines - start, self.height)
+            # Copy item into window
+            w_offset, curpos = self._partial_render(obj, w_offset, curpos)
 
-                tag.pad.overwrite(self.pad, start, 0, 0, 0,\
-                        maxr - 1, self.width - 1)
+            # Render floating header, if we've covered enough ground.
 
-                # This is first tag, render floating tag header.
-                headerlines = tag.header_pad.getmaxyx()[0]
-                maxr = min(headerlines, self.height)
-
-                tag.header_pad.overwrite(self.pad, 0, 0, 0, 0,\
-                        maxr - 1, self.width - 1)
-
-            # Elif we're possible visible
-            elif spent_lines >= offset:
-
-                # If we're *entirely* visible, render the whole thing
-                if spent_lines < ((offset + self.height) - taglines):
-                    dest_start = (spent_lines - offset)
-                    tag.pad.overwrite(self.pad, 0, 0, dest_start, 0,\
-                            dest_start + taglines - 1 , self.width - 1)
-
-                # Elif we're partially visible (last tag).
-                elif spent_lines < (offset + self.height):
-                    dest_start = (spent_lines - offset)
-                    maxr = dest_start + ((offset + self.height) - spent_lines)
-                    tag.pad.overwrite(self.pad, 0, 0, dest_start, 0,\
-                            maxr - 1, self.width - 1)
-                    done = True
-
-                # Else, we're off screen, and done.
+            if not rendered_header and curpos > 0:
+                if obj in self.tags:
+                    tag = obj
                 else:
-                    done = True
+                    tag = self.tag_by_item(obj)
 
-            spent_lines += taglines
-            if done:
+                if curpos >= tag.lines:
+                    self._partial_render(tag, 0, 0)
+                    rendered_header = True
+
+            if w_offset >= self.height:
                 break
 
-        if not spent_lines:
-            self.pad.addstr("All tags empty.")
+            obj = obj.next_obj
 
         self.callbacks["refresh"]()
 

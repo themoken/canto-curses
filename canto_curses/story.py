@@ -7,6 +7,7 @@
 #   published by the Free Software Foundation.
 
 from canto_next.plugins import Plugin, PluginHandler
+from canto_next.hooks import on_hook, remove_hook
 
 from theme import FakePad, WrapPad, theme_print, theme_len, theme_process
 from parser import parse_conditionals, eval_theme_string
@@ -34,12 +35,61 @@ class Story(PluginHandler):
         self.content = {}
         self.id = id
         self.selected = False
-        self.cached_state = {}
+
+        # Retain arguments from last refresh call.
+        self.width = 0
+
+        self.offset = 0
+        self.rel_offset = 0
+
+        # Lines used in last successful render
+        self.lines = 0
+
+        self.pad = None
+
+        # Status of hooks
+        self.att_queued = False
+
+        on_hook("opt_change", self.on_opt_change)
+        on_hook("tag_opt_change", self.on_tag_opt_change)
+
+    def die(self):
+        remove_hook("opt_change", self.on_opt_change)
+        remove_hook("tag_opt_change", self.on_tag_opt_change)
 
     def __eq__(self, other):
         if not other:
             return False
+        if not hasattr(other, "id"):
+            return False
         return self.id == other.id
+
+    def on_attributes(self, attributes):
+        if self in attributes:
+            remove_hook("attributes", self.on_attributes)
+            self.att_queued = False
+
+            # Don't bother checking attributes. If we're still
+            # lacking, refresh_self will re-enable this hook
+
+            self.callbacks["set_var"]("needs_refresh", True)
+            self.refresh_self()
+
+    def on_opt_change(self, config):
+        if "story.enumerated" in config:
+            self.refresh_self()
+
+    def on_tag_opt_change(self, tag, config):
+        if self in tag and "enumerated" in config:
+            self.refresh_self()
+
+    # Simple hook wrapper to make sure we don't have multiple
+    # on_attribute hooks registered.
+
+    def queue_need_attributes(self):
+        if not self.att_queued:
+            on_hook("attributes", self.on_attributes)
+            self.att_queued = True
 
     # Add / remove state. Return True if an actual change, False otherwise.
 
@@ -52,32 +102,60 @@ class Story(PluginHandler):
             attr = attr[1:]
             if attr in self.content["canto-state"]:
                 self.content["canto-state"].remove(attr)
+                self.refresh_self()
                 return True
 
         # Positive attribute
         elif attr not in self.content["canto-state"]:
             self.content["canto-state"].append(attr)
+            self.refresh_self()
             return True
 
         return False
 
     def select(self):
-        self.selected = True
+        if not self.selected:
+            self.selected = True
+            self.refresh_self()
 
     def unselect(self):
-        self.selected = False
+        if self.selected:
+            self.selected = False
+            self.refresh_self()
 
-    def refresh(self, mwidth, tag_offset, rel_idx):
+    def set_offset(self, offset):
+        if self.offset != offset:
+            self.offset = offset
+            self.refresh_self()
+
+    def set_rel_offset(self, offset):
+        if self.rel_offset != offset:
+            self.rel_offset = offset
+            self.refresh_self()
+
+    def refresh_self(self):
+        self.refresh(self.width)
+
+    def refresh(self, width):
+        # The pad isn't init'd, ignore.
+        if width == 0:
+            return
+
+        # Record arguments for subsequent internal calls.
+        self.width = width
 
         # Make sure we actually have all of the attributes needed
         # to complete the render.
 
         for attr in self.needed_attributes():
             if attr not in self.content:
-                self.pad = curses.newpad(1, mwidth)
+                self.pad = curses.newpad(1, width)
                 self.pad.addstr("Waiting on content...")
-                self.callbacks["set_var"]("needs_deferred_refresh", True)
-                return 1
+                self.lines = 1
+
+                # Sign up for notification
+                self.queue_need_attributes()
+                return
 
         # Do we need the enumerated form?
         enumerated = self.callbacks["get_opt"]("story.enumerated")
@@ -91,22 +169,14 @@ class Story(PluginHandler):
         # These are the only things that affect the drawing
         # of this item.
 
-        state = { "mwidth" : mwidth,
-                  "abs_idx" : tag_offset + rel_idx,
-                  "rel_idx" : rel_idx,
+        state = { "width" : width,
+                  "abs_idx" : self.offset,
+                  "rel_idx" : self.rel_offset,
                   "rel_enumerated" : rel_enumerated,
                   "enumerated" : enumerated,
                   "state" : self.content["canto-state"][:],
                   "selected" : self.selected,
                   "fstring" : fstring }
-
-        # If the last refresh call had the same parameters and
-        # settings, then we don't need to touch the actual pad.
-
-        if self.cached_state == state:
-            return self.pad.getmaxyx()[0]
-
-        self.cached_state = state
 
         # Render once to a FakePad (no IO) to determine the correct
         # amount of lines. Force this to entirely unenumerated because
@@ -119,19 +189,27 @@ class Story(PluginHandler):
         unenum_state = state.copy()
         unenum_state["enumerated"] = False
         unenum_state["rel_enumerated"] = False
-        lines = self.render(FakePad(mwidth), unenum_state)
+        lines = self.render(FakePad(width), unenum_state)
 
         # Create the new pad and actually do the render.
 
-        self.pad = curses.newpad(lines, mwidth)
-        return self.render(WrapPad(self.pad), state)
+        self.pad = curses.newpad(lines, width)
+        self.render(WrapPad(self.pad), state)
+
+        # If we use up more / fewer lines than last time, we need
+        # to refresh to remap the items.
+
+        if lines != self.lines:
+            self.callbacks["set_var"]("needs_refresh", True)
+            self.lines = lines
+        self.callbacks["set_var"]("needs_redraw", True)
 
     def render(self, pad, state):
 
         try:
             parsed = parse_conditionals(state["fstring"])
         except Exception, e:
-            log.warn("Failed to parse conditionals in fstring: %s" % fstring)
+            log.warn("Failed to parse conditionals in fstring: %s" % state["fstring"])
             log.warn("\n" + "".join(traceback.format_exc(e)))
             log.warn("Falling back to default.")
             parsed = parse_conditionals(DEFAULT_FSTRING)
@@ -159,7 +237,7 @@ class Story(PluginHandler):
         try:
             s = eval_theme_string(parsed, values)
         except Exception, e:
-            log.warn("Failed to evaluate fstring: %s" % fstring)
+            log.warn("Failed to evaluate fstring: %s" % state["fstring"])
             log.warn("\n" + "".join(traceback.format_exc(e)))
             log.warn("Falling back to default")
 
@@ -185,7 +263,7 @@ class Story(PluginHandler):
                 else:
                     l = left_more
 
-                s = theme_print(pad, s, state["mwidth"], l, right)
+                s = theme_print(pad, s, state["width"], l, right)
 
                 # Avoid line shifting when temporarily enumerating.
                 if s and (state["enumerated"] or state["rel_enumerated"]) and\

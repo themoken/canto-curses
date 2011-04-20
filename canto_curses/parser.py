@@ -145,6 +145,7 @@ def _eval_simple(uni, values):
 
         elif c == '}' and in_code and long_code:
             r += unicode(eval(code, {}, values))
+            code = ""
             in_code = False
             long_code = False
         elif c == '{' and in_code and code == "":
@@ -162,6 +163,7 @@ def _eval_simple(uni, values):
             in_code = True
         else:
             r += c
+
     return r
 
 def eval_theme_string(parsed, values):
