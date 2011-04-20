@@ -72,7 +72,6 @@ class Story(PluginHandler):
             # Don't bother checking attributes. If we're still
             # lacking, refresh_self will re-enable this hook
 
-            self.callbacks["set_var"]("needs_refresh", True)
             self.refresh_self()
 
     def on_opt_change(self, config):

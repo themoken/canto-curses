@@ -54,8 +54,8 @@ class Reader(GuiBase):
 
             # Don't bother checking attributes. If we're still
             # lacking, refresh  will re-enable this hook
+
             self.refresh()
-            self.callbacks["set_var"]("needs_redraw", True)
 
     def refresh(self):
         self.height, self.width = self.pad.getmaxyx()
@@ -75,8 +75,7 @@ class Reader(GuiBase):
 
         offset = min(offset, self.max_offset)
         self.callbacks["set_var"]("reader_offset", offset)
-
-        self.redraw()
+        self.callbacks["set_var"]("needs_redraw", True)
 
     def redraw(self):
         offset = self.callbacks["get_var"]("reader_offset")
@@ -192,7 +191,7 @@ class Reader(GuiBase):
         offset = min(offset, self.max_offset)
         offset = max(offset, 0)
         self.callbacks["set_var"]("reader_offset", offset)
-        self.redraw()
+        self.callbacks["set_var"]("needs_redraw", True)
 
     def is_input(self):
         return False
