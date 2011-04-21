@@ -94,12 +94,13 @@ class Tag(list):
 
     def remove_items(self, ids):
         removed = []
-        low_index = -1
-        for idx, item in enumerate(self):
+
+        # Copy self so we can remove from self
+        # without screwing up iteration.
+
+        for idx, item in enumerate(self[:]):
             if item.id in ids:
                 log.debug("removing: %s" % (item.id,))
-                if low_index < 0:
-                    low_index = idx
 
                 list.remove(self, item)
                 item.die()
