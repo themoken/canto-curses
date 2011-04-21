@@ -23,6 +23,8 @@ log = logging.getLogger("TAG")
 class Tag(list):
     def __init__(self, tag, callbacks):
         list.__init__(self)
+        self.tag = tag
+        self.pad = None
 
         # Note that Tag() is only given the top-level CantoCursesGui
         # callbacks as it shouldn't be doing input / refreshing
@@ -38,13 +40,12 @@ class Tag(list):
         self.callbacks["set_tag_opt"] =\
                 lambda x, y : callbacks["set_tag_opt"](self, x, y)
 
-        self.tag = tag
+        # Are there changes pending?
+        self.changed = True
 
-        # Retain arguments for last refresh call
-        self.width = 0
-
-        self.pad = None
+        # Information from last refresh
         self.lines = 0
+        self.width = 0
 
         # Global indices (for enumeration)
         self.item_offset = 0
@@ -64,7 +65,7 @@ class Tag(list):
     def on_opt_change(self, opts):
         if "taglist.tags_enumerated" in opts or \
                 "taglist.tags_enumerated_absolute" in opts:
-            self.refresh_self()
+            self.need_redraw()
 
     # We override eq so that empty tags don't evaluate
     # as equal and screw up things like enumeration.
@@ -86,7 +87,6 @@ class Tag(list):
             rel = len(self) - 1
             s.set_rel_offset(rel)
             s.set_offset(self.item_offset + rel)
-            s.refresh(self.width)
 
         call_hook("items_added", [ self, added ] )
 
@@ -140,36 +140,31 @@ class Tag(list):
     def set_visible_tag_offset(self, offset):
         if self.visible_tag_offset != offset:
             self.visible_tag_offset = offset
-            self.refresh(self.width)
+            self.need_redraw()
 
     def set_tag_offset(self, offset):
         if self.tag_offset != offset:
             self.tag_offset = offset
-            self.refresh(self.width)
+            self.need_redraw()
 
-    def refresh_self(self):
-        self.refresh(self.width)
+    def need_redraw(self):
+        self.changed = True
+        self.callbacks["set_var"]("needs_redraw", True)
+
+    def do_changes(self, width):
+        if width != self.width or self.changed:
+            self.refresh(width)
 
     def refresh(self, width):
-        # Un-init'd pad, ignore.
-        if width == 0:
-            return
-
-        if self.width != width:
-            for item in self:
-                item.refresh(width)
-            self.width = width
+        self.width = width
 
         lines = self.render_header(width, FakePad(width))
 
         self.pad = curses.newpad(lines, width)
         self.render_header(width, WrapPad(self.pad))
 
-        if lines != self.lines:
-            self.callbacks["set_var"]("needs_refresh", True)
-            self.lines = lines
-
-        self.callbacks["set_var"]("needs_redraw", True)
+        self.lines = lines
+        self.changed = False
 
     def render_header(self, width, pad):
         enumerated = self.callbacks["get_opt"]("taglist.tags_enumerated")

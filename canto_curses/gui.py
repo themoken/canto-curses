@@ -43,7 +43,8 @@ class CantoCursesGui(CommandHandler):
             "reader_offset" : 0,
             "selected" : None,
             "old_selected" : None,
-            "offset" : 0,
+            "target_obj" : None,
+            "target_offset" : 0,
             "curtags" : [],
             "alltags" : [],
             "needs_refresh" : False,
@@ -203,7 +204,8 @@ class CantoCursesGui(CommandHandler):
         self.screen.refresh()
 
         item_tags = [ t.tag for t in self.vars["curtags"]]
-        self.backend.write("ITEMS", item_tags)
+        for tag in item_tags:
+            self.backend.write("ITEMS", [ tag ])
 
         # Start watching all given tags.
         self.backend.write("WATCHTAGS", item_tags)

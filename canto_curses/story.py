@@ -34,18 +34,20 @@ class Story(PluginHandler):
         self.callbacks = callbacks
         self.content = {}
         self.id = id
+        self.pad = None
+
         self.selected = False
 
-        # Retain arguments from last refresh call.
+        # Are there changes pending?
+        self.changed = True
+
+        # Information from last refresh
         self.width = 0
-
-        self.offset = 0
-        self.rel_offset = 0
-
-        # Lines used in last successful render
         self.lines = 0
 
-        self.pad = None
+        # Offset globally and in-tag.
+        self.offset = 0
+        self.rel_offset = 0
 
         # Status of hooks
         self.att_queued = False
@@ -70,17 +72,17 @@ class Story(PluginHandler):
             self.att_queued = False
 
             # Don't bother checking attributes. If we're still
-            # lacking, refresh_self will re-enable this hook
+            # lacking, need_redraw will re-enable this hook
 
-            self.refresh_self()
+            self.need_redraw()
 
     def on_opt_change(self, config):
         if "story.enumerated" in config:
-            self.refresh_self()
+            self.need_redraw()
 
     def on_tag_opt_change(self, tag, config):
         if self in tag and "enumerated" in config:
-            self.refresh_self()
+            self.need_redraw()
 
     # Simple hook wrapper to make sure we don't have multiple
     # on_attribute hooks registered.
@@ -101,13 +103,13 @@ class Story(PluginHandler):
             attr = attr[1:]
             if attr in self.content["canto-state"]:
                 self.content["canto-state"].remove(attr)
-                self.refresh_self()
+                self.need_redraw()
                 return True
 
         # Positive attribute
         elif attr not in self.content["canto-state"]:
             self.content["canto-state"].append(attr)
-            self.refresh_self()
+            self.need_redraw()
             return True
 
         return False
@@ -115,32 +117,32 @@ class Story(PluginHandler):
     def select(self):
         if not self.selected:
             self.selected = True
-            self.refresh_self()
+            self.need_redraw()
 
     def unselect(self):
         if self.selected:
             self.selected = False
-            self.refresh_self()
+            self.need_redraw()
 
     def set_offset(self, offset):
         if self.offset != offset:
             self.offset = offset
-            self.refresh_self()
+            self.need_redraw()
 
     def set_rel_offset(self, offset):
         if self.rel_offset != offset:
             self.rel_offset = offset
-            self.refresh_self()
+            self.need_redraw()
 
-    def refresh_self(self):
-        self.refresh(self.width)
+    def need_redraw(self):
+        self.changed = True
+        self.callbacks["set_var"]("needs_redraw", True)
+
+    def do_changes(self, width):
+        if width != self.width or self.changed:
+            self.refresh(width)
 
     def refresh(self, width):
-        # The pad isn't init'd, ignore.
-        if width == 0:
-            return
-
-        # Record arguments for subsequent internal calls.
         self.width = width
 
         # Make sure we actually have all of the attributes needed
@@ -195,13 +197,8 @@ class Story(PluginHandler):
         self.pad = curses.newpad(lines, width)
         self.render(WrapPad(self.pad), state)
 
-        # If we use up more / fewer lines than last time, we need
-        # to refresh to remap the items.
-
-        if lines != self.lines:
-            self.callbacks["set_var"]("needs_refresh", True)
-            self.lines = lines
-        self.callbacks["set_var"]("needs_redraw", True)
+        self.lines = lines
+        self.changed = False
 
     def render(self, pad, state):
 
