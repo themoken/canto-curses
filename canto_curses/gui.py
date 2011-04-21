@@ -749,14 +749,13 @@ class CantoCursesGui(CommandHandler):
         self.backend.responses.put(("CMD", "resize"))
 
     def tick(self):
-        if self.update_interval == 0:
+        if self.update_interval <= 0:
             if self.updates:
-                # TODO: use self.updates or self.vars["curtags"] based on config
-                self.backend.write("ITEMS",\
-                        [ t.tag for t in self.vars["curtags"]])
-                self.update_interval =\
-                        self.config["update.auto.interval"]
-                self.updates = []
+                self.backend.write("ITEMS", self.updates)
+
+            self.update_interval =\
+                    self.config["update.auto.interval"]
+            self.updates = []
         else:
             self.update_interval -= 1
 
