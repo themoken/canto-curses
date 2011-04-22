@@ -97,7 +97,13 @@ class TagList(GuiBase):
         new_sel = items[items.index(old_sel)]
         new_sel.select()
 
-        self.callbacks["set_var"]("selected", new_sel)
+        # Retain cursor and attempt to keep it at the
+        # same place on screen.
+
+        old_toffset = self.callbacks["get_var"]("old_toffset")
+
+        self._set_cursor(new_sel, old_toffset)
+
         self.callbacks["set_var"]("old_selected", None)
 
     def on_items_removed(self, tag, items):
@@ -106,8 +112,11 @@ class TagList(GuiBase):
 
         sel = self.callbacks["get_var"]("selected")
         if sel in items:
-            self.callbacks["set_var"]("selected", None)
+            toffset = self.callbacks["get_var"]("target_offset")
+            self._set_cursor(None, 0)
+
             self.callbacks["set_var"]("old_selected", sel)
+            self.callbacks["set_var"]("old_toffset", toffset)
 
     # Prompt that ensures the items are enumerated first
     def eprompt(self, prompt):
