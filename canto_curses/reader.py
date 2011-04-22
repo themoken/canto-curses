@@ -9,13 +9,11 @@
 from canto_next.plugins import Plugin
 from canto_next.hooks import on_hook, remove_hook
 
-from theme import FakePad, WrapPad, theme_print, theme_lstrip, theme_border
 from command import command_format
 from html import htmlparser
-from guibase import GuiBase
+from text import TextBox
 
 import logging
-import curses
 import re
 
 log = logging.getLogger("READER")
@@ -23,20 +21,15 @@ log = logging.getLogger("READER")
 class ReaderPlugin(Plugin):
     pass
 
-class Reader(GuiBase):
+class Reader(TextBox):
     def __init__(self):
-        GuiBase.__init__(self)
+        TextBox.__init__(self)
         self.plugin_class = ReaderPlugin
 
     def init(self, pad, callbacks):
-        self.pad = pad
-
-        self.max_offset = 0
-
-        self.callbacks = callbacks
+        TextBox.init(self, pad, callbacks)
 
         self.quote_rgx = re.compile(u"[\\\"](.*?)[\\\"]")
-
         on_hook("opt_change", self.on_opt_change)
 
     def die(self):
@@ -57,94 +50,9 @@ class Reader(GuiBase):
 
             self.refresh()
 
-    def refresh(self):
-        self.height, self.width = self.pad.getmaxyx()
-        show_desc = self.callbacks["get_opt"]("reader.show_description")
-        enum_links = self.callbacks["get_opt"]("reader.enumerate_links")
-        offset = self.callbacks["get_var"]("reader_offset")
-
-        fp = FakePad(self.width)
-        lines = self.render(fp, show_desc, enum_links)
-
-        # Create pre-rendered pad
-        self.fullpad = curses.newpad(lines, self.width)
-        self.render(WrapPad(self.fullpad), show_desc, enum_links)
-
-        # Update offset based on new display properties.
-        self.max_offset = max((lines - 1) - (self.height - 1), 0)
-
-        offset = min(offset, self.max_offset)
-        self.callbacks["set_var"]("reader_offset", offset)
-        self.callbacks["set_var"]("needs_redraw", True)
-
-    def redraw(self):
-        offset = self.callbacks["get_var"]("reader_offset")
-        tb, lb, bb, rb = self.callbacks["border"]()
-
-        # Overwrite visible pad with relevant area of pre-rendered pad.
-        self.pad.erase()
-
-        realheight = min(self.height, self.fullpad.getmaxyx()[0]) - 1
-
-        top = 0
-        if tb:
-            self.pad.move(0, 0)
-            self.render_top_border(WrapPad(self.pad))
-            top += 1
-            realheight -= 1
-
-        self.fullpad.overwrite(self.pad, offset, 0, top, 0,\
-                realheight, self.width - 1)
-
-        if bb:
-            # If we're not floating, then the bottom border
-            # belongs at the bottom of the given window.
-
-            if not self.callbacks["floating"]():
-                padheight = self.pad.getmaxyx()[0]
-                self.pad.move(padheight - 2, 0)
-                self.render_bottom_border(WrapPad(self.pad))
-            else:
-                self.pad.move(realheight - 1, 0)
-                self.render_bottom_border(WrapPad(self.pad))
-                self.pad.move(realheight - 1, 0)
-        else:
-            self.pad.move(realheight - 1, 0)
-
-        self.callbacks["refresh"]()
-
-    def render_top_border(self, pad):
-        tb, lb, bb, rb = self.callbacks["border"]()
-
-        lc = u" "
-        if lb:
-            lc = "%1%C" + theme_border("tl") + "%c%0"
-
-        rc = u" "
-        if rb:
-            rc = "%1%C" + theme_border("tr") + "%c%0"
-
-        theme_print(pad, theme_border("ts") * (self.width - 1),\
-                self.width, lc, rc)
-
-    def render_bottom_border(self, pad):
-        tb, lb, bb, rb = self.callbacks["border"]()
-
-        lc = u" "
-        if lb:
-            lc = "%1%C" + theme_border("bl") + "%c%0"
-
-        rc = u" "
-        if rb:
-            rc = "%1%C" + theme_border("br") + "%c%0"
-
-        theme_print(pad, theme_border("bs") * (self.width - 1),\
-                self.width, lc, rc)
-
-    def render(self, pad, show_description, enumerate_links):
-        self.links = []
-
-        tb, lb, bb, rb = self.callbacks["border"]()
+    def update_text(self):
+        show_description = self.callbacks["get_opt"]("reader.show_description")
+        enumerate_links = self.callbacks["get_opt"]("reader.enumerate_links")
 
         s = "No selected story.\n"
 
@@ -192,40 +100,7 @@ class Reader(GuiBase):
         # After we have generated the entirety of the content,
         # strip out any egregious spacing.
 
-        s = s.rstrip(" \t\v\n")
-
-        lines = 0
-
-        # Account for potential top border rendered on redraw.
-        if tb:
-            lines += 1
-
-        # Prepare left and right borders
-
-        l = u" "
-        if lb:
-            l = "%1%C" + theme_border("ls") + " %c%0"
-        r = u" "
-        if rb:
-            r = "%1%C " + theme_border("rs") + "%c%0"
-
-        # Render main content
-
-        while s:
-            s = theme_lstrip(pad, s)
-            if s:
-                s = theme_print(pad, s, self.width, l, r)
-                lines += 1
-
-        # Account for potential bottom rendered on redraw.
-        if bb:
-            lines += 1
-
-        # Return one extra line because the rest of the reader
-        # code knows to avoid the dead cell on the bottom right
-        # of every curses pad.
-
-        return lines + 1
+        self.text = s.rstrip(" \t\v\n")
 
     def eprompt(self, prompt):
         return self._cfg_set_prompt("reader.enumerate_links", "links: ")
@@ -241,38 +116,5 @@ class Reader(GuiBase):
         links = [ l[1] for l in kwargs["links"] ]
         self._goto(links)
 
-    @command_format([])
-    def cmd_scroll_up(self, **kwargs):
-        self._relscroll(-1)
-
-    @command_format([])
-    def cmd_scroll_down(self, **kwargs):
-        self._relscroll(1)
-
-    @command_format([])
-    def cmd_page_up(self, **kwargs):
-        self._relscroll(-1 * (self.height - 1))
-
-    @command_format([])
-    def cmd_page_down(self, **kwargs):
-        self._relscroll(self.height - 1)
-
-    def _relscroll(self, factor):
-        offset = self.callbacks["get_var"]("reader_offset")
-        offset += factor
-        offset = min(offset, self.max_offset)
-        offset = max(offset, 0)
-        self.callbacks["set_var"]("reader_offset", offset)
-        self.callbacks["set_var"]("needs_redraw", True)
-
-    def is_input(self):
-        return False
-
     def get_opt_name(self):
         return "reader"
-
-    def get_height(self, mheight):
-        return mheight
-
-    def get_width(self, mwidth):
-        return mwidth
