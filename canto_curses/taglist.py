@@ -648,7 +648,7 @@ class TagList(GuiBase):
                 break
 
         # Any adjustments should be reflected.
-        self.callbacks["set_var"]("target_offset", target_offset - curpos)
+        self.callbacks["set_var"]("target_offset", target_offset)
 
         # Step 3. Update self.first_item. This is useful for making
         # initial selection based on the current screen position.
