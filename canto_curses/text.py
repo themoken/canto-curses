@@ -11,7 +11,10 @@ from command import command_format
 from guibase import GuiBase
 from theme import theme_print
 
+import logging
 import curses
+
+log = logging.getLogger("TEXTBOX")
 
 class TextBox(GuiBase):
     def init(self, pad, callbacks):
@@ -63,19 +66,19 @@ class TextBox(GuiBase):
             self.pad.move(0, 0)
             self.render_top_border(WrapPad(self.pad))
             top += 1
-            realheight -= 1
 
         self.fullpad.overwrite(self.pad, offset, 0, top, 0,\
-                realheight, self.width - 1)
+                realheight - top, self.width - 1)
 
         if bb:
             # If we're not floating, then the bottom border
             # belongs at the bottom of the given window.
 
             if not self.callbacks["floating"]():
-                padheight = self.pad.getmaxyx()[0]
-                self.pad.move(padheight - 2, 0)
+                padheight = self.pad.getmaxyx()[0] -1
+                self.pad.move(padheight - 1, 0)
                 self.render_bottom_border(WrapPad(self.pad))
+                self.pad.move(padheight - 1, 0)
             else:
                 self.pad.move(realheight - 1, 0)
                 self.render_bottom_border(WrapPad(self.pad))
@@ -96,8 +99,8 @@ class TextBox(GuiBase):
         if rb:
             rc = "%1%C" + theme_border("tr") + "%c%0"
 
-        theme_print(pad, theme_border("ts") * (self.width - 1),\
-                self.width, lc, rc)
+        mainbar = "%1%C" + (theme_border("ts") * (self.width - 1)) + "%0%c"
+        theme_print(pad, mainbar, self.width, lc, rc)
 
     def render_bottom_border(self, pad):
         tb, lb, bb, rb = self.callbacks["border"]()
@@ -110,8 +113,8 @@ class TextBox(GuiBase):
         if rb:
             rc = "%1%C" + theme_border("br") + "%c%0"
 
-        theme_print(pad, theme_border("bs") * (self.width - 1),\
-                self.width, lc, rc)
+        mainbar = "%1%C" + (theme_border("ts") * (self.width - 1)) + "%0%c"
+        theme_print(pad, mainbar, self.width, lc, rc)
 
     def render(self, pad):
         self.update_text()
@@ -188,3 +191,17 @@ class TextBox(GuiBase):
 
     def get_width(self, mwidth):
         return mwidth
+
+class ErrorBox(TextBox):
+    def update_text(self):
+        self.text = "%7" + self.callbacks["get_var"]("error_msg") + "%0"
+
+    def get_opt_name(self):
+        return "errorbox"
+
+class InfoBox(TextBox):
+    def update_text(self):
+        self.text = "%1" + self.callbacks["get_var"]("info_msg") + "%0"
+
+    def get_opt_name(self):
+        return "infobox"

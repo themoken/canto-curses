@@ -14,6 +14,7 @@ from canto_next.plugins import Plugin
 from command import CommandHandler, command_format
 from html import html_entity_convert, char_ref_convert
 from story import DEFAULT_FSTRING
+from text import ErrorBox, InfoBox
 from screen import Screen
 from tag import Tag
 
@@ -39,8 +40,12 @@ class CantoCursesGui(CommandHandler):
         # Variables that affect the overall operation.
 
         self.vars = {
+            "error_msg" : "No error. Press [space] to close.",
+            "info_msg" : "No info. Press [space] to close.",
             "reader_item" : None,
             "reader_offset" : 0,
+            "errorbox_offset" : 0,
+            "infobox_offset" : 0,
             "selected" : None,
             "old_selected" : None,
             "old_toffset" : 0,
@@ -100,6 +105,16 @@ class CantoCursesGui(CommandHandler):
             "input.float" : False,
             "input.align" : "bottom",
             "input.border" : "none",
+            "errorbox.maxwidth" : 0,
+            "errorbox.maxheight" : 0,
+            "errorbox.float" : True,
+            "errorbox.align" : "topleft",
+            "errorbox.border" : "full",
+            "infobox.maxwidth" : 0,
+            "infobox.maxheight" : 0,
+            "infobox.float" : True,
+            "infobox.align" : "topleft",
+            "infobox.border" : "full",
 
             "main.key.colon" : "command",
             "main.key.q" : "quit",
@@ -130,12 +145,26 @@ class CantoCursesGui(CommandHandler):
             "reader.key.npage" : "page-down",
             "reader.key.ppage" : "page-up",
 
+            "errorbox.key.down" : "scroll-down",
+            "errorbox.key.up" : "scroll-up",
+            "errorbox.key.npage" : "page-down",
+            "errorbox.key.ppage" : "page-up",
+            "errorbox.key.space" : "destroy",
+
+            "infobox.key.down" : "scroll-down",
+            "infobox.key.up" : "scroll-up",
+            "infobox.key.npage" : "page-down",
+            "infobox.key.ppage" : "page-up",
+            "infobox.key.space" : "destroy",
+
             "color.0" : curses.COLOR_WHITE,
             "color.1" : curses.COLOR_BLUE,
             "color.2" : curses.COLOR_YELLOW,
             "color.3" : curses.COLOR_BLUE,
             "color.4" : curses.COLOR_GREEN,
             "color.5" : curses.COLOR_MAGENTA,
+            "color.6.fg" : curses.COLOR_WHITE,
+            "color.6.bg" : curses.COLOR_RED,
         }
 
         self.tag_config = {}
@@ -222,6 +251,29 @@ class CantoCursesGui(CommandHandler):
                 return r
             else:
                 log.debug("waiting: %s != %s" % (r[0], cmd))
+
+    def disconnected(self):
+        log.error("Disconnected!")
+        message =\
+""" Disconnected!
+
+Please restart the daemon and use :reconnect.
+
+Until reconnected, it will be impossible to fetch any information, and
+any state changes will be lost.
+
+Press [space] to close."""
+
+        self.backend.responses.put(("EXCEPT", message))
+
+    def reconnected(self):
+        log.info("Reconnected!")
+        message =\
+""" Successfully Reconnected!
+
+Press [space] to close."""
+
+        self.backend.responses.put(("INFO", message))
 
     def _val_bool(self, config, defconfig, attr):
         if type(config[attr]) != bool:
@@ -570,6 +622,12 @@ class CantoCursesGui(CommandHandler):
 
         self.eval_tags()
 
+    def prot_except(self, exception):
+        self.set_var("error_msg", "%s" % exception)
+
+    def prot_info(self, info):
+        self.set_var("info_msg", "%s" % info)
+
     def var(self, args):
         t, r = self._first_term(args,\
                 lambda : self.screen.input_callback("var: "))
@@ -598,17 +656,26 @@ class CantoCursesGui(CommandHandler):
         self.set_var(var, not self.get_var(var))
 
     def set_var(self, tweak, value):
-        if self.vars[tweak] != value:
-            # Tweak specific logic
-            # XXX this needs to be hookified
+        # We only care if the value is different, or it's a message
+        # value, which should always cause a fresh message display,
+        # even if it's the same error as before.
+
+        if self.vars[tweak] != value or tweak in [ "error_msg", "info_msg"]:
+
             if tweak in [ "selected", "reader_item" ]:
                 if self.vars[tweak]:
                     self.vars["protected_ids"].remove(self.vars[tweak].id)
                 if value:
                     self.vars["protected_ids"].append(value.id)
 
-            call_hook("var_change", { tweak : value })
             self.vars[tweak] = value
+
+            if tweak in [ "error_msg" ] and self.screen:
+                self.screen.add_window_callback(ErrorBox)
+            elif tweak in [ "info_msg" ] and self.screen:
+                self.screen.add_window_callback(InfoBox)
+
+            call_hook("var_change", { tweak : value })
 
     def get_var(self, tweak):
         if tweak in self.vars:
@@ -745,6 +812,10 @@ class CantoCursesGui(CommandHandler):
     def cmd_temp_transform(self, **kwargs):
         self.backend.write("TRANSFORM", kwargs["transform"])
         self._refresh()
+
+    @command_format([])
+    def cmd_reconnect(self, **kwargs):
+        self.backend.reconnect()
 
     def winch(self):
         self.backend.responses.put(("CMD", "resize"))

@@ -52,6 +52,9 @@ class CantoCurses(CantoClient):
         self.pid = os.getpid()
         self.done = False
 
+        # Response queue.
+        self.responses = None
+
         self.short_args = 'v'
         optl = self.common_args(self.short_args)
 
@@ -115,7 +118,10 @@ class CantoCurses(CantoClient):
 
     def start_rthread(self):
         self.response_alive = True
-        self.responses = Queue()
+
+        # If we're reconnecting, don't recreate Queue
+        if not self.responses:
+            self.responses = Queue()
 
         # Thead *must* be running before gui instantiated
         # so the __init__ can ram some discovery requests through.
@@ -138,6 +144,21 @@ class CantoCurses(CantoClient):
 
     def sigusr1(self, a = None, b = None):
         pass
+
+    def disconnected(self, conn):
+        self.response_alive = False
+        self.gui.disconnected()
+
+    def reconnect(self):
+        try:
+            self.connect()
+        except Exception, e:
+            log.error("Error reconnecting: %s" % e)
+            self.gui.disconnected()
+        else:
+            log.info("Reconnected.")
+            self.start_rthread()
+            self.gui.reconnected()
 
     def run(self):
         # Initial response thread setup.

@@ -12,6 +12,7 @@ from canto_next.hooks import on_hook, remove_hook, call_hook
 from command import command_format
 from guibase import GuiBase
 from reader import Reader
+from error import ErrorBox
 
 import logging
 import curses
