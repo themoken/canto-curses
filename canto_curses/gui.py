@@ -628,6 +628,17 @@ Press [space] to close."""
     def prot_info(self, info):
         self.set_var("info_msg", "%s" % info)
 
+    def prot_tick(self, nothing):
+        if self.update_interval <= 0:
+            if self.updates:
+                self.backend.write("ITEMS", self.updates)
+
+            self.update_interval =\
+                    self.config["update.auto.interval"]
+            self.updates = []
+        else:
+            self.update_interval -= 1
+
     def var(self, args):
         t, r = self._first_term(args,\
                 lambda : self.screen.input_callback("var: "))
@@ -821,15 +832,7 @@ Press [space] to close."""
         self.backend.responses.put(("CMD", "resize"))
 
     def tick(self):
-        if self.update_interval <= 0:
-            if self.updates:
-                self.backend.write("ITEMS", self.updates)
-
-            self.update_interval =\
-                    self.config["update.auto.interval"]
-            self.updates = []
-        else:
-            self.update_interval -= 1
+        self.backend.responses.put(("TICK", ""))
 
     @command_format([])
     def cmd_refresh(self, **kwargs):
