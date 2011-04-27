@@ -110,6 +110,13 @@ class TagList(GuiBase):
         # Items being removed implies we need to remap them.
         self.callbacks["set_var"]("needs_refresh", True)
 
+        # We need to clear self.first_item if it's gone
+        # so that a potential unselect doesn't try and set
+        # it as the redraw target object.
+
+        if self.first_item in items:
+            self.first_item = None
+
         sel = self.callbacks["get_var"]("selected")
         if sel in items:
             toffset = self.callbacks["get_var"]("target_offset")
