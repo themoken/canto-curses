@@ -7,12 +7,13 @@
 #   published by the Free Software Foundation.
 
 from command import CommandHandler, command_format
-from canto_next.encoding import encoder
+from canto_next.encoding import encoder, locale_enc
 from canto_next.plugins import Plugin
 import logging
 
 log = logging.getLogger("COMMON")
 
+import tempfile
 import sys
 import os
 
@@ -23,6 +24,7 @@ class GuiBase(CommandHandler):
     def __init__(self):
         CommandHandler.__init__(self)
         self.plugin_class = BasePlugin
+        self.editor = None
 
     def input(self, prompt):
         return self.callbacks["input"](prompt)
@@ -93,6 +95,41 @@ class GuiBase(CommandHandler):
             sys.exit(0)
 
         return pid
+
+    def _edit(self, text):
+        if not self.editor:
+            self.editor = os.getenv("EDITOR")
+        if not self.editor:
+            self.editor = self.callbacks["input_callback"]("editor: ")
+
+        # No editor, or cancelled dialog, no change.
+        if not self.editor:
+            return text
+
+        #self.callbacks["pause_interface"]()
+
+        # Setup tempfile to edit.
+        fd, path = tempfile.mkstemp(text=True)
+
+        f = os.fdopen(fd, "w")
+        f.write(text.encode(locale_enc, "ignore"))
+        f.close()
+
+        # Invoke editor
+        logging.info("Invoking editor on %s" % path)
+        pid = self._fork(self.editor + " %u", path, True)
+        pid, status = os.waitpid(pid, 0)
+
+        if status == 0:
+            f = open(path, "r")
+            r = f.read()
+            f.close()
+        else:
+            r = text
+
+        #self.callbacks["unpause_interface"]()
+
+        return r
 
     def _goto(self, urls):
         browser = self.callbacks["get_opt"]("browser")

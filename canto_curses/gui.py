@@ -18,6 +18,7 @@ from text import ErrorBox, InfoBox
 from screen import Screen
 from tag import Tag
 
+from Queue import Empty
 import logging
 import curses
 import sys
@@ -36,6 +37,27 @@ class CantoCursesGui(CommandHandler):
         self.screen = None
 
         self.update_interval = 0
+
+        self.disconnect_message =\
+""" Disconnected!
+
+Please restart the daemon and use :reconnect.
+
+Until reconnected, it will be impossible to fetch any information, and
+any state changes will be lost.
+
+Press [space] to close."""
+
+        self.reconnect_message =\
+""" Successfully Reconnected!
+
+Press [space] to close."""
+
+        # Asynchronous notification flags
+        self.disconn = False
+        self.reconn = False
+        self.ticked = False
+        self.winched = False
 
         # Variables that affect the overall operation.
 
@@ -253,27 +275,10 @@ class CantoCursesGui(CommandHandler):
                 log.debug("waiting: %s != %s" % (r[0], cmd))
 
     def disconnected(self):
-        log.error("Disconnected!")
-        message =\
-""" Disconnected!
-
-Please restart the daemon and use :reconnect.
-
-Until reconnected, it will be impossible to fetch any information, and
-any state changes will be lost.
-
-Press [space] to close."""
-
-        self.backend.responses.put(("EXCEPT", message))
+        self.disconn = True
 
     def reconnected(self):
-        log.info("Reconnected!")
-        message =\
-""" Successfully Reconnected!
-
-Press [space] to close."""
-
-        self.backend.responses.put(("INFO", message))
+        self.reconn = True
 
     def _val_bool(self, config, defconfig, attr):
         if type(config[attr]) != bool:
@@ -628,17 +633,6 @@ Press [space] to close."""
     def prot_info(self, info):
         self.set_var("info_msg", "%s" % info)
 
-    def prot_tick(self, nothing):
-        if self.update_interval <= 0:
-            if self.updates:
-                self.backend.write("ITEMS", self.updates)
-
-            self.update_interval =\
-                    self.config["update.auto.interval"]
-            self.updates = []
-        else:
-            self.update_interval -= 1
-
     def var(self, args):
         t, r = self._first_term(args,\
                 lambda : self.screen.input_callback("var: "))
@@ -829,10 +823,22 @@ Press [space] to close."""
         self.backend.reconnect()
 
     def winch(self):
-        self.backend.responses.put(("CMD", "resize"))
+        self.winched = True
 
     def tick(self):
-        self.backend.responses.put(("TICK", ""))
+        self.ticked = True
+
+    def do_tick(self):
+        if self.update_interval <= 0:
+            if self.updates:
+                self.backend.write("ITEMS", self.updates)
+
+            self.update_interval =\
+                    self.config["update.auto.interval"]
+            self.updates = []
+        else:
+            self.update_interval -= 1
+        self.ticked = False
 
     @command_format([])
     def cmd_refresh(self, **kwargs):
@@ -876,17 +882,39 @@ Press [space] to close."""
 #        cProfile.runctx("self._run()", globals(), locals(), "canto-out")
 
     def run(self):
-        # Priority commands allow a single
-        # user inputed string to actually
-        # break down into multiple actions.
-        priority_commands = []
+        # Priority commands / tuples allow a single user inputed string to
+        # actually break down into multiple actions.
+
+        priority = []
 
         while True:
-            if priority_commands:
-                cmd = ("CMD", priority_commands[0])
-                priority_commands = priority_commands[1:]
+            if self.ticked:
+                self.ticked = False
+                self.do_tick()
+
+            # Turn signals into commands:
+            if self.reconn:
+                log.info("Reconnected.")
+                self.reconn = False
+                priority.insert(0, ("INFO", self.reconnect_message))
+            elif self.disconn:
+                log.info("Disconnected.")
+                self.disconn = False
+                priority.insert(0, ("EXCEPT", self.disconnect_message))
+
+            if self.winched:
+                self.winched = False
+                # CMD because it's handled lower, by Screen
+                priority.insert(0, ("CMD", "resize"))
+
+            if priority:
+                cmd = priority[0]
+                priority = priority[1:]
             else:
-                cmd = self.backend.responses.get()
+                try:
+                    cmd = self.backend.responses.get(True, 0.1)
+                except Empty:
+                    continue
 
             if cmd[0] == "KEY":
                 resolved = self.key(cmd[1])
@@ -896,7 +924,7 @@ Press [space] to close."""
 
             # User command
             if cmd[0] == "CMD":
-                log.debug("CMD: %s" % cmd[1])
+                log.debug("CMD: %s" % (cmd[1],))
 
                 # Sub in a user command on the fly.
                 if cmd[1] == "command":
@@ -911,7 +939,7 @@ Press [space] to close."""
 
                 if len(cmds) > 1:
                     log.debug("single command split into: %s" % cmds)
-                    priority_commands.extend(cmds)
+                    priority.extend([("CMD", c) for c in cmds])
                     continue
 
                 if cmd[1] in ["quit", "exit"]:

@@ -6,8 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto_next.plugins import Plugin
 from canto_next.hooks import on_hook, remove_hook, call_hook
+from canto_next.plugins import Plugin
 
 from command import command_format
 from guibase import GuiBase
@@ -477,6 +477,15 @@ class TagList(GuiBase):
     @command_format([("tags", "listof_tags")])
     def cmd_demote(self, **kwargs):
         pass
+
+    def edit_opt(self, setting):
+        t = self.callbacks["get_opt"](setting)
+        r = self._edit(t)
+        log.info("c-c: edited to %s" % r)
+
+    @command_format([])
+    def cmd_edit(self, **kwargs):
+        self.edit_opt("story.format")
 
     def update_tag_lists(self):
         self.tags = self.callbacks["get_var"]("curtags")
