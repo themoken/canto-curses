@@ -11,11 +11,13 @@ from canto_next.plugins import Plugin
 from command import CommandHandler, command_format
 from taglist import TagList
 from input import InputBox
+import widecurse
 
 from threading import Thread, Event, Lock
 import logging
 import curses
 import time
+import os
 
 log = logging.getLogger("SCREEN")
 
@@ -516,6 +518,12 @@ class Screen(CommandHandler):
             return (False, None, None)
         return (True, t, r)
 
+    def filename(self, args):
+        t = self._first_term(args, lambda : self.input_callback("filename: "))
+        if t:
+            return (True, t[0], None)
+        return (False, None, None)
+
     # Refresh operates in order, which doesn't matter for top level tiled
     # windows, but this ensures that floats are ordered such that the last
     # floating window is rendered on top of all others.
@@ -564,6 +572,26 @@ class Screen(CommandHandler):
             log.debug("Focusing window %d (%s)" % (idx, self.focused))
         else:
             log.debug("Couldn't find window %d" % idx)
+
+    # Dump all top-level curses windows to a file.
+    # NOTE: This is intended for test use only. This
+    # command does no error handling.
+
+    @command_format([("filename", "filename")])
+    def cmd_dump_screen(self, **kwargs):
+        f = open(kwargs["filename"], "wb")
+
+        for w in self.windows:
+            startpos = f.tell()
+            w.pad.putwin(f)
+            endpos = f.tell()
+
+            # Overwrite struct output.
+            f.seek(startpos, 0)
+            f.write("\0" * widecurse.wsize())
+            f.seek(endpos, 0)
+
+        f.close()
 
     # Pass a command to focused window:
 

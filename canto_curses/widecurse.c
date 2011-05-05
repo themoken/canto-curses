@@ -77,9 +77,15 @@ static PyObject * py_waddch(PyObject *self, PyObject *args)
     return ret_o;
 }
 
+static PyObject * py_wsize(PyObject *self, PyObject *args)
+{
+    return Py_BuildValue("i", sizeof(WINDOW));
+}
+
 static PyMethodDef MvWMethods[] = {
     {"waddch", py_waddch, METH_VARARGS, "waddch() wrapper."},
     {"wcwidth", py_wcwidth, METH_VARARGS, "wcwidth() wrapper."},
+    {"wsize", py_wsize, METH_VARARGS, "Returns sizeof(WINDOW)"},
     {NULL, NULL, 0, NULL}
 };
 
