@@ -59,7 +59,7 @@ class Tag(list):
 
         callbacks["get_var"]("alltags").append(self)
 
-    def die():
+    def die(self):
         remove_hook("opt_change", self.on_opt_change)
 
     def on_opt_change(self, opts):
