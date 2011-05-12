@@ -62,6 +62,7 @@ Press [space] to close."""
         # Variables that affect the overall operation.
 
         self.vars = {
+            "location" : self.backend.location_args,
             "error_msg" : "No error. Press [space] to close.",
             "info_msg" : "No info. Press [space] to close.",
             "reader_item" : None,

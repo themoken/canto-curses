@@ -7,6 +7,7 @@
 #   published by the Free Software Foundation.
 
 from canto_next.plugins import Plugin
+from canto_next.encoding import locale_enc
 
 from command import CommandHandler, command_format
 from taglist import TagList
@@ -14,8 +15,10 @@ from input import InputBox
 import widecurse
 
 from threading import Thread, Event, Lock
+import subprocess
 import logging
 import curses
+import shlex
 import time
 import os
 
@@ -518,11 +521,18 @@ class Screen(CommandHandler):
             return (False, None, None)
         return (True, t, r)
 
+    def string(self, args, prompt):
+        if not args:
+            args = self.input_callback(prompt)
+        if not args:
+            return (False, None, None)
+        return (True, args, None)
+
     def filename(self, args):
-        t = self._first_term(args, lambda : self.input_callback("filename: "))
-        if t:
-            return (True, t[0], None)
-        return (False, None, None)
+        return self.string(args, "filename: ")
+
+    def remote_args(self, args):
+        return self.string(args, "remote: ")
 
     # Refresh operates in order, which doesn't matter for top level tiled
     # windows, but this ensures that floats are ordered such that the last
@@ -592,6 +602,30 @@ class Screen(CommandHandler):
             f.seek(endpos, 0)
 
         f.close()
+
+    @command_format([("remote_args","remote_args")])
+    def cmd_remote(self, **kwargs):
+
+        fullargs = "canto-remote " + kwargs["remote_args"]
+        fullargs = fullargs.encode(locale_enc, "ignore")
+        argv = shlex.split(fullargs)
+
+        # Add location args, so the remote is connecting
+        # to the correct daemon.
+
+        loc_args = self.callbacks["get_var"]("location")
+        argv = [argv[0]] + loc_args + argv[1:]
+
+        log.debug("Calling remote: %s" % argv)
+
+        out = subprocess.check_output(argv).decode(locale_enc, "ignore")
+
+        log.debug("Output:")
+        log.debug(out)
+
+        out += "\nPress [space] to continue\n"
+
+        self.callbacks["set_var"]("info_msg", out)
 
     # Pass a command to focused window:
 
