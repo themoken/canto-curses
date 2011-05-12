@@ -1,0 +1,7 @@
+[Feed Static]
+url = file:///tmp/canto.xml
+order = 0
+
+[Feed Static 2]
+url = file:///tmp/canto2.xml
+order = 1

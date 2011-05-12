@@ -2,7 +2,7 @@
 
 for test_dir in "$@"; do
     # Eliminate old cruft
-    rm -f $test_dir/*
+    rm -f $test_dir/* 2>/dev/null
 
     # Copy in skel
     cp $test_dir/skel/* $test_dir/
