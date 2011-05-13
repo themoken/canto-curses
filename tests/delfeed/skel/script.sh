@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# This tests the remote: capability as well as the ability to show
-# freshly added feeds immediately.
+# This tests the remote: capability as well as the immediate
+# removal of deleted tags. In addition, it removes the first
+# on screen tag, so it tests the removal of first_item and
+# tag_obj.
 
 canto-daemon -v -D ./ &
 
