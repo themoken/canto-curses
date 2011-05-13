@@ -60,6 +60,10 @@ class Tag(list):
         callbacks["get_var"]("alltags").append(self)
 
     def die(self):
+        # Reset so items get die() called and everything
+        # else is notified about items disappearing.
+
+        self.reset()
         remove_hook("opt_change", self.on_opt_change)
 
     def on_opt_change(self, opts):
