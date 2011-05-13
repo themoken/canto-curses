@@ -1,0 +1,34 @@
+Canto-curses Test Suite
+
+REQUIRED:
+
+*In addition to the usual c-c requirements*
+
+xterm
+bash
+gzip
+hexdump
+diff
+canto-remote
+canto-daemon
+
+UTF-8 encoding (set LC_ALL if you don't use one by default)
+
+NOTES:
+
+These are blackbox tests, which means you start the programs, you give a set
+input and then you test that the output looks as expected. These are also
+rife with off-the-cuff timings which seem generous (considering they're
+usually spacing out keystrokes), but could cause the tests to fail on slower
+hardware. This also means that these tests take a bit to run.
+
+TILING WMS:
+
+This test suite also relies on being able to set the geometry of the xterm.
+This is overridden by tiling wms, so in order for the tests to pass, you have
+to float the relevant xterms. They are all given the title `canto-test` (no
+quotes) for this purpose.
+
+RUN EXAMPLE:
+
+./run.sh */
