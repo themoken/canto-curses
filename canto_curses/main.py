@@ -52,10 +52,14 @@ class CantoCurses(CantoClient):
         self.pid = os.getpid()
         self.done = False
 
+        # Whether or not to append pid to logfile
+        # (debug option)
+        self.log_fname_pid = False
+
         # Response queue.
         self.responses = None
 
-        self.short_args = 'v'
+        self.short_args = 'vl'
         optl = self.common_args(self.short_args)
 
         if optl == -1:
@@ -93,6 +97,8 @@ class CantoCurses(CantoClient):
             if opt in ["-v"]:
                 rootlog = logging.getLogger()
                 rootlog.setLevel(max(rootlog.level - 10,0))
+            if opt in ["-l"]:
+                self.log_fname_pid = True
         return 0
 
     # The response_thread takes anything received from the socket and puts it
@@ -188,7 +194,11 @@ class CantoCurses(CantoClient):
     # For now, make sure the log is writable.
 
     def ensure_files(self):
-        for f in [ "curses-log" ] :
+        logname = "curses-log"
+        if self.log_fname_pid:
+            logname += ".%d" % os.getpid()
+
+        for f in [ logname ] :
             p = self.conf_dir + "/" + f
             if os.path.exists(p):
                 if not os.path.isfile(p):
@@ -201,7 +211,7 @@ class CantoCurses(CantoClient):
                     log.error("Error: %s is not writable." % p)
                     return -1
 
-        self.log_path = self.conf_dir + "/curses-log"
+        self.log_path = self.conf_dir + "/" + logname
 
     def set_log(self):
         f = open(self.log_path, "w")
