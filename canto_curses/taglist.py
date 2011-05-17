@@ -470,7 +470,7 @@ class TagList(GuiBase):
         sel = self.callbacks["get_var"]("selected")
 
         if not sel:
-            return self._set_cursor(self.f, 0)
+            return self._set_cursor(self.first_item, 0)
 
         target_offset = self.callbacks["get_var"]("target_offset")
 
