@@ -448,6 +448,47 @@ class TagList(GuiBase):
             self.callbacks["set_var"]("target_offset", 0)
             self.callbacks["set_var"]("needs_redraw", True)
 
+    @command_format([])
+    def cmd_next_tag(self, **kwargs):
+        sel = self.callbacks["get_var"]("selected")
+
+        if not sel:
+            return self._set_cursor(self.first_item, 0)
+
+        target_offset = self.callbacks["get_var"]("target_offset")
+
+        tag = self.tag_by_item(sel)
+        while sel.next_story:
+            sel = sel.next_story
+            if self.tag_by_item(sel) != tag:
+                break
+
+        self._set_cursor(sel, target_offset)
+
+    @command_format([])
+    def cmd_prev_tag(self, **kwargs):
+        sel = self.callbacks["get_var"]("selected")
+
+        if not sel:
+            return self._set_cursor(self.f, 0)
+
+        target_offset = self.callbacks["get_var"]("target_offset")
+
+        tag = self.tag_by_item(sel)
+        while sel.prev_story:
+            sel = sel.prev_story
+            newtag = self.tag_by_item(sel)
+            if newtag != tag:
+
+                # Choose the first item in the tag. next_obj
+                # is guaranteed to be a story by the knowledge
+                # that we have a visible story in it.
+
+                sel = newtag.next_obj
+                break
+
+        self._set_cursor(sel, target_offset)
+
     @command_format([("item", "sel_or_item")])
     def cmd_reader(self, **kwargs):
         self.callbacks["set_var"]("reader_item", kwargs["item"])

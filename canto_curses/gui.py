@@ -160,6 +160,8 @@ Press [space] to close."""
             "taglist.key.C-u" : "unset-cursor",
             "taglist.key.+" : "promote",
             "taglist.key.-" : "demote",
+            "taglist.key.J" : "next-tag",
+            "taglist.key.K" : "prev-tag",
 
             "reader.key.space" : "destroy",
             "reader.key.d" : "toggle-opt reader.show_description",
