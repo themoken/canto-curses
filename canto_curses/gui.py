@@ -793,14 +793,24 @@ Press [space] to close."""
         if cur_idx <= before_idx:
             return
 
-        tagorder.insert(before_idx - 1, tag.tag)
         tagorder.remove(tag.tag)
         tagorder.insert(before_idx, tag.tag)
         self.set_opt("tagorder", tagorder)
         self.eval_tags()
 
     def demote_tag(self, tag, aftertag):
-        pass
+        tagorder = self.config["tagorder"][:]
+        cur_idx = tagorder.index(tag.tag)
+        after_idx = tagorder.index(aftertag.tag)
+
+        if cur_idx >= after_idx:
+            return
+
+        tagorder.remove(tag.tag)
+        tagorder.insert(after_idx, tag.tag)
+
+        self.set_opt("tagorder", tagorder)
+        self.eval_tags()
 
     # This accepts arbitrary strings, but gives the right prompt.
     def transform(self, args):

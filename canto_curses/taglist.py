@@ -517,7 +517,18 @@ class TagList(GuiBase):
 
     @command_format([("tags", "listof_tags")])
     def cmd_demote(self, **kwargs):
-        pass
+        for tag in kwargs["tags"]:
+
+            log.debug("Demoting %s\n", tag.tag)
+
+            visible_tags = self.callbacks["get_var"]("taglist_visible_tags")
+
+            # Obviously makes no sense on bottom or only tag.
+            if tag == visible_tags[-1] or len(visible_tags) == 1:
+                return
+
+            curidx = visible_tags.index(tag)
+            self.callbacks["demote_tag"](tag, visible_tags[curidx + 1])
 
     def edit_opt(self, setting):
         t = self.callbacks["get_opt"](setting)
