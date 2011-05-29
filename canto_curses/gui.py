@@ -162,6 +162,7 @@ Press [space] to close."""
             "taglist.key.-" : "demote",
             "taglist.key.J" : "next-tag",
             "taglist.key.K" : "prev-tag",
+            "taglist.key.c" : "toggle-collapse",
 
             "reader.key.space" : "destroy",
             "reader.key.d" : "toggle-opt reader.show_description",
@@ -198,6 +199,7 @@ Press [space] to close."""
 
         self.tag_template_config = {
             "enumerated" : False,
+            "collapsed" : False,
         }
 
         # Configuration options that, on change, require a refresh, in
@@ -208,7 +210,7 @@ Press [space] to close."""
                     ".*show_description", ".*enumerate_links" ]]
 
         self.tag_refresh_configs = [ re.compile(x) for x in\
-                [ "enumerated" ]]
+                [ "enumerated", "collapsed" ]]
 
         # Configuration options that, on change, require an ncurses
         # reset or windows to be redone.
@@ -292,18 +294,18 @@ Press [space] to close."""
             elif config[attr].lower() == "false":
                 config[attr] = False
             else:
-                config[attr] = def_config[attr]
+                config[attr] = defconfig[attr]
                 log.error("%s must be boolean. Resetting to %s" %
-                        (attr, def_config[attr]))
+                        (attr, defconfig[attr]))
 
     def _val_uint(self, config, defconfig, attr):
         if type(config[attr]) != int:
             try:
                 config[attr] = int(config[attr])
             except:
-                config[attr] = def_config[attr]
+                config[attr] = defconfig[attr]
                 log.error("%s must be integer. Resetting to %s" %
-                        (attr, def_config[attr]))
+                        (attr, defconfig[attr]))
         elif int < 0:
             config[attr] = config[attr]
             log.error("%s must be >= 0. Resetting to %s" %
@@ -332,10 +334,10 @@ Press [space] to close."""
                     return
 
         # Couldn't parse, revert.
-        if attr in self.def_config:
+        if attr in self.defconfig:
             log.error("Reverting %s to default: %s" %\
-                    (attr, self.def_config[attr]))
-            config[attr] = self.def_config[attr]
+                    (attr, self.defconfig[attr]))
+            config[attr] = self.defconfig[attr]
         else:
             del config[attr]
 
@@ -346,10 +348,8 @@ Press [space] to close."""
     def _val_tag_order(self, config, defconfig, attr):
         try:
             config[attr] = eval(config[attr])
-            log.debug("TO SET: %s" % config[attr])
         except:
             config[attr] = defconfig[attr]
-            log.debug("TO DEFAULT: %s" % defconfig[attr])
 
         for tag in self.vars["alltags"]:
             if tag.tag not in config[attr]:
@@ -437,6 +437,7 @@ Press [space] to close."""
 
     def validate_one_tag_config(self, config, defconfig):
         self._val_bool(config, defconfig, "enumerated")
+        self._val_bool(config, defconfig, "collapsed")
         return config
 
     def validate_tag_config(self, config, defconfig):
@@ -512,7 +513,8 @@ Press [space] to close."""
         # Move over new tag configuration.
         new_config = self.tag_config.copy()
         for k in given_tag_config:
-            new_config[k] = given_tag_config[k]
+            new_config[k] = self.tag_template_config.copy()
+            new_config[k].update(given_tag_config[k])
 
         new_config = self.validate_tag_config(new_config,
                 self.tag_config)
@@ -520,11 +522,10 @@ Press [space] to close."""
         changed_opts = self._dict_diff(new_config, self.tag_config)
         for tag_header in changed_opts:
             tag = tag_header[4:]
-            for cur_tag in self.vars["alltags"]:
+            for curtag in self.vars["alltags"]:
                 if curtag.tag == tag:
-                    for k in changed_opts[tag_header]:
-                        self.set_tag_opt(opt, tag, k,\
-                                changed_opts[tag_header][k])
+                    for k in new_config[tag_header].keys():
+                        self.set_tag_opt(curtag, k, new_config[tag_header][k])
                     break
 
     def prot_attributes(self, d):
@@ -672,10 +673,13 @@ Press [space] to close."""
 
         if self.vars[tweak] != value or tweak in [ "error_msg", "info_msg"]:
 
+            # If we're selecting or unselecting a story, then
+            # we need to make sure it doesn't disappear.
+
             if tweak in [ "selected", "reader_item" ]:
-                if self.vars[tweak]:
+                if self.vars[tweak] and hasattr(self.vars[tweak], "id"):
                     self.vars["protected_ids"].remove(self.vars[tweak].id)
-                if value:
+                if value and hasattr(value, "id"):
                     self.vars["protected_ids"].append(value.id)
 
             self.vars[tweak] = value

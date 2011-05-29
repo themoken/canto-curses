@@ -43,6 +43,8 @@ class Tag(list):
         # Are there changes pending?
         self.changed = True
 
+        self.selected = False
+
         # Information from last refresh
         self.lines = 0
         self.width = 0
@@ -51,8 +53,10 @@ class Tag(list):
         self.item_offset = 0
         self.visible_tag_offset = 0
         self.tag_offset = 0
+        self.sel_offset = 0
 
         on_hook("opt_change", self.on_opt_change)
+        on_hook("tag_opt_change", self.on_tag_opt_change)
 
         # Upon creation, this Tag adds itself to the
         # list of all tags.
@@ -65,10 +69,15 @@ class Tag(list):
 
         self.reset()
         remove_hook("opt_change", self.on_opt_change)
+        remove_hook("tag_opt_change", self.on_tag_opt_change)
 
     def on_opt_change(self, opts):
         if "taglist.tags_enumerated" in opts or \
                 "taglist.tags_enumerated_absolute" in opts:
+            self.need_redraw()
+
+    def on_tag_opt_change(self, tag, opts):
+        if tag == self:
             self.need_redraw()
 
     # We override eq so that empty tags don't evaluate
@@ -91,6 +100,7 @@ class Tag(list):
             rel = len(self) - 1
             s.set_rel_offset(rel)
             s.set_offset(self.item_offset + rel)
+            s.set_sel_offset(self.sel_offset + rel)
 
         call_hook("items_added", [ self, added ] )
 
@@ -114,6 +124,7 @@ class Tag(list):
         for i, story in enumerate(self):
             story.set_rel_offset(i)
             story.set_offset(self.item_offset + i)
+            story.set_sel_offset(self.sel_offset + i)
 
         call_hook("items_removed", [ self, removed ] )
 
@@ -142,6 +153,23 @@ class Tag(list):
             for i, item in enumerate(self):
                 item.set_offset(offset + i)
 
+    # Note that this cannot be short-cut (i.e.
+    # copout if sel_offset is already equal)
+    # because it's possible that it's the same
+    # without the items having ever been updated.
+
+    # Alternatively, we could reset them in
+    # on_tag_opt_change, but since the sel
+    # offset does not cause a redraw, there's
+    # no point.
+
+    def set_sel_offset(self, offset):
+        self.sel_offset = offset
+
+        if not self.callbacks["get_tag_opt"]("collapsed"):
+            for i, item in enumerate(self):
+                item.set_sel_offset(offset + i)
+
     def set_visible_tag_offset(self, offset):
         if self.visible_tag_offset != offset:
             self.visible_tag_offset = offset
@@ -150,6 +178,16 @@ class Tag(list):
     def set_tag_offset(self, offset):
         if self.tag_offset != offset:
             self.tag_offset = offset
+            self.need_redraw()
+
+    def select(self):
+        if not self.selected:
+            self.selected = True
+            self.need_redraw()
+
+    def unselect(self):
+        if self.selected:
+            self.selected = False
             self.need_redraw()
 
     def need_redraw(self):
@@ -177,7 +215,12 @@ class Tag(list):
             self.callbacks["get_opt"]("taglist.tags_enumerated_absolute")
 
         # Make sure to strip out the category from category:name
-        header = self.tag.split(':', 1)[1] + u"\n"
+        header = self.tag.split(':', 1)[1]
+
+        if self.callbacks["get_tag_opt"]("collapsed"):
+            header = "[+] " + header
+        else:
+            header = "[-] " + header
 
         # Tags can be both absolute and relatively enumerated at once,
         # in this case the absolute enumeration is the first listed and thus
@@ -188,6 +231,11 @@ class Tag(list):
 
         if enumerated_absolute:
             header = ("[%d] " % self.tag_offset) + header
+
+        if self.selected:
+            header = "%R" + header + "%r"
+
+        header += u"\n"
 
         lines = 0
 

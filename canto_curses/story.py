@@ -134,6 +134,12 @@ class Story(PluginHandler):
             self.rel_offset = offset
             self.need_redraw()
 
+    # This is not useful in the interface,
+    # so no redraw required on it.
+
+    def set_sel_offset(self, offset):
+        self.sel_offset = offset
+
     def need_redraw(self):
         self.changed = True
         self.callbacks["set_var"]("needs_redraw", True)

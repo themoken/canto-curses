@@ -43,7 +43,12 @@ class TagList(GuiBase):
         # Holster for a list of items for batch operations.
         self.got_items = None
 
-        self.first_item = None
+        self.first_sel = None
+
+        self.first_story = None
+        self.last_story = None
+
+        self.tags = []
 
         # Hooks
         on_hook("eval_tags_changed", self.refresh)
@@ -62,10 +67,11 @@ class TagList(GuiBase):
         if idx < 0:
             raise Exception("Negative indices not allowed!")
 
-        for tag in self.tags:
-            for item in tag:
-                if item.offset == idx:
-                    return item
+        cur = self.first_story
+        while cur:
+            if cur.offset == idx:
+                return cur
+            cur = cur.next_story
 
         raise Exception("Couldn't find item with idx: %d" % idx)
 
@@ -87,7 +93,10 @@ class TagList(GuiBase):
             return
 
         old_sel = self.callbacks["get_var"]("old_selected")
-        if not old_sel or old_sel not in items:
+
+        if not old_sel or\
+                old_sel in self.tags or\
+                old_sel not in items:
             return
 
         # Re-reference. The stories equality is based
@@ -110,15 +119,17 @@ class TagList(GuiBase):
         # Items being removed implies we need to remap them.
         self.callbacks["set_var"]("needs_refresh", True)
 
-        # We need to clear self.first_item if it's gone
+        # We need to clear self.first_sel if it's gone
         # so that a potential unselect doesn't try and set
         # it as the redraw target object.
 
-        if self.first_item in items:
-            self.first_item = None
+        if self.first_sel and\
+                self.first_sel not in self.tags and\
+                self.first_sel in items:
+            self.first_sel = None
 
         sel = self.callbacks["get_var"]("selected")
-        if sel in items:
+        if sel and sel not in self.tags and sel in items:
             toffset = self.callbacks["get_var"]("target_offset")
             self._set_cursor(None, 0)
 
@@ -151,9 +162,12 @@ class TagList(GuiBase):
 
         curint = 0
         if s:
-            curtag = self.tag_by_item(s)
-            if curtag in taglist:
-                curint = taglist.index(curtag)
+            if s in taglist:
+                curint = taglist.index(s)
+            else:
+                curtag = self.tag_by_item(s)
+                if curtag in taglist:
+                    curint = taglist.index(curtag)
 
         tag, args = self._int(args, curint, len(taglist), prompt)
 
@@ -177,7 +191,14 @@ class TagList(GuiBase):
 
         if not args:
             if s:
-                return (True, [s], "")
+                # When a tag is selected, it's empty.
+                if s in self.tags:
+                    return (True, [], "")
+
+                # Otherwise return the single selected item.
+                else:
+                    return (True, [s], "")
+
             if self.got_items != None:
                 log.debug("listof_items falling back on got_items")
                 return (True, self.got_items, "")
@@ -207,7 +228,7 @@ class TagList(GuiBase):
                     lambda : self.tag_eprompt(tag, "items: "))
             return (True, [ tag[i] for i in ints ], "")
         else:
-            if s:
+            if s and s not in self.tags:
                 curint = s.offset
             else:
                 curint = 0
@@ -222,7 +243,10 @@ class TagList(GuiBase):
         got_tag = None
 
         if s:
-            got_tag = self.tag_by_item(s)
+            if s in self.tags:
+                got_tag = s
+            else:
+                got_tag = self.tag_by_item(s)
 
         # If we have a selected tag and no args, return it automatically.
         if not args and got_tag:
@@ -246,19 +270,16 @@ class TagList(GuiBase):
     def item(self, args):
         s = self.callbacks["get_var"]("selected")
 
-        if s:
+        if s and s not in self.tags:
             curint = s.offset
         else:
             curint = 0
 
-        t, r = self._int(args, curint, len(list(self.allitems())),\
+        t, r = self._int(args, curint, self.last_item.offset,
                 lambda : self.eprompt("item: "))
 
         if t != None:
             item = self.item_by_idx(t)
-            if not item:
-                log.error("There is no item %d" % t)
-                return (False, None, None)
             return (True, item, r)
         return (False, None, None)
 
@@ -266,7 +287,11 @@ class TagList(GuiBase):
         if not args:
             s = self.callbacks["get_var"]("selected")
             if s:
-                return (True, s, "")
+                # If tag selected, cut-out
+                if s in self.tags:
+                    return (False, None, None)
+                else:
+                    return (True, s, "")
             if self.got_items:
                 if len(self.got_items) > 1:
                     log.info("NOTE: Only using first of selected items.")
@@ -312,37 +337,30 @@ class TagList(GuiBase):
     def cmd_rel_set_cursor(self, **kwargs):
         sel = self.callbacks["get_var"]("selected")
         if sel:
-            target_idx = sel.offset + kwargs["relidx"]
+            target_idx = sel.sel_offset + kwargs["relidx"]
             curpos = sel.curpos
 
             if target_idx < 0:
                 target_idx = 0
 
-            # The top level loop, sel should only be story objects.
-            # However, in order to get a consistent scroll, we have
-            # to take the offsets of all objects into account, so
-            # the sub loop iterates on next/prev_obj to get to
-            # the next/prev_story.
-
-            while sel.offset != target_idx:
-                if target_idx < sel.offset and sel.prev_story:
-                    pstory = sel.prev_story
+            while sel.sel_offset != target_idx:
+                if target_idx < sel.sel_offset and sel.prev_sel:
+                    pstory = sel.prev_sel
                     while sel != pstory:
                         sel = sel.prev_obj
                         sel.do_changes(self.width)
                         curpos -= sel.lines
-                elif target_idx > sel.offset and sel.next_story:
-                    nstory = sel.next_story
+                elif target_idx > sel.sel_offset and sel.next_sel:
+                    nstory = sel.next_sel
                     while sel != nstory:
                         sel.do_changes(self.width)
                         curpos += sel.lines
                         sel = sel.next_obj
                 else:
                     break
-
             self._set_cursor(sel, curpos)
         else:
-            self._set_cursor(self.first_item, 0)
+            self._set_cursor(self.first_sel, 0)
 
     def _set_cursor(self, item, window_location):
         # May end up as None
@@ -358,9 +376,9 @@ class TagList(GuiBase):
             self.callbacks["set_var"]("target_offset", window_location)
             item.select()
         else:
-            self.callbacks["set_var"]("target_obj", self.first_item)
-            if self.first_item:
-                self.callbacks["set_var"]("target_offset", self.first_item.curpos)
+            self.callbacks["set_var"]("target_obj", self.first_sel)
+            if self.first_sel:
+                self.callbacks["set_var"]("target_offset", self.first_sel.curpos)
 
     # foritems gets a valid list of items by index.
 
@@ -392,8 +410,8 @@ class TagList(GuiBase):
         scroll = self.height - 1
 
         if sel:
-            while scroll > 0 and sel.prev_story:
-                pstory = sel.prev_story
+            while scroll > 0 and sel.prev_sel:
+                pstory = sel.prev_sel
                 while sel != pstory:
                     sel.do_changes(self.width)
                     scroll -= sel.lines
@@ -424,12 +442,12 @@ class TagList(GuiBase):
         scroll = self.height - 1
 
         if sel:
-            while scroll > 0 and sel.next_story:
+            while scroll > 0 and sel.next_sel:
                 sel.do_changes(self.width)
                 if scroll < sel.lines:
                     break
 
-                nstory = sel.next_story
+                nstory = sel.next_sel
                 while sel != nstory:
                     sel.do_changes(self.width)
                     scroll -= sel.lines
@@ -453,7 +471,7 @@ class TagList(GuiBase):
         sel = self.callbacks["get_var"]("selected")
 
         if not sel:
-            return self._set_cursor(self.first_item, 0)
+            return self._set_cursor(self.first_sel, 0)
 
         target_offset = self.callbacks["get_var"]("target_offset")
 
@@ -470,7 +488,7 @@ class TagList(GuiBase):
         sel = self.callbacks["get_var"]("selected")
 
         if not sel:
-            return self._set_cursor(self.first_item, 0)
+            return self._set_cursor(self.first_sel, 0)
 
         target_offset = self.callbacks["get_var"]("target_offset")
 
@@ -530,6 +548,49 @@ class TagList(GuiBase):
             curidx = visible_tags.index(tag)
             self.callbacks["demote_tag"](tag, visible_tags[curidx + 1])
 
+    def _collapse_tag(self, tag):
+        log.debug("Collapsing %s\n", tag.tag)
+
+        # If we're collapsing the selection, select
+        # the tag instead.
+        s = self.callbacks["get_var"]("selected")
+        if s and s in tag:
+            toffset = self.callbacks["get_var"]("target_offset")
+            self._set_cursor(tag, toffset) 
+
+        self.callbacks["set_tag_opt"](tag, "collapsed", True)
+
+    @command_format([("tags", "listof_tags")])
+    def cmd_collapse(self, **kwargs):
+        for tag in kwargs["tags"]:
+            self._collapse_tag(tag)
+
+    def _uncollapse_tag(self, tag):
+        log.debug("Uncollapsing %s\n", tag.tag)
+
+        # If we're uncollapsing the selected tag,
+        # go ahead and select the first item.
+
+        s = self.callbacks["get_var"]("selected")
+        if s and tag == s and len(tag) != 0:
+            toffset = self.callbacks["get_var"]("target_offset") + tag.lines
+            self._set_cursor(tag[0], toffset)
+
+        self.callbacks["set_tag_opt"](tag, "collapsed", False)
+
+    @command_format([("tags", "listof_tags")])
+    def cmd_uncollapse(self, **kwargs):
+        for tag in kwargs["tags"]:
+            self._uncollapse_tag(tag)
+
+    @command_format([("tags", "listof_tags")])
+    def cmd_toggle_collapse(self, **kwargs):
+        for tag in kwargs["tags"]:
+            if self.callbacks["get_tag_opt"](tag, "collapsed"):
+                self._uncollapse_tag(tag)
+            else:
+                self._collapse_tag(tag)
+
     def edit_opt(self, setting):
         t = self.callbacks["get_opt"](setting)
         r = self._edit(t)
@@ -540,11 +601,23 @@ class TagList(GuiBase):
         self.edit_opt("story.format")
 
     def update_tag_lists(self):
+        sel = self.callbacks["get_var"]("selected")
+        toffset = self.callbacks["get_var"]("target_offset")
+
+        # Determine if our selection is a tag.
+        # If it is, and it is no longer visible,
+        # then we have to unset the selection.
+
+        sel_is_tag = False
+        if self.tags and sel and sel in self.tags:
+            sel_is_tag = True
+
         self.tags = self.callbacks["get_var"]("curtags")
         hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")
 
         t = []
         cur_item_offset = 0
+        cur_sel_offset = 0
 
         for i, tag in enumerate(self.tags):
             if hide_empty and len(tag) == 0:
@@ -552,11 +625,39 @@ class TagList(GuiBase):
 
             # Update index info
             tag.set_item_offset(cur_item_offset)
+            tag.set_sel_offset(cur_sel_offset)
             tag.set_tag_offset(i)
             tag.set_visible_tag_offset(len(t))
 
-            cur_item_offset += len(tag)
+            if self.callbacks["get_tag_opt"](tag, "collapsed"):
+                cur_sel_offset += 1
+            else:
+                cur_sel_offset += len(tag)
+                cur_item_offset += len(tag)
             t.append(tag)
+
+        # Eliminate selected tag if tag disappeared.
+        if sel_is_tag and sel not in t:
+            self._set_cursor(None, 0)
+            self.callbacks["set_var"]("old_selected", sel)
+            self.callbacks["set_var"]("old_toffset", toffset)
+
+        # Restore old_selected if it reappeared, if no
+        # selection has been made.
+
+        # Note: Unlike the item restoration, we don't have
+        # to re-reference here because the Tag objects shouldn't
+        # have changed, where the Story objects are regenerated.
+
+        oldsel = self.callbacks["get_var"]("old_selected")
+        if not sel and oldsel and oldsel in t:
+            toffset = self.callbacks["get_var"]("old_toffset")
+            self._set_cursor(oldsel, toffset)
+            self.callbacks["set_var"]("old_selected", None)
+
+        # Deal with setting the first drawable object when
+        # if we have visible tags, or unsetting it if all
+        # tags are no longer visible.
 
         if t and not self.callbacks["get_var"]("target_obj"):
             self.callbacks["set_var"]("target_obj", t[0])
@@ -571,13 +672,17 @@ class TagList(GuiBase):
     # of the objects by setting obj.prev_obj and obj.next_obj.
 
     def refresh(self):
+        log.debug("Taglist REFRESH!\n")
+
         self.update_tag_lists()
+
+        self.first_story = None
 
         prev_obj = None
         prev_story = None
+        prev_sel = None
 
         for tag in self.callbacks["get_var"]("taglist_visible_tags"):
-
             tag.prev_obj = prev_obj
             tag.next_obj = None
 
@@ -586,19 +691,38 @@ class TagList(GuiBase):
 
             prev_obj = tag
 
+            # Collapsed tags (with items) skip stories.
+            if self.callbacks["get_tag_opt"](tag, "collapsed"):
+                if prev_sel:
+                    prev_sel.next_sel = tag
+                tag.prev_sel = prev_sel
+                tag.next_sel = None
+                prev_sel = tag
+                continue
+
             for story in tag:
+                if not self.first_story:
+                    self.first_story = story
+
                 story.prev_obj = prev_obj
                 story.next_obj = None
                 prev_obj.next_obj = story
                 prev_obj = story
 
+                if prev_story:
+                    prev_story.next_story = story
+                prev_story = story
                 story.prev_story = prev_story
                 story.next_story = None
 
-                if prev_story:
-                    prev_story.next_story = story
+                if prev_sel:
+                    prev_sel.next_sel = story
+                story.prev_sel = prev_sel
+                story.next_sel = None
+                prev_sel = story
 
-                prev_story = story
+                # Keep track of last story.
+                self.last_story = story
 
         self.redraw()
 
@@ -717,13 +841,20 @@ class TagList(GuiBase):
         # Any adjustments should be reflected.
         self.callbacks["set_var"]("target_offset", target_offset)
 
-        # Step 3. Update self.first_item. This is useful for making
+        # Step 3. Update self.first_sel. This is useful for making
         # initial selection based on the current screen position.
-        # If there are only tags on screen, first_item could be None
+        # If there are only tags on screen, first_sel could be None
 
-        self.first_item = obj
-        while self.first_item in self.tags and self.first_item.next_obj:
-            self.first_item = self.first_item.next_obj
+        self.first_sel = obj
+        while self.first_sel in self.tags:
+
+            if self.callbacks["get_tag_opt"](obj, "collapsed"):
+                break
+
+            if self.first_sel.next_obj:
+                self.first_sel = self.first_sel.next_obj
+            else:
+                break
 
         # Step 4. Render.
 
