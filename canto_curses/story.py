@@ -243,7 +243,7 @@ class Story(PluginHandler):
             log.warn("\n" + "".join(traceback.format_exc(e)))
             log.warn("Falling back to default")
 
-            parsed = parse_conditional(DEFAULT_STRING)
+            parsed = parse_conditionals(DEFAULT_FSTRING)
             s = eval_theme_string(parsed, values)
 
         # s is now a themed line based on this story.
