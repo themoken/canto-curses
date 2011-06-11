@@ -591,15 +591,6 @@ class TagList(GuiBase):
             else:
                 self._collapse_tag(tag)
 
-    def edit_opt(self, setting):
-        t = self.callbacks["get_opt"](setting)
-        r = self._edit(t)
-        log.info("c-c: edited to %s" % r)
-
-    @command_format([])
-    def cmd_edit(self, **kwargs):
-        self.edit_opt("story.format")
-
     def update_tag_lists(self):
         sel = self.callbacks["get_var"]("selected")
         toffset = self.callbacks["get_var"]("target_offset")

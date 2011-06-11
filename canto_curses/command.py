@@ -127,7 +127,11 @@ class CommandHandler(PluginHandler):
             optname += k
 
         log.debug("trying key: %s" % optname)
-        r = self.callbacks["get_opt"](optname)
+
+        try:
+            r = self.callbacks["get_opt"](optname)
+        except:
+            r = None
 
         # None happens if the option is unset
         # "None" can be used by the user to ignore

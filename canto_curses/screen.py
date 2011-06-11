@@ -117,13 +117,25 @@ class Screen(CommandHandler):
         for i in xrange(curses.COLOR_PAIRS):
             optprefix = "color.%s" % i
 
-            fg = self.callbacks["get_opt"](optprefix + ".fg")
+            try:
+                fg = self.callbacks["get_opt"](optprefix + ".fg")
+            except:
+                fg = None
+
             if not fg:
-                fg = self.callbacks["get_opt"](optprefix)
+                try:
+                    fg = self.callbacks["get_opt"](optprefix)
+                except:
+                    fg = None
+
                 if not fg:
                     fg = deffg
 
-            bg = self.callbacks["get_opt"](optprefix + ".bg")
+            try:
+                bg = self.callbacks["get_opt"](optprefix + ".bg")
+            except:
+                bg = None
+
             if not bg:
                 bg = defbg
 
@@ -132,7 +144,6 @@ class Screen(CommandHandler):
             except:
                 log.error("color pair failed!: %d fg: %d bg: %d" %
                         (i + 1, fg, bg))
-
         return 0
 
     # _subw_size functions enforce the height and width of windows.

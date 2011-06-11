@@ -77,8 +77,9 @@ class Story(PluginHandler):
             self.need_redraw()
 
     def on_opt_change(self, config):
-        if "story.enumerated" in config:
-            self.need_redraw()
+        for opt in config.keys():
+            if opt in  [ "story.enumerated", "story.format" ]:
+                self.need_redraw()
 
     def on_tag_opt_change(self, tag, config):
         if self in tag and "enumerated" in config:

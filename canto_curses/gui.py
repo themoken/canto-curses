@@ -185,6 +185,8 @@ Press [space] to close."""
             "infobox.key.ppage" : "page-up",
             "infobox.key.space" : "destroy",
 
+            "color.defbg" : None,
+            "color.deffg" : None,
             "color.0" : curses.COLOR_WHITE,
             "color.1" : curses.COLOR_BLUE,
             "color.2" : curses.COLOR_YELLOW,
@@ -207,7 +209,7 @@ Press [space] to close."""
 
         self.refresh_configs = [re.compile(x) for x in\
                 [ ".*enumerated", ".*hide_empty_tags",
-                    ".*show_description", ".*enumerate_links" ]]
+                    ".*show_description", ".*enumerate_links", ".*format" ]]
 
         self.tag_refresh_configs = [ re.compile(x) for x in\
                 [ "enumerated", "collapsed" ]]
@@ -334,10 +336,10 @@ Press [space] to close."""
                     return
 
         # Couldn't parse, revert.
-        if attr in self.defconfig:
+        if attr in defconfig:
             log.error("Reverting %s to default: %s" %\
-                    (attr, self.defconfig[attr]))
-            config[attr] = self.defconfig[attr]
+                    (attr, defconfig[attr]))
+            config[attr] = defconfig[attr]
         else:
             del config[attr]
 
@@ -694,7 +696,7 @@ Press [space] to close."""
     def get_var(self, tweak):
         if tweak in self.vars:
             return self.vars[tweak]
-        return None
+        raise Exception("Unknown variable: %s" % (tweak,))
 
     def opt(self, args):
         t, r = self._first_term(args,
@@ -737,8 +739,10 @@ Press [space] to close."""
             self.winch()
 
         for opt in changed_opts:
+            log.debug("refresh on? opt: %s" % opt)
             for regx in refresh_configs:
                 if regx.match(opt):
+                    log.debug("matched")
                     self.screen.refresh()
                     return
 
@@ -760,9 +764,10 @@ Press [space] to close."""
 
         if option not in self.config or self.config[option] != value:
             self.config[option] = value
-            self.check_opt_refresh([option])
 
             call_hook("opt_change", [ { option : value } ])
+
+            self.check_opt_refresh([option])
 
             if write:
                 self.backend.write("SETCONFIGS",\
@@ -771,7 +776,7 @@ Press [space] to close."""
     def get_opt(self, option):
         if option in self.config:
             return self.config[option]
-        return None
+        raise Exception("Unknown option: %s" % (option,))
 
     def set_tag_opt(self, tag, option, value):
         tagheader = "Tag %s" % tag.tag

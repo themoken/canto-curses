@@ -100,13 +100,13 @@ class GuiBase(CommandHandler):
         if not self.editor:
             self.editor = os.getenv("EDITOR")
         if not self.editor:
-            self.editor = self.callbacks["input_callback"]("editor: ")
+            self.editor = self.input("editor: ")
 
         # No editor, or cancelled dialog, no change.
         if not self.editor:
             return text
 
-        #self.callbacks["pause_interface"]()
+        self.callbacks["pause_interface"]()
 
         # Setup tempfile to edit.
         fd, path = tempfile.mkstemp(text=True)
@@ -125,11 +125,34 @@ class GuiBase(CommandHandler):
             r = f.read()
             f.close()
         else:
+            self.callbacks["set_var"]("error_msg",
+                    "Editor failed! Status = %d" % (status,))
             r = text
 
-        #self.callbacks["unpause_interface"]()
+        # Cleanup temp file.
+        os.unlink(path)
+
+        self.callbacks["unpause_interface"]()
 
         return r
+
+    def one_opt(self, args):
+        t, r = self._first_term(args,
+                lambda : self.input("opt: "))
+
+        try:
+            self.callbacks["get_opt"](t)
+        except:
+            log.error("Unknown option: %s" % t)
+            return (False, None, None)
+        return (True, t, None)
+
+    @command_format([("opt", "one_opt")])
+    def cmd_edit(self, **kwargs):
+        t = self.callbacks["get_opt"](kwargs["opt"])
+        r = self._edit(t)
+        log.info("Edited %s to %s" % (kwargs["opt"], r))
+        self.callbacks["set_opt"](kwargs["opt"], r)
 
     def _goto(self, urls):
         browser = self.callbacks["get_opt"]("browser")
