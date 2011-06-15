@@ -83,7 +83,7 @@ class CantoCurses(CantoClient):
         # Make sure we have permissions on the relevant, non-daemon files in
         # the target directory (None of these will be used until we set_log)
 
-        if self.ensure_files():
+        if self.ensure_paths():
             sys.exit(-1)
 
         self.set_log()
@@ -191,7 +191,24 @@ class CantoCurses(CantoClient):
         self.done = True
         os.kill(self.pid, signal.SIGUSR1)
 
-    # For now, make sure the log is writable.
+    def ensure_paths(self):
+        if os.path.exists(self.conf_dir):
+            if not os.path.isdir(self.conf_dir):
+                log.error("Error: %s is not a directory." % self.conf_dir)
+                return -1
+            if not os.access(self.conf_dir, os.R_OK):
+                log.error("Error: %s is not readable." % self.conf_dir)
+                return -1
+            if not os.access(self.conf_dir, os.W_OK):
+                log.error("Error: %s is not writable." % self.conf_dir)
+                return -1
+        else:
+            try:
+                os.makedirs(self.conf_dir)
+            except Exception, e:
+                log.error("Exception making %s : %s" % (self.conf_dir, e))
+                return -1
+        return self.ensure_files()
 
     def ensure_files(self):
         logname = "curses-log"
