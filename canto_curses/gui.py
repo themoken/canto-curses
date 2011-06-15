@@ -163,6 +163,7 @@ Press [space] to close."""
             "taglist.key.J" : "next-tag",
             "taglist.key.K" : "prev-tag",
             "taglist.key.c" : "toggle-collapse",
+            "taglist.key.$" : "item-state read t:. 0-.",
 
             "reader.key.space" : "destroy",
             "reader.key.d" : "toggle-opt reader.show_description",
