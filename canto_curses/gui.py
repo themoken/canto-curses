@@ -638,6 +638,9 @@ Press [space] to close."""
     def prot_except(self, exception):
         self.set_var("error_msg", "%s" % exception)
 
+    def prot_errors(self, exception):
+        self.set_var("error_msg", "%s" % exception)
+
     def prot_info(self, info):
         self.set_var("info_msg", "%s" % info)
 
