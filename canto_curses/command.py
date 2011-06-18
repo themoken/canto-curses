@@ -150,7 +150,7 @@ class CommandHandler(PluginHandler):
 
         if item == "$" and maxint:
             return maxint - 1
-        if item == "." and curint:
+        if item == "." and curint != None:
             return curint
 
         return int(item)
