@@ -24,7 +24,9 @@ class ReaderPlugin(Plugin):
 class Reader(TextBox):
     def __init__(self):
         TextBox.__init__(self)
+
         self.plugin_class = ReaderPlugin
+        self.update_plugin_lookups()
 
     def init(self, pad, callbacks):
         TextBox.init(self, pad, callbacks)

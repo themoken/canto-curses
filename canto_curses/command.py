@@ -54,7 +54,10 @@ class CommandPlugin(Plugin):
 class CommandHandler(PluginHandler):
     def __init__(self):
         PluginHandler.__init__(self)
+
         self.plugin_class = CommandPlugin
+        self.update_plugin_lookups()
+
         self.meta = False
 
     def command(self, command):

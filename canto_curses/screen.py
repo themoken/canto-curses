@@ -44,7 +44,10 @@ class ScreenPlugin(Plugin):
 class Screen(CommandHandler):
     def __init__(self, user_queue, callbacks, types = [InputBox, TagList]):
         CommandHandler.__init__(self)
+
         self.plugin_class = ScreenPlugin
+        self.update_plugin_lookups()
+
         self.user_queue = user_queue
         self.callbacks = callbacks
         self.layout = "default"

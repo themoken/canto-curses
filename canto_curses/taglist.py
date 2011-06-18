@@ -30,7 +30,9 @@ class TagListPlugin(Plugin):
 class TagList(GuiBase):
     def __init__(self):
         GuiBase.__init__(self)
+
         self.plugin_class = TagListPlugin
+        self.update_plugin_lookups()
 
     def init(self, pad, callbacks):
         # Drawing information

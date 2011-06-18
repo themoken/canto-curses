@@ -23,7 +23,10 @@ class BasePlugin(Plugin):
 class GuiBase(CommandHandler):
     def __init__(self):
         CommandHandler.__init__(self)
+
         self.plugin_class = BasePlugin
+        self.update_plugin_lookups()
+
         self.editor = None
 
     def input(self, prompt):

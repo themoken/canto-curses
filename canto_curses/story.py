@@ -30,7 +30,10 @@ DEFAULT_FSTRING = "%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%R:)%?{rd}(%3:%2%B)%t%0%
 class Story(PluginHandler):
     def __init__(self, id, callbacks):
         PluginHandler.__init__(self)
+
         self.plugin_class = StoryPlugin
+        self.update_plugin_lookups()
+
         self.callbacks = callbacks
         self.content = {}
         self.id = id

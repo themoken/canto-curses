@@ -32,7 +32,10 @@ class GuiPlugin(Plugin):
 class CantoCursesGui(CommandHandler):
     def __init__(self, backend):
         CommandHandler.__init__(self)
+
         self.plugin_class = GuiPlugin
+        self.update_plugin_lookups()
+
         self.backend = backend
         self.screen = None
 
