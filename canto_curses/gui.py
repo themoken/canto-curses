@@ -127,6 +127,7 @@ Press [space] to close."""
             "taglist.search_attributes" : [ "title" ],
             "story.enumerated" : False,
             "story.format" : DEFAULT_FSTRING,
+            "story.format.attrs" : [ "title" ],
             "input.maxwidth" : 0,
             "input.maxheight" : 0,
             "input.float" : False,
@@ -394,6 +395,8 @@ Press [space] to close."""
         self._val_tag_order(newconfig, defconfig, "tagorder")
         self._val_non_empty_string_list(newconfig,\
                 defconfig, "taglist.search_attributes")
+        self._val_non_empty_string_list(newconfig,\
+                defconfig, "story.format.attrs")
 
         # Make sure colors are all integers.
         for attr in [k for k in newconfig.keys() if k.startswith("color.")]:
@@ -602,13 +605,20 @@ Press [space] to close."""
                     for id in adds:
                         story = have_tag.get_id(id)
 
-                        # Make sure we grab attributes needed by story format
-                        needed_attrs[id] = story.needed_attributes()
+                        # We *at least* need title, state, and link, these
+                        # will allow us to fall back on the default format string
+                        # which relies on these.
 
-                        # Make sure we grab attributes needed for taglist search
-                        for sa in self.config["taglist.search_attributes"]:
-                            if sa not in needed_attrs[id]:
-                                needed_attrs[id].append(sa)
+                        needed_attrs[id] = [ "title", "canto-state", "link" ]
+
+                        # Make sure we grab attributes needed for the story
+                        # format and story format.
+
+                        for attrlist in ["story.format.attrs",\
+                                            "taglist.search_attributes"]:
+                            for sa in self.config[attrlist]:
+                                if sa not in needed_attrs[id]:
+                                    needed_attrs[id].append(sa)
 
                     have_tag.remove_items(removes)
                     for id in removes:

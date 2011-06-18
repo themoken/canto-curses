@@ -82,6 +82,19 @@ class Story(PluginHandler):
 
     def on_opt_change(self, config):
         for opt in config.keys():
+
+            # Make sure we have access to all needed attrs.
+            if opt == "story.format.attrs":
+                needed_attrs = []
+                for attr in config[opt]:
+                    if attr not in self.content:
+                        needed_attrs.append(attr)
+                if needed_attrs:
+                    log.debug("%s needs: %s" % (self.id, needed_attrs))
+                    self.callbacks["write"]("ATTRIBUTES",\
+                            { self.id : needed_attrs })
+                    self.queue_need_attributes()
+
             if opt in  [ "story.enumerated", "story.format" ]:
                 self.need_redraw()
 
@@ -177,7 +190,7 @@ class Story(PluginHandler):
         # Make sure we actually have all of the attributes needed
         # to complete the render.
 
-        for attr in self.needed_attributes():
+        for attr in self.callbacks["get_opt"]("story.format.attrs"):
             if attr not in self.content:
                 self.pad = curses.newpad(1, width)
                 self.pad.addstr("Waiting on content...")
@@ -324,10 +337,3 @@ class Story(PluginHandler):
 
         # Return number of lines this story took to render entirely.
         return lines
-
-    # Return what attributes of this story are needed
-    # to render it. Eventually this will be determined
-    # on the client render string.
-
-    def needed_attributes(self):
-        return [ "title", "link", "canto-state" ]
