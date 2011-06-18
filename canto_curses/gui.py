@@ -124,6 +124,7 @@ Press [space] to close."""
             "taglist.tags_enumerated" : False,
             "taglist.tags_enumerated_absolute" : False,
             "taglist.hide_empty_tags" : True,
+            "taglist.search_attributes" : [ "title" ],
             "story.enumerated" : False,
             "story.format" : DEFAULT_FSTRING,
             "input.maxwidth" : 0,
@@ -167,6 +168,11 @@ Press [space] to close."""
             "taglist.key.K" : "prev-tag",
             "taglist.key.c" : "toggle-collapse",
             "taglist.key.$" : "item-state read t:. 0-.",
+            "taglist.key./" : "search",
+            "taglist.key.?" : "search-regex",
+            "taglist.key.n" : "next-marked",
+            "taglist.key.p" : "prev-marked",
+            "taglist.key.M" : "item-state -marked *",
 
             "reader.key.space" : "destroy",
             "reader.key.d" : "toggle-opt reader.show_description",
@@ -199,6 +205,7 @@ Press [space] to close."""
             "color.5" : curses.COLOR_MAGENTA,
             "color.6.fg" : curses.COLOR_WHITE,
             "color.6.bg" : curses.COLOR_RED,
+            "color.7" : curses.COLOR_WHITE,
         }
 
         self.tag_config = {}
@@ -361,6 +368,19 @@ Press [space] to close."""
             if tag.tag not in config[attr]:
                 config[attr].append(tag.tag)
 
+    def _val_non_empty_string_list(self, config, defconfig, attr):
+        try:
+            r = [ l.lstrip().rstrip() for l in config[attr].split(',') ]
+        except:
+            log.error("Couldn't parse %s into string list" % (config[attr],))
+            r = []
+
+        if not r:
+            log.warn("Got empty list for %s, reverting to default." % attr)
+            config[attr] = defconfig[attr]
+        else:
+            config[attr] = r
+
     def validate_config(self, newconfig, defconfig):
         self._val_uint(newconfig, defconfig, "update.auto.interval")
         self._val_bool(newconfig, defconfig, "reader.show_description")
@@ -372,6 +392,8 @@ Press [space] to close."""
         self._val_bool(newconfig, defconfig, "taglist.hide_empty_tags")
         self._val_bool(newconfig, defconfig, "txt_browser")
         self._val_tag_order(newconfig, defconfig, "tagorder")
+        self._val_non_empty_string_list(newconfig,\
+                defconfig, "taglist.search_attributes")
 
         # Make sure colors are all integers.
         for attr in [k for k in newconfig.keys() if k.startswith("color.")]:
@@ -579,7 +601,14 @@ Press [space] to close."""
                     have_tag.add_items(adds)
                     for id in adds:
                         story = have_tag.get_id(id)
+
+                        # Make sure we grab attributes needed by story format
                         needed_attrs[id] = story.needed_attributes()
+
+                        # Make sure we grab attributes needed for taglist search
+                        for sa in self.config["taglist.search_attributes"]:
+                            if sa not in needed_attrs[id]:
+                                needed_attrs[id].append(sa)
 
                     have_tag.remove_items(removes)
                     for id in removes:

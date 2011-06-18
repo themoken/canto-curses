@@ -25,7 +25,7 @@ class StoryPlugin(Plugin):
 # its own state only because it affects its representation, it's up to a higher
 # class to actually communicate state changes to the backend.
 
-DEFAULT_FSTRING = "%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%R:)%?{rd}(%3:%2%B)%t%0%?{rd}(:%b)%?{sel}(%r:)"
+DEFAULT_FSTRING = "%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%R:)%?{rd}(%3:%2%B)%?{m}(*%8%B:)%t%?{m}(%b%0:){rd}(:%b%0)%?{sel}(%r:)"
 
 class Story(PluginHandler):
     def __init__(self, id, callbacks):
@@ -40,6 +40,7 @@ class Story(PluginHandler):
         self.pad = None
 
         self.selected = False
+        self.marked = False
 
         # Are there changes pending?
         self.changed = True
@@ -105,17 +106,21 @@ class Story(PluginHandler):
         # Negative attribute
         if attr[0] == "-":
             attr = attr[1:]
-            if attr in self.content["canto-state"]:
+            if attr == "marked":
+                return self.unmark()
+            elif attr in self.content["canto-state"]:
                 self.content["canto-state"].remove(attr)
                 self.need_redraw()
                 return True
 
         # Positive attribute
-        elif attr not in self.content["canto-state"]:
-            self.content["canto-state"].append(attr)
-            self.need_redraw()
-            return True
-
+        else:
+            if attr == "marked":
+                return self.mark()
+            elif attr not in self.content["canto-state"]:
+                self.content["canto-state"].append(attr)
+                self.need_redraw()
+                return True
         return False
 
     def select(self):
@@ -127,6 +132,20 @@ class Story(PluginHandler):
         if self.selected:
             self.selected = False
             self.need_redraw()
+
+    def mark(self):
+        if not self.marked:
+            self.marked = True
+            self.need_redraw()
+            return True
+        return False
+
+    def unmark(self):
+        if self.marked:
+            self.marked = False
+            self.need_redraw()
+            return True
+        return False
 
     def set_offset(self, offset):
         if self.offset != offset:
@@ -187,6 +206,7 @@ class Story(PluginHandler):
                   "enumerated" : enumerated,
                   "state" : self.content["canto-state"][:],
                   "selected" : self.selected,
+                  "marked" : self.marked,
                   "fstring" : fstring }
 
         # Render once to a FakePad (no IO) to determine the correct
@@ -232,7 +252,8 @@ class Story(PluginHandler):
                     'i' : state["abs_idx"],
                   'ren' : state["rel_enumerated"],
                     'x' : state["rel_idx"],
-                  'sel' : self.selected,
+                  'sel' : state["selected"],
+                    'm' : state["marked"],
                    'rd' : "read" in self.content["canto-state"],
                     't' : self.content["title"],
                     'l' : self.content["link"],

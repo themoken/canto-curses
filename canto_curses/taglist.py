@@ -16,6 +16,7 @@ from reader import Reader
 import logging
 import curses
 import os
+import re
 
 log = logging.getLogger("TAGLIST")
 
@@ -56,6 +57,7 @@ class TagList(GuiBase):
         on_hook("eval_tags_changed", self.refresh)
         on_hook("items_added", self.on_items_added)
         on_hook("items_removed", self.on_items_removed)
+        on_hook("opt_change", self.on_opt_change)
 
         self.update_tag_lists()
 
@@ -137,6 +139,28 @@ class TagList(GuiBase):
 
             self.callbacks["set_var"]("old_selected", sel)
             self.callbacks["set_var"]("old_toffset", toffset)
+
+    def on_opt_change(self, conf):
+        if "taglist.search_attributes" not in conf:
+            return
+
+        log.info("Fetching any needed search attributes")
+
+        need_attrs = {}
+        sa = self.callbacks["get_opt"]("taglist.search_attributes")
+
+        # Make sure that we have all attributes needed for a search.
+        for attr in sa:
+            for tag in self.callbacks["get_var"]("alltags"):
+                for item in tag:
+                    if attr not in item.content:
+                        if item.id in need_attrs:
+                            need_attrs[item.id].append(attr)
+                        else:
+                            need_attrs[item.id] = [ attr ]
+
+        if need_attrs:
+            self.callbacks["write"]("ATTRIBUTES", need_attrs)
 
     # Prompt that ensures the items are enumerated first
     def eprompt(self, prompt):
@@ -335,6 +359,48 @@ class TagList(GuiBase):
     def cmd_unset_cursor(self, **kwargs):
         self._set_cursor(None, 0)
 
+    def _iterate_forward(self, start):
+        ns = start.next_sel
+        o = start
+
+        lines = 0
+
+        # No next item, bail.
+
+        if not ns:
+            return (None, lines)
+
+        # Force changes to all objects between
+        # start and next sel.
+
+        while o and o != ns:
+            o.do_changes(self.width)
+            lines += o.lines
+            o = o.next_obj
+
+        return (ns, lines)
+
+    def _iterate_backward(self, start):
+        ps = start.prev_sel
+        o = start
+
+        lines = 0
+
+        # No prev item, bail.
+
+        if not ps:
+            return (None, lines)
+
+        # Force changes to all objects between
+        # start and prev sel.
+
+        while o and o != ps:
+            o = o.prev_obj
+            o.do_changes(self.width)
+            lines += o.lines
+
+        return (ps, lines)
+
     @command_format([("relidx", "int")])
     def cmd_rel_set_cursor(self, **kwargs):
         sel = self.callbacks["get_var"]("selected")
@@ -347,17 +413,11 @@ class TagList(GuiBase):
 
             while sel.sel_offset != target_idx:
                 if target_idx < sel.sel_offset and sel.prev_sel:
-                    pstory = sel.prev_sel
-                    while sel != pstory:
-                        sel = sel.prev_obj
-                        sel.do_changes(self.width)
-                        curpos -= sel.lines
+                    sel, lines = self._iterate_backward(sel)
+                    curpos -= lines
                 elif target_idx > sel.sel_offset and sel.next_sel:
-                    nstory = sel.next_sel
-                    while sel != nstory:
-                        sel.do_changes(self.width)
-                        curpos += sel.lines
-                        sel = sel.next_obj
+                    sel, lines = self._iterate_forward(sel)
+                    curpos += lines
                 else:
                     break
             self._set_cursor(sel, curpos)
@@ -593,6 +653,114 @@ class TagList(GuiBase):
             else:
                 self._collapse_tag(tag)
 
+    def keyword(self, args):
+        return self.string(args, lambda : self.callbacks["input"]("keyword: "))
+
+    def regex(self, args):
+        return self.string(args, lambda : self.callbacks["input"]("regex: "))
+
+    def search(self, regex):
+        try:
+            rgx = re.compile(regex)
+        except Exception, e:
+            self.callbacks["set_opt"]("error_msg", e)
+            return
+
+        story = self.first_story
+        terms = self.callbacks["get_opt"]("taglist.search_attributes")
+
+        while story:
+            for t in terms:
+
+                # Shouldn't happen unless a search happens before
+                # the daemon can respond to the ATTRIBUTES request.
+
+                if t not in story.content:
+                    continue
+
+                if rgx.match(story.content[t]):
+                    story.mark()
+                    break
+            else:
+                story.unmark()
+
+            story = story.next_story
+
+        self.callbacks["set_var"]("needs_redraw", True)
+
+    @command_format([("search_term", "keyword")])
+    def cmd_search(self, **kwargs):
+        if not kwargs["search_term"]:
+            return
+        rgx = ".*" + re.escape(kwargs["search_term"]) + ".*"
+        return self.search(rgx)
+
+    @command_format([("search_term", "regex")])
+    def cmd_search_regex(self, **kwargs):
+        if not kwargs["search_term"]:
+            return
+        return self.search(kwargs["search_term"])
+
+    @command_format([])
+    def cmd_next_marked(self, **kwargs):
+        start = self.callbacks["get_var"]("selected")
+
+        # This works for tags and stories alike.
+        if start:
+            cur = start.next_story
+        else:
+            start = self.first_story
+            cur = start
+
+        curpos = cur.curpos
+
+        while not cur or not cur.marked:
+            # Wrap to top
+            if cur == None:
+                cur = self.first_story
+                curpos = self.first_story.curpos
+            else:
+                cur, lines = self._iterate_forward(cur)
+                curpos += lines
+
+            # Make sure we don't infinite loop.
+            if cur == start:
+                if not cur.marked:
+                    self.callbacks["set_var"]\
+                            ("info_msg", "No marked items.")
+                break
+
+        self._set_cursor(cur, curpos)
+
+    @command_format([])
+    def cmd_prev_marked(self, **kwargs):
+        start = self.callbacks["get_var"]("selected")
+
+        # This works for tags and stories alike.
+        if start:
+            cur = start.prev_story
+        else:
+            start = self.last_story
+            cur = start
+
+        curpos = cur.curpos
+
+        while not cur or not cur.marked:
+            # Wrap to bottom
+            if cur == None:
+                cur = self.last_story
+                curpos = self.last_story.curpos
+            else:
+                cur, lines = self._iterate_backward(cur)
+                curpos -= lines
+
+            # Make sure we don't infinite loop.
+            if cur == start:
+                self.callbacks["set_var"]("info_msg", "No marked items.")
+                break
+
+        self._set_cursor(cur, curpos)
+
     def update_tag_lists(self):
         sel = self.callbacks["get_var"]("selected")
         toffset = self.callbacks["get_var"]("target_offset")
@@ -704,9 +872,9 @@ class TagList(GuiBase):
 
                 if prev_story:
                     prev_story.next_story = story
-                prev_story = story
                 story.prev_story = prev_story
                 story.next_story = None
+                prev_story = story
 
                 if prev_sel:
                     prev_sel.next_sel = story

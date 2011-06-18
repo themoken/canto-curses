@@ -139,6 +139,12 @@ class GuiBase(CommandHandler):
 
         return r
 
+    # Pass-thru for arbitrary strings.
+    def string(self, args, prompt):
+        if not args:
+            args = prompt()
+        return (True, args, None)
+
     def one_opt(self, args):
         t, r = self._first_term(args,
                 lambda : self.input("opt: "))

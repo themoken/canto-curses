@@ -44,6 +44,7 @@ class Tag(list):
         self.changed = True
 
         self.selected = False
+        self.marked = False
 
         # Information from last refresh
         self.lines = 0
@@ -84,7 +85,7 @@ class Tag(list):
     # as equal and screw up things like enumeration.
 
     def __eq__(self, other):
-        if self.tag != other.tag:
+        if not hasattr(other, "tag") or self.tag != other.tag:
             return False
         return list.__eq__(self, other)
 
