@@ -108,7 +108,9 @@ Press [space] to close."""
             "txt_browser" : False,
             "tags" : r"maintag\\:.*",
             "tagorder" : [],
+
             "update.auto.interval" : 60,
+
             "reader.maxwidth" : 0,
             "reader.maxheight" : 0,
             "reader.float" : True,
@@ -116,6 +118,7 @@ Press [space] to close."""
             "reader.border" : "smart",
             "reader.enumerate_links" : False,
             "reader.show_description" : True,
+
             "taglist.maxwidth" : 0,
             "taglist.maxheight" : 0,
             "taglist.float" : False,
@@ -125,19 +128,23 @@ Press [space] to close."""
             "taglist.tags_enumerated_absolute" : False,
             "taglist.hide_empty_tags" : True,
             "taglist.search_attributes" : [ "title" ],
+
             "story.enumerated" : False,
             "story.format" : DEFAULT_FSTRING,
             "story.format.attrs" : [ "title" ],
+
             "input.maxwidth" : 0,
             "input.maxheight" : 0,
             "input.float" : False,
             "input.align" : "bottom",
             "input.border" : "none",
+
             "errorbox.maxwidth" : 0,
             "errorbox.maxheight" : 0,
             "errorbox.float" : True,
             "errorbox.align" : "topleft",
             "errorbox.border" : "full",
+
             "infobox.maxwidth" : 0,
             "infobox.maxheight" : 0,
             "infobox.float" : True,
