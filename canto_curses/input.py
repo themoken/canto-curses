@@ -99,9 +99,9 @@ class InputBox(GuiBase):
             self.result = ""
             return 0
         else:
-            self.x += 1
             idx = self.x - self.minx
             self.result = self.result[:idx] + unichr(ch) + self.result[idx:]
+            self.x += 1
 
         self.refresh()
         curses.doupdate()
