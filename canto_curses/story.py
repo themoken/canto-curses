@@ -25,7 +25,7 @@ class StoryPlugin(Plugin):
 # its own state only because it affects its representation, it's up to a higher
 # class to actually communicate state changes to the backend.
 
-DEFAULT_FSTRING = "%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%R:)%?{rd}(%3:%2%B)%?{m}(*%8%B:)%t%?{m}(%b%0:){rd}(:%b%0)%?{sel}(%r:)"
+DEFAULT_FSTRING = "%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%R:)%?{rd}(%3:%2%B)%?{m}(*%8%B:)%t%?{m}(%b%0:)%?{rd}(:%b%0)%?{sel}(%r:)"
 
 class Story(PluginHandler):
     def __init__(self, id, callbacks):
