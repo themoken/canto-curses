@@ -109,6 +109,7 @@ Press [space] to close."""
             "tags" : r"maintag\\:.*",
             "tagorder" : [],
 
+            "update.style" : "append",
             "update.auto.interval" : 60,
 
             "reader.maxwidth" : 0,
@@ -389,22 +390,33 @@ Press [space] to close."""
         else:
             config[attr] = r
 
+    def _val_update_style(self, config, defconfig, attr):
+        if config[attr] not in [ "maintain", "append"]:
+            log.error("Couldn't parse %s as update.style" % config[attr])
+            config[attr] = defconfig[attr]
+
     def validate_config(self, newconfig, defconfig):
         self._val_uint(newconfig, defconfig, "update.auto.interval")
+        self._val_update_style(newconfig, defconfig, "update.style")
+
         self._val_bool(newconfig, defconfig, "reader.show_description")
         self._val_bool(newconfig, defconfig, "reader.enumerate_links")
+
         self._val_bool(newconfig, defconfig, "story.enumerated")
+
         self._val_bool(newconfig, defconfig, "taglist.tags_enumerated")
         self._val_bool(newconfig, defconfig,\
                 "taglist.tags_enumerated_absolute")
         self._val_bool(newconfig, defconfig, "taglist.hide_empty_tags")
-        self._val_bool(newconfig, defconfig, "txt_browser")
-        self._val_tag_order(newconfig, defconfig, "tagorder")
         self._val_non_empty_string_list(newconfig,\
                 defconfig, "taglist.search_attributes")
+
+        self._val_bool(newconfig, defconfig, "txt_browser")
+
         self._val_non_empty_string_list(newconfig,\
                 defconfig, "story.format.attrs")
 
+        self._val_tag_order(newconfig, defconfig, "tagorder")
         # Make sure colors are all integers.
         for attr in [k for k in newconfig.keys() if k.startswith("color.")]:
             self._val_color(newconfig, defconfig, attr)
@@ -593,48 +605,58 @@ Press [space] to close."""
 
         for tag in updates:
             for have_tag in self.vars["alltags"]:
-                if have_tag.tag == tag:
-                    adds = []
-                    removes = []
+                if have_tag.tag != tag:
+                    continue
 
-                    # Eliminate discarded items.
-                    for id in have_tag.get_ids():
-                        if id not in self.vars["protected_ids"] and \
-                                id not in updates[tag]:
-                            removes.append(id)
+                adds = []
+                removes = []
 
-                    # Add new items.
-                    for id in updates[tag]:
-                        if id not in have_tag.get_ids():
-                            adds.append(id)
+                # Eliminate discarded items.
+                for id in have_tag.get_ids():
+                    if id not in self.vars["protected_ids"] and \
+                            id not in updates[tag]:
+                        removes.append(id)
 
-                    have_tag.add_items(adds)
-                    for id in adds:
-                        story = have_tag.get_id(id)
+                # Add new items.
+                for id in updates[tag]:
+                    if id not in have_tag.get_ids():
+                        adds.append(id)
 
-                        # We *at least* need title, state, and link, these
-                        # will allow us to fall back on the default format string
-                        # which relies on these.
+                have_tag.add_items(adds)
+                for id in adds:
+                    story = have_tag.get_id(id)
 
-                        needed_attrs[id] = [ "title", "canto-state", "link" ]
+                    # We *at least* need title, state, and link, these
+                    # will allow us to fall back on the default format string
+                    # which relies on these.
 
-                        # Make sure we grab attributes needed for the story
-                        # format and story format.
+                    needed_attrs[id] = [ "title", "canto-state", "link" ]
 
-                        for attrlist in ["story.format.attrs",\
-                                            "taglist.search_attributes"]:
-                            for sa in self.config[attrlist]:
-                                if sa not in needed_attrs[id]:
-                                    needed_attrs[id].append(sa)
+                    # Make sure we grab attributes needed for the story
+                    # format and story format.
 
-                    have_tag.remove_items(removes)
-                    for id in removes:
-                        unprotect["auto"].append(id)
+                    for attrlist in ["story.format.attrs",\
+                                        "taglist.search_attributes"]:
+                        for sa in self.config[attrlist]:
+                            if sa not in needed_attrs[id]:
+                                needed_attrs[id].append(sa)
+
+                have_tag.remove_items(removes)
+                for id in removes:
+                    unprotect["auto"].append(id)
+
+                # If we're using the maintain update style, reorder the feed
+                # properly. Append style requires no extra work (add_items does
+                # it by default).
+
+                if self.config["update.style"] == "maintain":
+                    log.debug("Re-ording items (update.style: maintain)")
+                    have_tag.reorder(updates[tag])
 
         if needed_attrs:
             self.backend.write("ATTRIBUTES", needed_attrs)
 
-        if unprotect:
+        if unprotect["auto"]:
             self.backend.write("UNPROTECT", unprotect)
 
     def prot_tagchange(self, tag):
@@ -733,9 +755,22 @@ Press [space] to close."""
 
             if tweak in [ "selected", "reader_item" ]:
                 if self.vars[tweak] and hasattr(self.vars[tweak], "id"):
+
+                    # protected_ids just tells the prot_items to not allow
+                    # this item to have it's auto protection stripped.
+
                     self.vars["protected_ids"].remove(self.vars[tweak].id)
+
+                    # Set an additional protection, filter-immune so hardened
+                    # filters won't eliminate it.
+
+                    self.backend.write("UNPROTECT",\
+                            { "filter-immune" : [ self.vars[tweak].id ] })
+
                 if value and hasattr(value, "id"):
                     self.vars["protected_ids"].append(value.id)
+                    self.backend.write("PROTECT",\
+                            { "filter-immune" : [ value.id ] })
 
             self.vars[tweak] = value
 

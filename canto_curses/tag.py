@@ -105,6 +105,40 @@ class Tag(list):
 
         call_hook("items_added", [ self, added ] )
 
+    # Take a list of ordered ids and reorder ourselves, without generating any
+    # unnecessary add/remove hooks.
+
+    def reorder(self, ids):
+        cur_stories = [ s for s in self ]
+
+        # Perform the actual reorder.
+        stories = [ self.get_id(id) for id in ids ]
+
+        del self[:]
+        list.extend(self, stories)
+
+        # Deal with items that aren't listed. Usually this happens if the item
+        # would be filtered, but is protected for some reason (like selection)
+
+        # NOTE: This is bad behavior, but if we don't retain these items, other
+        # code will crap-out expecting this item to exist. Built-in transforms
+        # are hardened to never discard items with the filter-immune reason,
+        # like selection, so this is just for bad user transforms.
+
+        for s in cur_stories:
+            if s not in self:
+                log.warn("Warning: A filter is filtering filter-immune items.")
+                log.warn("Compensating. This may cause items to jump unexpectedly.")
+                list.append(self, s)
+
+        log.debug("Self: %s" % [ s for s in self ])
+
+        # Handle updating story information.
+        for i, story in enumerate(self):
+            story.set_rel_offset(i)
+            story.set_offset(self.item_offset + i)
+            story.set_sel_offset(self.sel_offset + i)
+
     # Remove Story based on ID
 
     def remove_items(self, ids):
