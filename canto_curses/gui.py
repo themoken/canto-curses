@@ -217,6 +217,10 @@ Press [space] to close."""
             "color.7" : curses.COLOR_WHITE,
         }
 
+        self.aliases = {
+                "browser" : "remote one-config CantoCurses.browser"
+        }
+
         self.tag_config = {}
 
         self.tag_template_config = {
@@ -1059,13 +1063,28 @@ Press [space] to close."""
                     self.backend.exit()
                     return
 
-                # Variable Operations
-                if not self.command(cmd[1]):
-                    self.screen.command(cmd[1])
+                if " " in cmd[1]:
+                    basecmd, args = cmd[1].split(" ", 1)
+                else:
+                    basecmd = cmd[1]
+                    args = ""
 
-            protfunc = "prot_" + cmd[0].lower()
-            if hasattr(self, protfunc):
-                getattr(self, protfunc)(cmd[1])
+                if basecmd in self.aliases:
+                    log.debug("resolved '%s' to '%s'" %\
+                            (basecmd, self.aliases[basecmd]))
+                    basecmd = self.aliases[basecmd]
+
+                fullcmd = basecmd
+                if args:
+                    fullcmd += " " + args
+
+                # Variable Operations
+                if not self.command(fullcmd):
+                    self.screen.command(fullcmd)
+            else:
+                protfunc = "prot_" + cmd[0].lower()
+                if hasattr(self, protfunc):
+                    getattr(self, protfunc)(cmd[1])
 
             if self.vars["needs_refresh"]:
                 log.debug("Needed refresh")
