@@ -637,6 +637,11 @@ class Screen(CommandHandler):
         log.debug("Output:")
         log.debug(out)
 
+        # Strip anything that could be misconstrued as style
+        # from remote output.
+
+        out = out.replace("%","\\%")
+
         out += "\nPress [space] to continue\n"
 
         self.callbacks["set_var"]("info_msg", out)
