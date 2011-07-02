@@ -236,7 +236,7 @@ Press [space] to close."""
                     ".*show_description", ".*enumerate_links", ".*format" ]]
 
         self.tag_refresh_configs = [ re.compile(x) for x in\
-                [ "enumerated", "collapsed" ]]
+                [ "enumerated", "collapsed", "transform" ]]
 
         # Configuration options that, on change, require an ncurses
         # reset or windows to be redone.

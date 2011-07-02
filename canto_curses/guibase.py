@@ -7,13 +7,15 @@
 #   published by the Free Software Foundation.
 
 from command import CommandHandler, command_format
-from canto_next.encoding import encoder, locale_enc
+from canto_next.encoding import encoder, decoder
 from canto_next.plugins import Plugin
 import logging
 
 log = logging.getLogger("COMMON")
 
+import subprocess
 import tempfile
+import shlex
 import sys
 import os
 
@@ -115,7 +117,7 @@ class GuiBase(CommandHandler):
         fd, path = tempfile.mkstemp(text=True)
 
         f = os.fdopen(fd, "w")
-        f.write(text.encode(locale_enc, "ignore"))
+        f.write(encoder(text))
         f.close()
 
         # Invoke editor
@@ -162,6 +164,42 @@ class GuiBase(CommandHandler):
         r = self._edit(t)
         log.info("Edited %s to %s" % (kwargs["opt"], r))
         self.callbacks["set_opt"](kwargs["opt"], r)
+
+    def _remote_argv(self, argv):
+        loc_args = self.callbacks["get_var"]("location")
+        argv = [argv[0]] + loc_args + argv[1:]
+
+        log.debug("Calling remote: %s" % argv)
+
+        out = decoder(subprocess.check_output(argv))
+
+        log.debug("Output:")
+        log.debug(out)
+
+        # Strip anything that could be misconstrued as style
+        # from remote output.
+
+        out = out.replace("%","\\%")
+
+        out += "\nPress [space] to continue\n"
+
+        self.callbacks["set_var"]("info_msg", out)
+
+    def _remote(self, args):
+        args = "canto-remote " + args
+        args = encoder(args)
+
+        # Add location args, so the remote is connecting
+        # to the correct daemon.
+
+        self._remote_argv(shlex.split(args))
+
+    def remote_args(self, args):
+        return self.string(args, "remote: ")
+
+    @command_format([("remote_args","remote_args")])
+    def cmd_remote(self, **kwargs):
+        self._remote(kwargs["remote_args"])
 
     def _goto(self, urls):
         browser = self.callbacks["get_opt"]("browser")

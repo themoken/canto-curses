@@ -8,6 +8,7 @@
 
 from canto_next.hooks import on_hook, remove_hook, call_hook
 from canto_next.plugins import Plugin
+from canto_next.encoding import encoder
 
 from command import command_format
 from guibase import GuiBase
@@ -760,6 +761,18 @@ class TagList(GuiBase):
                 break
 
         self._set_cursor(cur, curpos)
+
+    def configstring(self, args):
+        return self.string(args, lambda : self.callbacks["input"]("config: "))
+
+    @command_format([("tag","single_tag"),("config","configstring")])
+    def cmd_tag_config(self, **kwargs):
+        tag = kwargs["tag"].tag
+        config = kwargs["config"]
+
+        argv = ["canto-remote", "config", "Tag " + tag + "." + config]
+        argv = [ encoder(x) for x in argv ]
+        self._remote_argv(argv)
 
     def update_tag_lists(self):
         sel = self.callbacks["get_var"]("selected")
