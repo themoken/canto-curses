@@ -218,7 +218,11 @@ Press [space] to close."""
         }
 
         self.aliases = {
-                "browser" : "remote one-config CantoCurses.browser"
+                "browser" : "remote one-config CantoCurses.browser",
+                "txt_browser" : "remote one-config CantoCurses.txt_browser",
+                "q" : "quit",
+                "filter" : "transform",
+                "sort" : "transform",
         }
 
         self.tag_config = {}
@@ -1058,11 +1062,6 @@ Press [space] to close."""
                     priority.extend([("CMD", c) for c in cmds])
                     continue
 
-                if cmd[1] in ["quit", "exit"]:
-                    self.screen.exit()
-                    self.backend.exit()
-                    return
-
                 if " " in cmd[1]:
                     basecmd, args = cmd[1].split(" ", 1)
                 else:
@@ -1077,6 +1076,11 @@ Press [space] to close."""
                 fullcmd = basecmd
                 if args:
                     fullcmd += " " + args
+
+                if fullcmd in ["quit", "exit"]:
+                    self.screen.exit()
+                    self.backend.exit()
+                    return
 
                 # Variable Operations
                 if not self.command(fullcmd):
