@@ -949,6 +949,7 @@ Press [space] to close."""
         self.ticked = True
 
     def do_tick(self):
+        self.ticked = False
         if self.update_interval <= 0:
             if self.updates:
                 self.backend.write("ITEMS", self.updates)
@@ -958,7 +959,6 @@ Press [space] to close."""
             self.updates = []
         else:
             self.update_interval -= 1
-        self.ticked = False
 
     @command_format([])
     def cmd_refresh(self, **kwargs):
@@ -1009,7 +1009,6 @@ Press [space] to close."""
 
         while True:
             if self.ticked:
-                self.ticked = False
                 self.do_tick()
 
             # Turn signals into commands:
