@@ -25,7 +25,7 @@ class StoryPlugin(Plugin):
 # its own state only because it affects its representation, it's up to a higher
 # class to actually communicate state changes to the backend.
 
-DEFAULT_FSTRING = "%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%R:)%?{rd}(%3:%2%B)%?{m}(*%8%B:)%t%?{m}(%b%0:)%?{rd}(:%b%0)%?{sel}(%r:)"
+DEFAULT_FSTRING = "%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%R:)%?{rd}(%3:%2%B)%?{m}(*%8%B:)%t%?{m}(%b%0:)%?{rd}(%0:%b%0)%?{sel}(%r:)"
 
 class Story(PluginHandler):
     def __init__(self, id, callbacks):
@@ -112,7 +112,7 @@ class Story(PluginHandler):
 
     # Add / remove state. Return True if an actual change, False otherwise.
 
-    def handle_state(self, attr):
+    def _handle_state(self, attr):
         if self.content["canto-state"] == "":
             self.content["canto-state"] = []
 
@@ -135,6 +135,15 @@ class Story(PluginHandler):
                 self.need_redraw()
                 return True
         return False
+
+    # Simple wrapper to call tag's item_state_change callback on an actual
+    # change.
+
+    def handle_state(self, attr):
+        r = self._handle_state(attr)
+        if r:
+            self.callbacks["item_state_change"](self)
+        return r
 
     def select(self):
         if not self.selected:

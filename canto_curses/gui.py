@@ -16,7 +16,7 @@ from html import html_entity_convert, char_ref_convert
 from story import DEFAULT_FSTRING
 from text import ErrorBox, InfoBox
 from screen import Screen
-from tag import Tag
+from tag import Tag, DEFAULT_TAG_FSTRING
 
 from Queue import Empty
 import logging
@@ -108,6 +108,7 @@ Press [space] to close."""
             "txt_browser" : False,
             "tags" : r"maintag\\:.*",
             "tagorder" : [],
+            "tag.format" : DEFAULT_TAG_FSTRING,
 
             "update.style" : "append",
             "update.auto.interval" : 60,
