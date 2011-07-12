@@ -8,9 +8,11 @@
 
 from canto_next.hooks import call_hook, on_hook, remove_hook
 
+from parser import parse_conditionals, eval_theme_string
 from theme import FakePad, WrapPad, theme_print
 from story import Story
 
+import traceback
 import logging
 import curses
 
@@ -19,6 +21,8 @@ log = logging.getLogger("TAG")
 # The Tag class manages stories. Externally, it looks
 # like a Tag takes IDs from the backend and renders an ncurses pad. No class
 # other than Tag actually touches Story objects directly.
+
+DEFAULT_TAG_FSTRING = "%?{sel}(%R:)%?{c}([+]:[-])%?{en}([%{to}]:)%?{aen}([%{vto}]:) %t [%B%2%n%1%b]%?{sel}(%r:)"
 
 class Tag(list):
     def __init__(self, tag, callbacks):
@@ -39,6 +43,14 @@ class Tag(list):
                 lambda x : callbacks["get_tag_opt"](self, x)
         self.callbacks["set_tag_opt"] =\
                 lambda x, y : callbacks["set_tag_opt"](self, x, y)
+
+        # This could be implemented as a generic, top-level hook but then N
+        # tags would have access to story objects they shouldn't have and
+        # would have to check every items membership in self, which would be
+        # pointless and time-consuming.
+
+        self.callbacks["item_state_change"] =\
+                self.on_item_state_change
 
         # Are there changes pending?
         self.changed = True
@@ -71,6 +83,9 @@ class Tag(list):
         self.reset()
         remove_hook("opt_change", self.on_opt_change)
         remove_hook("tag_opt_change", self.on_tag_opt_change)
+
+    def on_item_state_change(self, item):
+        self.need_redraw()
 
     def on_opt_change(self, opts):
         if "taglist.tags_enumerated" in opts or \
@@ -245,37 +260,65 @@ class Tag(list):
         self.changed = False
 
     def render_header(self, width, pad):
+        fstring = self.callbacks["get_opt"]("tag.format")
         enumerated = self.callbacks["get_opt"]("taglist.tags_enumerated")
         enumerated_absolute =\
             self.callbacks["get_opt"]("taglist.tags_enumerated_absolute")
+        collapsed = self.callbacks["get_tag_opt"]("collapsed")
 
         # Make sure to strip out the category from category:name
-        header = self.tag.split(':', 1)[1]
+        tag = self.tag.split(':', 1)[1]
 
-        if self.callbacks["get_tag_opt"]("collapsed"):
-            header = "[+] " + header
-        else:
-            header = "[-] " + header
+        unread = len([s for s in self\
+                if "canto-state" not in s.content or\
+                "read" not in s.content["canto-state"]])
 
-        # Tags can be both absolute and relatively enumerated at once,
-        # in this case the absolute enumeration is the first listed and thus
-        # it's added to the front of the string last.
+        # These are escapes that are handled in the theme_print
+        # lower in the function and should remain present after
+        # evaluation.
 
-        if enumerated:
-            header = ("[%d] " % self.visible_tag_offset) + header
+        passthru = {}
+        for c in "RrDdUuBbSs012345678":
+            passthru[c] = "%" + c
 
-        if enumerated_absolute:
-            header = ("[%d] " % self.tag_offset) + header
 
-        if self.selected:
-            header = "%R" + header + "%r"
+        try:
+            parsed = parse_conditionals(fstring)
+        except Exception, e:
+            log.warn("Failed to parse conditionals in fstring: %s" %
+                    fstring)
+            log.warn("\n" + "".join(traceback.format_exc(e)))
+            log.warn("Falling back to default.")
+            parsed = parse_conditionals(DEFAULT_TAG_FSTRING)
 
-        header += u"\n"
+        values = { 'en' : enumerated,
+                    'aen' : enumerated_absolute,
+                    'c' : collapsed,
+                    't' : tag,
+                    'sel' : self.selected,
+                    'n' : unread,
+                    'to' : self.tag_offset,
+                    'vto' : self.visible_tag_offset,
+                    'tag' : self}
+
+        values.update(passthru)
+
+        try:
+            s = eval_theme_string(parsed, values)
+        except Exception, e:
+            log.warn("Failed to evaluate fstring: %s" % fstring)
+            log.warn("\n" + "".join(traceback.format_exc(e)))
+            log.warn("Falling back to default")
+
+            parsed = parse_conditionals(DEFAULT_TAG_FSTRING)
+            s = eval_theme_string(parsed, values)
+
+        s += u"\n"
 
         lines = 0
 
-        while header:
-            header = theme_print(pad, header, width, u"", u"")
+        while s:
+            s = theme_print(pad, s, width, u"", u"")
             lines += 1
 
         return lines
