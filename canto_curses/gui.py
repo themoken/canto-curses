@@ -221,6 +221,10 @@ Press [space] to close."""
         self.aliases = {
                 "browser" : "remote one-config CantoCurses.browser",
                 "txt_browser" : "remote one-config CantoCurses.txt_browser",
+                "search_attr" : "remote one-config CantoCurses.taglist.search_attributes",
+                "add" : "remote addfeed",
+                "del" : "remote delfeed",
+                "list" : "remote listfeeds",
                 "q" : "quit",
                 "filter" : "transform",
                 "sort" : "transform",
