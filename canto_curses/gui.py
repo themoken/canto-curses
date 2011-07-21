@@ -588,7 +588,8 @@ Press [space] to close."""
             for curtag in self.vars["alltags"]:
                 if curtag.tag == tag:
                     for k in new_config[tag_header].keys():
-                        self.set_tag_opt(curtag, k, new_config[tag_header][k])
+                        self.set_tag_opt(curtag,\
+                                k, new_config[tag_header][k], 0)
                     break
 
     def prot_attributes(self, d):
@@ -879,15 +880,17 @@ Press [space] to close."""
             return self.config[option]
         raise Exception("Unknown option: %s" % (option,))
 
-    def set_tag_opt(self, tag, option, value):
+    def set_tag_opt(self, tag, option, value, write = True):
         tagheader = "Tag %s" % tag.tag
         if option not in self.tag_config[tagheader] or\
                 self.tag_config[tagheader][option] != value:
             self.tag_config[tagheader][option] = value
             self.check_tag_opt_refresh([option])
             call_hook("tag_opt_change", [ tag, { option : value }])
-            self.backend.write("SETCONFIGS",\
-                    { tagheader : { option : unicode(value) } } )
+
+            if write:
+                self.backend.write("SETCONFIGS",\
+                        { tagheader : { option : unicode(value) } } )
 
     def get_tag_opt(self, tag, option):
         tagheader = "Tag %s" % tag.tag
