@@ -83,7 +83,7 @@ class CommandHandler(PluginHandler):
 
         # Translate numeric key into config friendly keyname
 
-        optname = self.get_opt_name() + ".key."
+        optname = "['" + self.get_opt_name() + "']['key']['"
 
         # Add meta prefix.
         if self.meta:
@@ -112,22 +112,16 @@ class CommandHandler(PluginHandler):
 
             k = chr(k)
 
-            # Need translation because they're invisible in config
+            # Need translation because they're invisible
+
             if k == " ":
                 k = "space"
             elif k == "\t":
                 k = "tab"
 
-            # Need translation because they're special characters in config
-            # (i.e. they end the name of the setting and start the setting
-            # itself)
-
-            elif k == "=":
-                k = "equal"
-            elif k == ":":
-                k = "colon"
-
             optname += k
+
+        optname += "']"
 
         log.debug("trying key: %s" % optname)
 

@@ -6,10 +6,11 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-COMPATIBLE_VERSION = 0.2
+COMPATIBLE_VERSION = 0.3
 
 from canto_next.hooks import call_hook, on_hook
 from canto_next.plugins import Plugin
+from canto_next.remote import assign_to_dict
 
 from command import CommandHandler, command_format
 from html import html_entity_convert, char_ref_convert
@@ -81,6 +82,7 @@ Press [space] to close."""
             "alltags" : [],
             "needs_refresh" : False,
             "needs_redraw" : False,
+            "needs_resize" : False,
             "protected_ids" : [],
             "transforms" : [],
             "taglist_visible_tags" : [],
@@ -89,12 +91,15 @@ Press [space] to close."""
         self.callbacks = {
             "set_var" : self.set_var,
             "get_var" : self.get_var,
-            "set_opt" : self.set_opt,
+            "set_conf" : self.set_conf,
+            "get_conf" : self.get_conf,
+            "set_tag_conf" : self.set_tag_conf,
+            "get_tag_conf" : self.get_tag_conf,
             "get_opt" : self.get_opt,
-            "set_tag_opt" : self.set_tag_opt,
+            "set_opt" : self.set_opt,
             "get_tag_opt" : self.get_tag_opt,
-            "promote_tag" : self.promote_tag,
-            "demote_tag" : self.demote_tag,
+            "set_tag_opt" : self.set_tag_opt,
+            "switch_tags" : self.switch_tags,
             "write" : self.backend.write
         }
 
@@ -103,131 +108,265 @@ Press [space] to close."""
             "q" : "quit"
         }
 
-        self.config = {
-            "browser" : "firefox %u",
-            "txt_browser" : False,
-            "tags" : r"maintag\\:.*",
-            "tagorder" : [],
-            "tag.format" : DEFAULT_TAG_FSTRING,
+        self.validators = {
+            "browser" :
+            {
+                "path" : self.validate_string,
+                "text" : self.validate_bool,
+            },
 
-            "update.style" : "append",
-            "update.auto.interval" : 60,
+            "tags" : self.validate_tags,
+            "tagorder" : self.validate_tag_order,
 
-            "reader.maxwidth" : 0,
-            "reader.maxheight" : 0,
-            "reader.float" : True,
-            "reader.align" : "topleft",
-            "reader.border" : "smart",
-            "reader.enumerate_links" : False,
-            "reader.show_description" : True,
+            "tag" : { "format" : self.validate_string },
 
-            "taglist.maxwidth" : 0,
-            "taglist.maxheight" : 0,
-            "taglist.float" : False,
-            "taglist.align" : "neutral",
-            "taglist.border" : "none",
-            "taglist.tags_enumerated" : False,
-            "taglist.tags_enumerated_absolute" : False,
-            "taglist.hide_empty_tags" : True,
-            "taglist.search_attributes" : [ "title" ],
+            "update" :
+            {
+                "style" : self.validate_update_style,
+                "auto" : { "interval" : self.validate_uint }
+            },
 
-            "story.enumerated" : False,
-            "story.format" : DEFAULT_FSTRING,
-            "story.format.attrs" : [ "title" ],
+            "reader" :
+            {
+                "window" : self.validate_window,
+                "key" : self.validate_key,
+                "enumerate_links" : self.validate_bool,
+                "show_description" : self.validate_bool
+            },
 
-            "input.maxwidth" : 0,
-            "input.maxheight" : 0,
-            "input.float" : False,
-            "input.align" : "bottom",
-            "input.border" : "none",
+            "taglist" :
+            {
+                "window" : self.validate_window,
+                "key" : self.validate_key,
+                "tags_enumerated" : self.validate_bool,
+                "tags_enumerated_absolute" : self.validate_bool,
+                "hide_empty_tags" : self.validate_bool,
+                "search_attributes" : self.validate_string_list,
+            },
 
-            "errorbox.maxwidth" : 0,
-            "errorbox.maxheight" : 0,
-            "errorbox.float" : True,
-            "errorbox.align" : "topleft",
-            "errorbox.border" : "full",
+            "story" :
+            {
+                "enumerated" : self.validate_bool,
+                "format" : self.validate_string,
+                "format_attrs" : self.validate_string_list,
+            },
 
-            "infobox.maxwidth" : 0,
-            "infobox.maxheight" : 0,
-            "infobox.float" : True,
-            "infobox.align" : "topleft",
-            "infobox.border" : "full",
+            "input" : { "window" : self.validate_window },
 
-            "main.key.colon" : "command",
-            "main.key.q" : "quit",
-            "main.key.\\" : "refresh",
+            "errorbox" :
+            {
+                "window" : self.validate_window,
+                "key" : self.validate_key,
+            },
 
-            "taglist.key.space" : "foritem & item-state read & reader",
-            "taglist.key.g" : "foritems & goto & item-state read & clearitems",
-            "taglist.key.E" : "toggle-opt taglist.tags_enumerated",
-            "taglist.key.e" : "toggle-opt story.enumerated",
-            "taglist.key.R" : "item-state read *",
-            "taglist.key.U" : "item-state -read *",
-            "taglist.key.r" : "tag-state read",
-            "taglist.key.u" : "tag-state -read",
-            "taglist.key.npage" : "page-down",
-            "taglist.key.ppage" : "page-up",
-            "taglist.key.down" : "rel-set-cursor 1",
-            "taglist.key.j" : "rel-set-cursor 1",
-            "taglist.key.up" : "rel-set-cursor -1",
-            "taglist.key.k" : "rel-set-cursor -1",
-            "taglist.key.C-u" : "unset-cursor",
-            "taglist.key.+" : "promote",
-            "taglist.key.-" : "demote",
-            "taglist.key.J" : "next-tag",
-            "taglist.key.K" : "prev-tag",
-            "taglist.key.c" : "toggle-collapse",
-            "taglist.key.$" : "item-state read t:. 0-.",
-            "taglist.key./" : "search",
-            "taglist.key.?" : "search-regex",
-            "taglist.key.n" : "next-marked",
-            "taglist.key.p" : "prev-marked",
-            "taglist.key.M" : "item-state -marked *",
+            "infobox" :
+            {
+                "window" : self.validate_window,
+                "key" : self.validate_key,
+            },
 
-            "reader.key.space" : "destroy",
-            "reader.key.d" : "toggle-opt reader.show_description",
-            "reader.key.l" : "toggle-opt reader.enumerate_links",
-            "reader.key.g" : "goto",
-            "reader.key.down" : "scroll-down",
-            "reader.key.up" : "scroll-up",
-            "reader.key.npage" : "page-down",
-            "reader.key.ppage" : "page-up",
+            "main" : { "key" : self.validate_key },
 
-            "errorbox.key.down" : "scroll-down",
-            "errorbox.key.up" : "scroll-up",
-            "errorbox.key.npage" : "page-down",
-            "errorbox.key.ppage" : "page-up",
-            "errorbox.key.space" : "destroy",
-
-            "infobox.key.down" : "scroll-down",
-            "infobox.key.up" : "scroll-up",
-            "infobox.key.npage" : "page-down",
-            "infobox.key.ppage" : "page-up",
-            "infobox.key.space" : "destroy",
-
-            "color.defbg" : None,
-            "color.deffg" : None,
-            "color.0" : curses.COLOR_WHITE,
-            "color.1" : curses.COLOR_BLUE,
-            "color.2" : curses.COLOR_YELLOW,
-            "color.3" : curses.COLOR_BLUE,
-            "color.4" : curses.COLOR_GREEN,
-            "color.5" : curses.COLOR_MAGENTA,
-            "color.6.fg" : curses.COLOR_WHITE,
-            "color.6.bg" : curses.COLOR_RED,
-            "color.7" : curses.COLOR_WHITE,
+            "color" :
+            {
+                "defbg" : self.validate_color,
+                "deffg" : self.validate_color,
+                "0" : self.validate_color,
+                "1" : self.validate_color,
+                "2" : self.validate_color,
+                "3" : self.validate_color,
+                "4" : self.validate_color,
+                "5" : self.validate_color,
+                "6" : self.validate_color,
+                "7" : self.validate_color,
+            }
         }
 
-        self.aliases = {
-                "browser" : "remote one-config CantoCurses.browser",
-                "txt_browser" : "remote one-config CantoCurses.txt_browser",
-                "search_attr" : "remote one-config CantoCurses.taglist.search_attributes",
-                "add" : "remote addfeed",
-                "del" : "remote delfeed",
-                "list" : "remote listfeeds",
-                "q" : "quit",
-                "filter" : "transform",
-                "sort" : "transform",
+        self.config = {
+            "browser" :
+            {
+                "path" : "firefox %u",
+                "text" : False
+            },
+
+            "tags" : r"maintag:.*",
+            "tagorder" : [],
+
+            "tag" : { "format" : DEFAULT_TAG_FSTRING },
+
+            "update" :
+            {
+                "style" : "append",
+                "auto" : { "interval" : 60 }
+            },
+
+            "reader" :
+            {
+                "window" :
+                {
+                    "maxwidth" : 0,
+                    "maxheight" : 0,
+                    "float" : True,
+                    "align" : "topleft",
+                    "border" : "smart",
+                },
+
+                "enumerate_links" : False,
+                "show_description" : True,
+                "key" :
+                {
+                    "space" : "destroy",
+                    "d" : "toggle ['reader']['show_description']",
+                    "l" : "toggle ['reader']['enumerate_links']",
+                    "g" : "goto",
+                    "down" : "scroll-down",
+                    "up" : "scroll-up",
+                    "npage" : "page-down",
+                    "ppage" : "page-up",
+                },
+            },
+
+            "taglist" :
+            {
+                "window" :
+                {
+                    "maxwidth" : 0,
+                    "maxheight" : 0,
+                    "float" : False,
+                    "align" : "neutral",
+                    "border" : "none",
+                },
+
+                "tags_enumerated" : False,
+                "tags_enumerated_absolute" : False,
+                "hide_empty_tags" : True,
+                "search_attributes" : [ "title" ],
+
+                "key" :
+                {
+                    "space" : "foritem & item-state read & reader",
+                    "g" : "foritems & goto & item-state read & clearitems",
+                    "E" : "toggle ['taglist']['tags_enumerated']",
+                    "e" : "toggle ['story']['enumerated']",
+                    "R" : "item-state read *",
+                    "U" : "item-state -read *",
+                    "r" : "tag-state read",
+                    "u" : "tag-state -read",
+                    "npage" : "page-down",
+                    "ppage" : "page-up",
+                    "down" : "rel-set-cursor 1",
+                    "j" : "rel-set-cursor 1",
+                    "up" : "rel-set-cursor -1",
+                    "k" : "rel-set-cursor -1",
+                    "C-u" : "unset-cursor",
+                    "+" : "promote",
+                    "-" : "demote",
+                    "J" : "next-tag",
+                    "K" : "prev-tag",
+                    "c" : "toggle-collapse",
+                    "$" : "item-state read t:. 0-.",
+                    "/" : "search",
+                    "?" : "search-regex",
+                    "n" : "next-marked",
+                    "p" : "prev-marked",
+                    "M" : "item-state -marked *",
+                },
+            },
+
+            "story" :
+            {
+                "enumerated" : False,
+                "format" : DEFAULT_FSTRING,
+                "format_attrs" : [ "title" ],
+            },
+
+            "input" :
+            {
+                "window" :
+                {
+                    "maxwidth" : 0,
+                    "maxheight" : 0,
+                    "float" : False,
+                    "align" : "bottom",
+                    "border" : "none",
+                }
+            },
+
+            "errorbox" :
+            {
+                "window" :
+                {
+                    "maxwidth" : 0,
+                    "maxheight" : 0,
+                    "float" : True,
+                    "align" : "topleft",
+                    "border" : "full",
+                },
+
+                "key" :
+                {
+                    "down" : "scroll-down",
+                    "up" : "scroll-up",
+                    "npage" : "page-down",
+                    "ppage" : "page-up",
+                    "space" : "destroy",
+                }
+            },
+
+            "infobox" :
+            {
+                "window" :
+                {
+                    "maxwidth" : 0,
+                    "maxheight" : 0,
+                    "float" : True,
+                    "align" : "topleft",
+                    "border" : "full",
+                },
+
+                "key" :
+                {
+                    "down" : "scroll-down",
+                    "up" : "scroll-up",
+                    "npage" : "page-down",
+                    "ppage" : "page-up",
+                    "space" : "destroy",
+                }
+            },
+
+            "main" :
+            {
+                "key" :
+                {
+                    ":" : "command",
+                    "q" : "quit",
+                    "\\" : "refresh",
+                }
+            },
+
+            "color" :
+            {
+                "defbg" : -1,
+                "deffg" : -1,
+                "0" : curses.COLOR_WHITE,
+                "1" : curses.COLOR_BLUE,
+                "2" : curses.COLOR_YELLOW,
+                "3" : curses.COLOR_BLUE,
+                "4" : curses.COLOR_GREEN,
+                "5" : curses.COLOR_MAGENTA,
+                "6" :
+                {
+                    "fg" : curses.COLOR_WHITE,
+                    "bg" : curses.COLOR_RED,
+                },
+                "7" : curses.COLOR_WHITE,
+            }
+        }
+
+        self.tag_validators = {
+            "enumerated" : self.validate_bool,
+            "collapsed" : self.validate_bool,
+            "extra_tags" : self.validate_string_list,
         }
 
         self.tag_config = {}
@@ -235,26 +374,17 @@ Press [space] to close."""
         self.tag_template_config = {
             "enumerated" : False,
             "collapsed" : False,
+            "extra_tags" : [],
         }
 
-        # Configuration options that, on change, require a refresh, in
-        # regexen.
-
-        self.refresh_configs = [re.compile(x) for x in\
-                [ ".*enumerated", ".*hide_empty_tags",
-                    ".*show_description", ".*enumerate_links", ".*format" ]]
-
-        self.tag_refresh_configs = [ re.compile(x) for x in\
-                [ "enumerated", "collapsed", "transform" ]]
-
-        # Configuration options that, on change, require an ncurses
-        # reset or windows to be redone.
-
-        self.winch_configs = [re.compile(x) for x in\
-                [ "color\.*", ".*align", ".*float", ".*maxheight",
-                    ".*maxwidth"]]
-
-        self.tag_winch_configs = []
+        self.aliases = {
+                "add" : "remote addfeed",
+                "del" : "remote delfeed",
+                "list" : "remote listfeeds",
+                "q" : "quit",
+                "filter" : "transform",
+                "sort" : "transform",
+        }
 
         # Make sure that we're not mismatching versions.
 
@@ -275,17 +405,14 @@ Press [space] to close."""
 
         self.backend.write("LISTTAGS", u"")
         r = self.wait_response("LISTTAGS")
-        self.prot_newtags(r[1])
+
+        self.stub_tagconfigs(r[1])
 
         self.backend.write("WATCHCONFIGS", u"")
         self.backend.write("CONFIGS", [])
-        self.prot_configs(self.wait_response("CONFIGS")[1])
+        self.prot_configs(self.wait_response("CONFIGS")[1], True)
 
-        # Eval tags again, even though it's done in prot_newtags
-        # because config options that were just parsed may effect
-        # the order of tags.
-
-        self.eval_tags()
+        self.prot_newtags(r[1])
 
         log.debug("FINAL CONFIG:\n%s" % self.config)
         log.debug("FINAL TAG CONFIG:\n%s" % self.tag_config)
@@ -322,275 +449,193 @@ Press [space] to close."""
     def reconnected(self):
         self.reconn = True
 
-    def _val_bool(self, config, defconfig, attr):
-        if type(config[attr]) != bool:
-            if config[attr].lower() == "true":
-                config[attr] = True
-            elif config[attr].lower() == "false":
-                config[attr] = False
+    def validate_uint(self, val):
+        if type(val) == int and val >= 0:
+            return (True, val)
+        return (False, False)
+
+    def validate_string(self, val):
+        if type(val) == unicode:
+            return (True, val)
+        return (False, False)
+
+    def validate_bool(self, val):
+        if val in [ True, False ]:
+            return (True, val)
+        return (False, False)
+
+    def validate_update_style(self, val):
+        if val in [ u"maintain", u"append" ]:
+            return (True, val)
+        return (False, False)
+
+    def validate_tags(self, val):
+        try:
+            re.compile(val)
+        except:
+            return (False, False)
+        return (True, val)
+
+    def validate_tag_order(self, val):
+        if type(val) != list:
+            return (False, False)
+
+        log.debug("val: %s" % val)
+
+        strtags = [ tag.tag for tag in self.vars["alltags"] ]
+
+        # Strip items no longer relevant
+        for item in val[:]:
+            if item not in strtags:
+                val.remove(item)
+
+        # Ensure all tags are inluded
+        for tag in strtags:
+            if tag not in val:
+                val.append(tag)
+
+        log.debug("Validated tag order: %s" % (val,))
+        return (True, val)
+
+    def validate_window(self, val):
+        # Ensure all settings exist
+        for setting in [ "border", "maxwidth", "maxheight", "align", "float" ]:
+            if setting not in val:
+                return (False, False)
+
+        # Ensure all settings are in their correct range
+        if val["border"] not in ["full", "none", "smart"]:
+            return (False, False)
+
+        if val["float"] not in [ True, False ]:
+            return (False, False)
+
+        for int_setting in ["maxwidth", "maxheight" ]:
+            if type(val[int_setting]) != int or val[int_setting] < 0:
+                return (False, False)
+
+        float_aligns = [ "topleft", "topright", "center", "neutral",\
+                "bottomleft", "bottomright" ]
+
+        tile_aligns = [ "top", "left", "bottom", "right", "neutral" ]
+
+        if val["float"]:
+            if val["align"] not in float_aligns:
+                return (False, False)
+        else:
+            if val["align"] not in tile_aligns:
+                return (False, False)
+
+        log.debug("Validated window: %s" % val)
+
+        return (True, val)
+
+    # This doesn't validate that the command will actually work, just that the
+    # pair is of the correct types.
+
+    def validate_key(self, val):
+        if type(val) != dict:
+            return (False, False)
+
+        for key in val.keys():
+            if type(key) != unicode:
+                return (False, False)
+            if type(val[key]) != unicode:
+                return (False, False)
+
+        return (True, val)
+
+    def validate_color(self, val):
+        return (True, val)
+
+    def validate_string_list(self, val):
+        return (True, val)
+
+    # Recursively validate config c, with validators in v, falling back on d
+    # when it failed. Return a dict containing all of the changes actually
+    # made.
+
+    # Note that unknown values are detected only to avoid access errors, they
+    # are totally ignored and will never get changes processed.
+
+    def validate_config(self, c, d, v):
+        changes = {}
+
+        # Sub in non-existent values:
+
+        log.debug("d = %s" % d)
+
+        for key in v.keys():
+            if key not in c:
+                c[key] = d[key]
+
+        # Validate existing values.
+
+        for key in c.keys():
+
+            # Unknown values, don't validate
+            if key not in v:
+                return
+
+            # Key is section, recurse, only add changes if there
+            # are actual changes.
+
+            elif type(v[key]) == dict:
+                tmp =  self.validate_config(c[key], d[key], v[key])
+                if tmp:
+                    changes[key] = tmp
+
+            # Key is basic, validate
             else:
-                config[attr] = defconfig[attr]
-                log.error("%s must be boolean. Resetting to %s" %
-                        (attr, defconfig[attr]))
+                good, val = v[key](c[key])
 
-    def _val_uint(self, config, defconfig, attr):
-        if type(config[attr]) != int:
-            try:
-                config[attr] = int(config[attr])
-            except:
-                config[attr] = defconfig[attr]
-                log.error("%s must be integer. Resetting to %s" %
-                        (attr, defconfig[attr]))
-        elif int < 0:
-            config[attr] = config[attr]
-            log.error("%s must be >= 0. Resetting to %s" %
-                    (attr, config[attr]))
+                # Value is good, pass on
+                if good:
+                    if val != d[key]:
+                        changes[key] = val
+                    c[key] = val
 
-    def _val_color(self, config, defconfig, attr):
-        if type(config[attr]) != int:
-            try:
-                config[attr] = int(config[attr])
-            except:
-                # Convert natural color into curses color #
-                if config[attr] == "pink":
-                    config[attr] == "magenta"
-                for color_attr in dir(curses):
-                    if color_attr.startswith("COLOR_") and\
-                            config[attr] == color_attr[6:].lower():
-                        config[attr] = getattr(curses, color_attr)
-                        return
-
-        # If we got an int from above, make sure it's ok.
-        if type(config[attr]) == int:
-            if -1 <= config[attr] <= 255:
-                if config[attr] == -1 and not attr.endswith("bg"):
-                    log.error("Only background elements can be -1.")
+                # Value is bad, revert
                 else:
-                    return
+                    changes[key] = d[key]
+                    c[key] = d[key]
 
-        # Couldn't parse, revert.
-        if attr in defconfig:
-            log.error("Reverting %s to default: %s" %\
-                    (attr, defconfig[attr]))
-            config[attr] = defconfig[attr]
-        else:
-            del config[attr]
+        return changes
 
-    # This isn't a validation per se, but it ensures that all tags
-    # that we initially got are list in the order struct so we
-    # can count on them being there.
+    def prot_configs(self, given, write = False):
 
-    def _val_tag_order(self, config, defconfig, attr):
-        try:
-            config[attr] = eval(config[attr])
-        except:
-            config[attr] = defconfig[attr]
+        if "tags" in given:
+            for tag in given["tags"].keys():
+                ntc = given["tags"][tag]
+                tc = self.tag_config[tag]
 
-        for tag in self.vars["alltags"]:
-            if tag.tag not in config[attr]:
-                config[attr].append(tag.tag)
+                changes = self.validate_config(ntc, tc, self.tag_validators)
 
-    def _val_non_empty_string_list(self, config, defconfig, attr):
-        try:
-            r = [ l.lstrip().rstrip() for l in config[attr].split(',') ]
-        except:
-            log.error("Couldn't parse %s into string list" % (config[attr],))
-            r = []
-
-        if not r:
-            log.warn("Got empty list for %s, reverting to default." % attr)
-            config[attr] = defconfig[attr]
-        else:
-            config[attr] = r
-
-    def _val_update_style(self, config, defconfig, attr):
-        if config[attr] not in [ "maintain", "append"]:
-            log.error("Couldn't parse %s as update.style" % config[attr])
-            config[attr] = defconfig[attr]
-
-    def validate_config(self, newconfig, defconfig):
-        self._val_uint(newconfig, defconfig, "update.auto.interval")
-        self._val_update_style(newconfig, defconfig, "update.style")
-
-        self._val_bool(newconfig, defconfig, "reader.show_description")
-        self._val_bool(newconfig, defconfig, "reader.enumerate_links")
-
-        self._val_bool(newconfig, defconfig, "story.enumerated")
-
-        self._val_bool(newconfig, defconfig, "taglist.tags_enumerated")
-        self._val_bool(newconfig, defconfig,\
-                "taglist.tags_enumerated_absolute")
-        self._val_bool(newconfig, defconfig, "taglist.hide_empty_tags")
-        self._val_non_empty_string_list(newconfig,\
-                defconfig, "taglist.search_attributes")
-
-        self._val_bool(newconfig, defconfig, "txt_browser")
-
-        self._val_non_empty_string_list(newconfig,\
-                defconfig, "story.format.attrs")
-
-        self._val_tag_order(newconfig, defconfig, "tagorder")
-        # Make sure colors are all integers.
-        for attr in [k for k in newconfig.keys() if k.startswith("color.")]:
-            self._val_color(newconfig, defconfig, attr)
-
-        # Make sure various window configurations make sense.
-        for wintype in [ "reader", "input", "taglist" ]:
-            # Ensure border attributes are sane:
-            border_attr = wintype + ".border"
-            if newconfig[border_attr] not in ["full","none","smart"]:
-                log.error("Unknown border type for %s: %s" %\
-                        (border_attr, newconfig[border_attr]))
-                log.error("Reverting %s to %s" %\
-                        (border_attr, defconfig[border_attr]))
-                newconfig[border_attr] = defconfig[border_attr]
-
-            # Ensure float attributes are boolean
-            float_attr = wintype + ".float"
-            self._val_bool(newconfig, defconfig, float_attr)
-
-            # Ensure alignment jive with float.
-
-            float_aligns = [ "topleft", "topright", "center", "neutral",\
-                    "bottomleft", "bottomright"]
-
-            tile_aligns = [ "top", "left", "bottom", "right", "neutral" ]
-
-            align_attr = wintype + ".align"
-
-            if newconfig[float_attr]:
-                if newconfig[align_attr] not in float_aligns:
-
-                    # Translate tile aligns to float aligns.
-                    if newconfig[align_attr] in tile_aligns:
-                        if newconfig[align_attr] in ["top","bottom"]:
-                            newconfig[align_attr] += "left"
-                        elif newconfig[align_attr] in ["left","right"]:
-                            newconfig[align_attr] = "top" +\
-                                    newconfig[align_attr]
-                        log.info("Translated %s alignment for float: %s" %
-                                (align_attr, newconfig[align_attr]))
-                    else:
-                        # Got nonsense, revert to default.
-                        err = "%s unknown float alignment. Resetting to "
-                        if defconfig[align_attr] not in float_aligns:
-                            newconfig[float_attr] = False
-                            err += "!float/"
-
-                        newconfig[align_attr] = defconfig[align_attr]
-                        err += defconfig[align_attr]
-                        log.error(err % align_attr)
-            # !floating
-            else:
-                # No translation since it would be ambiguous.
-                if newconfig[align_attr] not in tile_aligns:
-                    err = "%s unknown nonfloat alignment. Resetting to "
-                    if defconfig[align_attr] in float_aligns:
-                        newconfig[float_attr] = True
-                        err += "float/"
-                    newconfig[align_attr] = defconfig[align_attr]
-                    err += defconfig[align_attr]
-                    log.error(err % align_attr)
-
-            # Make sure size restrictions are positive integers
-            for subattr in [".maxheight", ".maxwidth"]:
-                self._val_uint(newconfig, defconfig, wintype + subattr)
-
-        return newconfig
-
-    def validate_one_tag_config(self, config, defconfig):
-        self._val_bool(config, defconfig, "enumerated")
-        self._val_bool(config, defconfig, "collapsed")
-        return config
-
-    def validate_tag_config(self, config, defconfig):
-        for k in config:
-            onetagnew = config[k]
-            onetagdef = defconfig[k]
-            config[k] = self.validate_one_tag_config(onetagnew, onetagdef)
-
-        return config
-
-    def eval_tags(self):
-        prevtags = self.vars["curtags"]
-
-        sorted_tags = []
-        r = re.compile(self.config["tags"])
-        for tag in self.vars["alltags"]:
-            if r.match(tag.tag):
-                sorted_tags.append((self.config["tagorder"].index(tag.tag), tag))
-        sorted_tags.sort()
-
-        self.set_var("curtags", [ x for (i, x) in sorted_tags ])
-
-        if not self.vars["curtags"]:
-            log.warn("NOTE: Current 'tags' setting eliminated all tags!")
-
-        # If evaluated tags differ, we need to refresh.
-
-        if prevtags != self.vars["curtags"] and self.screen:
-            log.debug("Evaluated Tags Changed")
-            call_hook("eval_tags_changed", [])
-
-    def _dict_diff(self, d1, d2):
-        changed_opts = []
-
-        for k in d1:
-            if k not in d2 or d2[k] != d1[k]:
-                changed_opts.append(k)
-
-        for k in d2:
-            if k not in d1:
-                changed_opts.append(k)
-
-        return changed_opts
-
-    def prot_configs(self, given):
-
-        # If there are client config changes, validate them
-        # and potentially queue up a redraw/refresh.
+                if changes:
+                    call_hook("tag_opt_change", [ { tag : changes } ])
+                    self.tag_config = new_tag_config
+                    if write:
+                        self.backend.write("SETCONFIGS",\
+                                { "tags" : { tag : changes }})
 
         if "CantoCurses" in given:
-            new_config = self.config.copy()
+            new_config = given["CantoCurses"]
 
-            for k in given["CantoCurses"]:
-                new_config[k] = given["CantoCurses"][k]
+            log.debug("given: %s" % given)
 
-            # Need to validate to allow for content changes.
-            new_config = self.validate_config(new_config, self.config)
+            changes = self.validate_config(new_config, self.config,\
+                    self.validators)
 
-            changed_opts = self._dict_diff(new_config, self.config)
-            for opt in changed_opts:
-                self.set_opt(opt, new_config[opt], 0)
+            log.debug("changes: %s" % changes)
 
-        # Check for tag config changes.
-        given_tag_config = {}
-        for k in given.keys():
-            if k.startswith("Tag "):
-                given_tag_config[k] = given[k]
+            if changes:
+                call_hook("opt_change", [ changes ])
 
-        # If no changes, we're done here.
-        if not given_tag_config:
-            return
+                self.config = new_config
 
-        # Move over new tag configuration.
-        new_config = self.tag_config.copy()
-        for k in given_tag_config:
-            new_config[k] = self.tag_template_config.copy()
-            new_config[k].update(given_tag_config[k])
-
-        new_config = self.validate_tag_config(new_config,
-                self.tag_config)
-
-        changed_opts = self._dict_diff(new_config, self.tag_config)
-        for tag_header in changed_opts:
-            tag = tag_header[4:]
-            for curtag in self.vars["alltags"]:
-                if curtag.tag == tag:
-                    for k in new_config[tag_header].keys():
-                        self.set_tag_opt(curtag,\
-                                k, new_config[tag_header][k], 0)
-                    break
+                if write:
+                    self.backend.write("SETCONFIGS",\
+                            { "CantoCurses" : changes })
 
     def prot_attributes(self, d):
         atts = {}
@@ -649,9 +694,9 @@ Press [space] to close."""
                     # Make sure we grab attributes needed for the story
                     # format and story format.
 
-                    for attrlist in ["story.format.attrs",\
-                                        "taglist.search_attributes"]:
-                        for sa in self.config[attrlist]:
+                    for attrlist in [ self.config["story"]["format_attrs"],\
+                            self.config["taglist"]["search_attributes"] ]:
+                        for sa in attrlist:
                             if sa not in needed_attrs[id]:
                                 needed_attrs[id].append(sa)
 
@@ -663,8 +708,8 @@ Press [space] to close."""
                 # properly. Append style requires no extra work (add_items does
                 # it by default).
 
-                if self.config["update.style"] == "maintain":
-                    log.debug("Re-ording items (update.style: maintain)")
+                if self.config["update"]["style"] == "maintain":
+                    log.debug("Re-ording items (update style maintain)")
                     have_tag.reorder(updates[tag])
 
         if needed_attrs:
@@ -677,7 +722,22 @@ Press [space] to close."""
         if tag not in self.updates:
             self.updates.append(tag)
 
+    def stub_tagconfigs(self, tags):
+        for tag in tags:
+            if tag not in self.tag_config:
+                log.debug("Using default tag config for %s" % tag)
+                self.tag_config[tag] = self.tag_template_config.copy()
+
+    # Process new tags, early flag tells us whether we should bother to
+    # propagate tagorder changes and eval tags or if we just want to create Tag
+    # objects.
+
     def prot_newtags(self, tags):
+
+        c = self.get_conf()
+
+        self.stub_tagconfigs(tags)
+
         for tag in tags:
             if tag not in [ t.tag for t in self.vars["alltags"] ]:
                 log.info("Adding tag %s" % tag)
@@ -686,20 +746,22 @@ Press [space] to close."""
                 # If we don't have configuration for this
                 # tag already, substitute the default template.
 
-                tagheading = "Tag %s" % tag
-                if tagheading not in self.tag_config:
+                if tag not in self.tag_config:
                     log.debug("Using default tag config for %s" % tag)
-                    self.tag_config[tagheading] =\
-                        self.tag_template_config.copy()
+                    self.tag_config[tag] = self.tag_template_config.copy()
             else:
                 log.warn("Got NEWTAG for already existing tag!")
 
-            if tag not in self.config["tagorder"]:
-                self.set_opt("tagorder", self.config["tagorder"] + [ tag ], 0)
+            if tag not in c["tagorder"]:
+                c["tagorder"] = self.config["tagorder"] + [ tag ]
 
+        self.set_conf(c)
         self.eval_tags()
 
     def prot_deltags(self, tags):
+
+        c = self.get_conf()
+
         for tag in tags:
             strtags = [ t.tag for t in self.vars["alltags"] ]
             if tag in strtags:
@@ -715,47 +777,42 @@ Press [space] to close."""
             else:
                 log.warn("Got DELTAG for non-existent tag!")
 
-            if tag in self.config["tagorder"]:
-                self.set_opt("tagorder",\
-                        [ x for x in self.config["tagorder"] if x != tag ], 0)
+            if tag in c["tagorder"]:
+                c["tagorder"] = [ x for x in self.config["tagorder"] if x != tag ]
+
+        self.set_conf(c)
 
         self.eval_tags()
 
     def prot_except(self, exception):
         self.set_var("error_msg", "%s" % exception)
 
-    def prot_errors(self, exception):
-        self.set_var("error_msg", "%s" % exception)
+    def prot_errors(self, errors):
+        self.set_var("error_msg", "%s" % errors)
 
     def prot_info(self, info):
         self.set_var("info_msg", "%s" % info)
 
-    def var(self, args):
-        t, r = self._first_term(args,\
-                lambda : self.screen.input_callback("var: "))
-        if t in self.vars:
-            return (True, t, r)
-        log.error("Unknown variable: %s" % t)
-        return (False, None, None)
+    def eval_tags(self):
+        prevtags = self.vars["curtags"]
 
-    @command_format([("var","var")])
-    def cmd_set(self, **kwargs):
-        if self.vars[kwargs["var"]] in [ True, False]:
-            self.set_var(kwargs["var"], True)
-        else:
-            log.error("Variable %s is not boolean." % kwargs["var"])
+        sorted_tags = []
+        r = re.compile(self.config["tags"])
+        for tag in self.vars["alltags"]:
+            if r.match(tag.tag):
+                sorted_tags.append((self.config["tagorder"].index(tag.tag), tag))
+        sorted_tags.sort()
 
-    @command_format([("var","var")])
-    def cmd_unset(self, **kwargs):
-        if self.vars[kwargs["var"]] in [True, False]:
-            self.set_var(kwargs["var"], False)
-        else:
-            log.error("Variable %s is not boolean." % kwargs["var"])
+        self.set_var("curtags", [ x for (i, x) in sorted_tags ])
 
-    @command_format([("var","var")])
-    def cmd_toggle(self, **kwargs):
-        var = kwargs["var"]
-        self.set_var(var, not self.get_var(var))
+        if not self.vars["curtags"]:
+            log.warn("NOTE: Current 'tags' setting eliminated all tags!")
+
+        # If evaluated tags differ, we need to refresh.
+
+        if prevtags != self.vars["curtags"] and self.screen:
+            log.debug("Evaluated Tags Changed")
+            call_hook("eval_tags_changed", [])
 
     def set_var(self, tweak, value):
         # We only care if the value is different, or it's a message
@@ -800,129 +857,91 @@ Press [space] to close."""
             return self.vars[tweak]
         raise Exception("Unknown variable: %s" % (tweak,))
 
+    # Overall configuration operation functions. The paradigm is that internal
+    # code can "get" the conf, which is a copy of the real conf, modify it,
+    # then "set" the conf which will properly process the changes.
+
+    def set_conf(self, conf):
+        self.prot_configs({"CantoCurses" : conf }, True)
+
+    def get_conf(self):
+        return eval(repr(self.config), {}, {})
+
+    def set_tag_conf(self, tag, conf):
+        self.prot_config({ "tags" : { tag.tag : conf } }, True)
+
+    def get_tag_conf(self, tag):
+        return eval(repr(self.tag_config[tag.tag]), {}, {})
+
+    # Single option set / get which will query a dict based on a string given
+    # to access a dict, like "['reader']['blah']"
+
+    # These are intended to be used as a convenience when dealing with strings
+    # from the user.
+
+    def _get_opt(self, option, d):
+        com = "d" + option.replace("\\","\\\\")
+        return eval(com, {}, { "d" : d })
+
+    def _set_opt(self, option, value, d):
+        assign_to_dict(d, option.replace("\\","\\\\"), value)
+
+    def set_opt(self, option, value):
+        c = self.get_conf()
+        self._set_opt(option, value, c)
+        self.set_conf(c)
+
+    def get_opt(self, option):
+        c = self.get_conf()
+        return  self._get_opt(option, c)
+
+    def set_tag_opt(self, tag, option, value):
+        tc = self.get_tag_conf(tag)
+        self._set_opt(option, value, tc)
+        self.set_tag_conf(tag, tc)
+
+    def get_tag_opt(self, tag, option):
+        tc = self.get_tag_conf(tag)
+        return self._get_opt(option, tc)
+
     def opt(self, args):
         t, r = self._first_term(args,
                 lambda : self.screen.input_callback("opt: "))
-        if t in self.config:
+
+        # Ensure that that option exists. We just use self.config because we
+        # know we're not changing any values.
+
+        try:
+            self._get_opt(t, self.config)
             return (True, t, r)
-        log.error("Unknown option: %s" % t)
-        return (False, None, None)
+        except:
+            log.error("Unknown option: %s" % t)
+            return (False, None, None)
 
     @command_format([("opt","opt")])
-    def cmd_toggle_opt(self, **kwargs):
-        opt = kwargs["opt"]
-        if opt not in self.config:
-            log.error("Unknown option: %s" % opt)
-            return
-        if type(self.config[opt]) != bool:
-            log.error("Option %s isn't boolean." % opt)
-            return
-        self.set_opt(opt, not self.config[opt])
+    def cmd_toggle(self, **kwargs):
+        c = self.get_conf()
 
-    # Pretend to SIGWINCH (causing screen to regenerate
-    # all windows) if any of the refresh_configs have changed.
+        val = self._get_opt(kwargs["opt"], c)
 
-    def _check_opt_refresh(self, winch_configs, refresh_configs, changed_opts):
-        if not self.screen:
+        if type(val) != bool:
+            log.error("Option %s isn't boolean." % kwargs["opt"])
             return
 
-        should_winch = False
-        for opt in changed_opts:
-            for regx in winch_configs:
-                if regx.match(opt):
-                    should_winch = True
+        self._set_opt(kwargs["opt"], not val, c)
+        self.set_conf(c)
 
-        # We only winch once. It would seem that WINCH would make the next loop
-        # (refresh configs) moot and we should return.  However, if we block (as
-        # on input), then the refresh will take place immediately while the
-        # winch has to require queue action.
+    def switch_tags(self, tag1, tag2):
+        c = self.get_conf()
 
-        if should_winch:
-            self.winch()
+        t1_idx = c["tagorder"].index(tag1.tag)
+        t2_idx = c["tagorder"].index(tag2.tag)
 
-        for opt in changed_opts:
-            log.debug("refresh on? opt: %s" % opt)
-            for regx in refresh_configs:
-                if regx.match(opt):
-                    log.debug("matched")
-                    self.screen.refresh()
-                    return
+        c["tagorder"][t1_idx] = tag2.tag
+        c["tagorder"][t2_idx] = tag1.tag
 
-    def check_opt_refresh(self, changed_opts):
-        return self._check_opt_refresh(self.winch_configs,
-                self.refresh_configs, changed_opts)
+        self.set_conf(c)
 
-    def check_tag_opt_refresh(self, changed_opts):
-        return self._check_opt_refresh(self.tag_winch_configs,
-                self.tag_refresh_configs, changed_opts)
-
-    # Any option changes must go through here, even ones we receive
-    # from elsewhere, so we can call hooks.
-
-    def set_opt(self, option, value, write=True):
-
-        # XXX : Note that set_opt performs *no* validation and expects its
-        # (internal) caller to have ensured that it's valid.
-
-        if option not in self.config or self.config[option] != value:
-            self.config[option] = value
-
-            call_hook("opt_change", [ { option : value } ])
-
-            self.check_opt_refresh([option])
-
-            if write:
-                self.backend.write("SETCONFIGS",\
-                        { "CantoCurses" : { option : unicode(value) } })
-
-    def get_opt(self, option):
-        if option in self.config:
-            return self.config[option]
-        raise Exception("Unknown option: %s" % (option,))
-
-    def set_tag_opt(self, tag, option, value, write = True):
-        tagheader = "Tag %s" % tag.tag
-        if option not in self.tag_config[tagheader] or\
-                self.tag_config[tagheader][option] != value:
-            self.tag_config[tagheader][option] = value
-            self.check_tag_opt_refresh([option])
-            call_hook("tag_opt_change", [ tag, { option : value }])
-
-            if write:
-                self.backend.write("SETCONFIGS",\
-                        { tagheader : { option : unicode(value) } } )
-
-    def get_tag_opt(self, tag, option):
-        tagheader = "Tag %s" % tag.tag
-        if option in self.tag_config[tagheader]:
-            return self.tag_config[tagheader][option]
-        return None
-
-    def promote_tag(self, tag, beforetag):
-        tagorder = self.config["tagorder"][:]
-        cur_idx = tagorder.index(tag.tag)
-        before_idx = tagorder.index(beforetag.tag)
-
-        if cur_idx <= before_idx:
-            return
-
-        tagorder.remove(tag.tag)
-        tagorder.insert(before_idx, tag.tag)
-        self.set_opt("tagorder", tagorder)
-        self.eval_tags()
-
-    def demote_tag(self, tag, aftertag):
-        tagorder = self.config["tagorder"][:]
-        cur_idx = tagorder.index(tag.tag)
-        after_idx = tagorder.index(aftertag.tag)
-
-        if cur_idx >= after_idx:
-            return
-
-        tagorder.remove(tag.tag)
-        tagorder.insert(after_idx, tag.tag)
-
-        self.set_opt("tagorder", tagorder)
         self.eval_tags()
 
     # This accepts arbitrary strings, but gives the right prompt.
@@ -934,10 +953,8 @@ Press [space] to close."""
     # Setup a permanent, config based transform.
     @command_format([("transform","transform")])
     def cmd_transform(self, **kwargs):
-        self.backend.write("SETCONFIGS",\
-                    { "defaults" :
-                        { "global_transform" : kwargs["transform"] }
-                    })
+        d = { "defaults" : { "global_transform" : kwargs["transform"] } }
+        self.backend.write("SETCONFIGS", d)
         self._refresh()
 
     # Setup a temporary, per socket transform.
@@ -949,6 +966,15 @@ Press [space] to close."""
     @command_format([])
     def cmd_reconnect(self, **kwargs):
         self.backend.reconnect()
+
+    @command_format([])
+    def cmd_refresh(self, **kwargs):
+        self._refresh()
+
+    def _refresh(self):
+        for tag in self.vars["curtags"]:
+            tag.reset()
+            self.backend.write("ITEMS", [ tag.tag ])
 
     def winch(self):
         self.winched = True
@@ -963,19 +989,10 @@ Press [space] to close."""
                 self.backend.write("ITEMS", self.updates)
 
             self.update_interval =\
-                    self.config["update.auto.interval"]
+                    self.config["update"]["auto"]["interval"]
             self.updates = []
         else:
             self.update_interval -= 1
-
-    @command_format([])
-    def cmd_refresh(self, **kwargs):
-        self._refresh()
-
-    def _refresh(self):
-        for tag in self.vars["curtags"]:
-            tag.reset()
-            self.backend.write("ITEMS", [ tag.tag ])
 
     def key(self, k):
         r = CommandHandler.key(self, k)
@@ -1106,6 +1123,10 @@ Press [space] to close."""
                 log.debug("Needed redraw")
                 self.screen.redraw()
                 self.vars["needs_redraw"] = False
+
+            if self.vars["needs_resize"]:
+                self.winched = True
+                self.vars["needs_resize"] = False
 
     def get_opt_name(self):
         return "main"

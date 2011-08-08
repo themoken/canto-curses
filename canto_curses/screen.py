@@ -8,6 +8,7 @@
 
 from canto_next.plugins import Plugin
 from canto_next.encoding import locale_enc
+from canto_next.hooks import on_hook, remove_hook
 
 from command import CommandHandler, command_format
 from taglist import TagList
@@ -73,6 +74,8 @@ class Screen(CommandHandler):
         # Start grabbing user input
         self.start_input_thread()
 
+        on_hook("opt_change", self.screen_opt_change)
+
     # Wrap curses.curs_set in exception handler
     # because we don't really care if it's displayed
     # on terminals that don't like it.
@@ -100,45 +103,27 @@ class Screen(CommandHandler):
 
         self.height, self.width = self.stdscr.getmaxyx()
 
-        defbg = self.callbacks["get_opt"]("color.defbg")
-        if not defbg:
-            defbg = -1
-        deffg = self.callbacks["get_opt"]("color.deffg")
-        if not deffg:
-            deffg = curses.COLOR_WHITE
-
-        # Use config colors that can be specified like:
-        # Background is the only option that can't be
-        # specified alone.
-        #
-        # color.x.fg will override color.x settings
-        # color.x will override color.deffg
-        # color.x.bg will override color.defbg
+        color_conf = self.callbacks["get_opt"]("['color']")
 
         for i in xrange(curses.COLOR_PAIRS):
-            optprefix = "color.%s" % i
+            if ("%s" % i) not in color_conf:
+                continue
 
-            try:
-                fg = self.callbacks["get_opt"](optprefix + ".fg")
-            except:
-                fg = None
+            color = color_conf["%s" % i]
 
-            if not fg:
-                try:
-                    fg = self.callbacks["get_opt"](optprefix)
-                except:
-                    fg = None
+            if type(color) == int:
+                fg = color
+                bg = color_conf['defbg']
+            else:
+                if 'fg' in color:
+                    fg = color['fg']
+                else:
+                    fg = color_conf['deffg']
 
-                if not fg:
-                    fg = deffg
-
-            try:
-                bg = self.callbacks["get_opt"](optprefix + ".bg")
-            except:
-                bg = None
-
-            if not bg:
-                bg = defbg
+                if 'bg' in color:
+                    bg = color['bg']
+                else:
+                    bg = color_conf['defbg']
 
             try:
                 curses.init_pair(i + 1, fg, bg)
@@ -147,6 +132,16 @@ class Screen(CommandHandler):
                         (i + 1, fg, bg))
         return 0
 
+    def screen_opt_change(self, conf):
+        # Require resize even to re-init curses and colors.
+        if "color" in conf:
+            self.callbacks["set_var"]("needs_resize", True)
+
+        for key in conf.keys():
+            if type(conf[key]) == dict and "window" in conf[key]:
+                self.callbacks["set_var"]("needs_resize", True)
+                break
+
     # _subw_size functions enforce the height and width of windows.
     # It returns the minimum of:
     #       - The maximum size (given by layout)
@@ -154,22 +149,24 @@ class Screen(CommandHandler):
     #       - The configured size (given by the config)
 
     def _subw_size_height(self, ci, height):
-        optname = ci.get_opt_name()
-        cfg_height = self.callbacks["get_opt"](optname + ".maxheight")
-        if not cfg_height:
-            cfg_height = height
+        window_conf = self.callbacks["get_opt"]\
+                ("['" +  ci.get_opt_name() + "']['window']")
+
+        if not window_conf["maxheight"]:
+            window_conf["maxheight"] = height
         req_height = ci.get_height(height)
 
-        return min(height, cfg_height, req_height)
+        return min(height, window_conf["maxheight"], req_height)
 
     def _subw_size_width(self, ci, width):
-        optname = ci.get_opt_name()
-        cfg_width = self.callbacks["get_opt"](optname + ".maxwidth")
-        if not cfg_width:
-            cfg_width = width
+        window_conf = self.callbacks["get_opt"]\
+                ("['" +  ci.get_opt_name() + "']['window']")
+
+        if not window_conf["maxwidth"]:
+            window_conf["maxwidth"] = width
         req_width = ci.get_width(width)
 
-        return min(width, cfg_width, req_width)
+        return min(width, window_conf["maxwidth"], req_width)
 
     # _subw_layout_size will return the total size of layout
     # in either height or width where layout is a list of curses
@@ -224,25 +221,25 @@ class Screen(CommandHandler):
         # Floating windows are, by design, given a window the size of the
         # entire screen, but only actually written lines are drawn.
 
-        border = self.callbacks["get_opt"](ci.get_opt_name() + ".border")
+        window_conf = self.callbacks["get_opt"]\
+                ("['" +  ci.get_opt_name() + "']['window']")
 
-        if border == "smart":
+        if window_conf['border'] == "smart":
             top_border = top != 0
             bottom_border = bottom != (self.height - 1)
             left_border = left != 0
             right_border = right != (self.width - 1)
 
             if ci in self.floats:
-                align = self.callbacks["get_opt"](ci.get_opt_name() + ".align")
-                if "top" in align:
+                if "top" in window_conf['align']:
                     bottom_border = True
-                if "bottom" in align:
+                if "bottom" in window_conf['align']:
                     top_border = True
 
-        elif border == "full":
+        elif window_conf['border'] == "full":
             top_border, bottom_border, left_border, right_border = (True,) * 4
 
-        elif border == "none":
+        elif window_conf['border'] == "none":
             top_border, bottom_border, left_border, right_border = (False,) * 4
 
         bordercb = lambda : (top_border, left_border, bottom_border, right_border)
@@ -391,7 +388,8 @@ class Screen(CommandHandler):
 
             # Separate windows by alignment.
             for w in windows:
-                align = self.callbacks["get_opt"](w.get_opt_name() + ".align")
+                align = self.callbacks["get_opt"]\
+                        ("['" + w.get_opt_name() + "']['window']['align']")
 
                 # Move taglist deeper so that it absorbs any
                 # extra space left in the rest of the layout.
@@ -423,7 +421,8 @@ class Screen(CommandHandler):
         for wt in self.window_types:
             w = wt()
             optname = w.get_opt_name()
-            flt = self.callbacks["get_opt"](optname + ".float")
+            flt = self.callbacks["get_opt"]\
+                    ("['" + optname + "']['window']['float']")
             if flt:
                 self.floats.append(w)
             else:
@@ -439,7 +438,8 @@ class Screen(CommandHandler):
 
         # Init floating windows.
         for f in self.floats: 
-            align = self.callbacks["get_opt"](f.get_opt_name() + ".align")
+            align = self.callbacks["get_opt"]\
+                    ("['" + f.get_opt_name() + "']['window']['align']")
             height = self._subw_size_height(f, self.height)
             width = self._subw_size_width(f, self.width)
 

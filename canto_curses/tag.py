@@ -43,6 +43,7 @@ class Tag(list):
                 lambda x : callbacks["get_tag_opt"](self, x)
         self.callbacks["set_tag_opt"] =\
                 lambda x, y : callbacks["set_tag_opt"](self, x, y)
+        self.callbacks["get_tag_name"] = lambda : self.tag
 
         # This could be implemented as a generic, top-level hook but then N
         # tags would have access to story objects they shouldn't have and
@@ -88,12 +89,13 @@ class Tag(list):
         self.need_redraw()
 
     def on_opt_change(self, opts):
-        if "taglist.tags_enumerated" in opts or \
-                "taglist.tags_enumerated_absolute" in opts:
+        if "taglist" in opts and\
+                ("tag_enumerated" in opts["taglist"] or\
+                "tags_enumerated_absolute" in opts["taglist"]):
             self.need_redraw()
 
-    def on_tag_opt_change(self, tag, opts):
-        if tag == self:
+    def on_tag_opt_change(self, opts):
+        if self.tag in opts.keys():
             self.need_redraw()
 
     # We override eq so that empty tags don't evaluate
@@ -216,7 +218,7 @@ class Tag(list):
     def set_sel_offset(self, offset):
         self.sel_offset = offset
 
-        if not self.callbacks["get_tag_opt"]("collapsed"):
+        if not self.callbacks["get_tag_opt"]("['collapsed']"):
             for i, item in enumerate(self):
                 item.set_sel_offset(offset + i)
 
@@ -260,11 +262,9 @@ class Tag(list):
         self.changed = False
 
     def render_header(self, width, pad):
-        fstring = self.callbacks["get_opt"]("tag.format")
-        enumerated = self.callbacks["get_opt"]("taglist.tags_enumerated")
-        enumerated_absolute =\
-            self.callbacks["get_opt"]("taglist.tags_enumerated_absolute")
-        collapsed = self.callbacks["get_tag_opt"]("collapsed")
+        fstring = self.callbacks["get_opt"]("['tag']['format']")
+        taglist_conf = self.callbacks["get_opt"]("['taglist']")
+        collapsed = self.callbacks["get_tag_opt"]("['collapsed']")
 
         # Make sure to strip out the category from category:name
         tag = self.tag.split(':', 1)[1]
@@ -281,7 +281,6 @@ class Tag(list):
         for c in "RrDdUuBbSs012345678":
             passthru[c] = "%" + c
 
-
         try:
             parsed = parse_conditionals(fstring)
         except Exception, e:
@@ -291,8 +290,8 @@ class Tag(list):
             log.warn("Falling back to default.")
             parsed = parse_conditionals(DEFAULT_TAG_FSTRING)
 
-        values = { 'en' : enumerated,
-                    'aen' : enumerated_absolute,
+        values = { 'en' : taglist_conf["tags_enumerated"],
+                    'aen' : taglist_conf["tags_enumerated_absolute"],
                     'c' : collapsed,
                     't' : tag,
                     'sel' : self.selected,

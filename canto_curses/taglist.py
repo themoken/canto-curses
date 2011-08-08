@@ -142,13 +142,13 @@ class TagList(GuiBase):
             self.callbacks["set_var"]("old_toffset", toffset)
 
     def on_opt_change(self, conf):
-        if "taglist.search_attributes" not in conf:
+        if "taglist" not in conf or "search_attributes" not in conf["taglist"]:
             return
 
         log.info("Fetching any needed search attributes")
 
         need_attrs = {}
-        sa = self.callbacks["get_opt"]("taglist.search_attributes")
+        sa = self.callbacks["get_opt"]("['taglist']['search_attributes']")
 
         # Make sure that we have all attributes needed for a search.
         for attr in sa:
@@ -165,19 +165,19 @@ class TagList(GuiBase):
 
     # Prompt that ensures the items are enumerated first
     def eprompt(self, prompt):
-        return self._cfg_set_prompt("story.enumerated", prompt)
+        return self._cfg_set_prompt("['story']['enumerated']", prompt)
 
     # Prompt that enumerates only items in a single tag.
     def tag_eprompt(self, tag, prompt):
-        return self._tag_cfg_set_prompt(tag, "enumerated", prompt)
+        return self._tag_cfg_set_prompt(tag, "['enumerated']", prompt)
 
     # Enumerates visible tags.
     def teprompt(self, prompt):
-        return self._cfg_set_prompt("taglist.tags_enumerated", prompt)
+        return self._cfg_set_prompt("['taglist']['tags_enumerated']", prompt)
 
     # Enumerates all tags.
     def teprompt_absolute(self, prompt):
-        return self._cfg_set_prompt("taglist.tags_enumerated_absolute",
+        return self._cfg_set_prompt("['taglist']['tags_enumerated_absolute']",
                 prompt)
 
     # Following we have a number of command helpers. These allow
@@ -594,7 +594,7 @@ class TagList(GuiBase):
                 return
 
             # Re-order tags and update internal list order.
-            self.callbacks["promote_tag"](tag, visible_tags[curidx - 1])
+            self.callbacks["switch_tags"](tag, visible_tags[curidx - 1])
 
     @command_format([("tags", "listof_tags")])
     def cmd_demote(self, **kwargs):
@@ -609,7 +609,7 @@ class TagList(GuiBase):
                 return
 
             curidx = visible_tags.index(tag)
-            self.callbacks["demote_tag"](tag, visible_tags[curidx + 1])
+            self.callbacks["switch_tags"](tag, visible_tags[curidx + 1])
 
     def _collapse_tag(self, tag):
         log.debug("Collapsing %s\n", tag.tag)
@@ -621,7 +621,7 @@ class TagList(GuiBase):
             toffset = self.callbacks["get_var"]("target_offset")
             self._set_cursor(tag, toffset) 
 
-        self.callbacks["set_tag_opt"](tag, "collapsed", True)
+        self.callbacks["set_tag_opt"](tag, "['collapsed']", True)
 
     @command_format([("tags", "listof_tags")])
     def cmd_collapse(self, **kwargs):
@@ -639,7 +639,7 @@ class TagList(GuiBase):
             toffset = self.callbacks["get_var"]("target_offset") + tag.lines
             self._set_cursor(tag[0], toffset)
 
-        self.callbacks["set_tag_opt"](tag, "collapsed", False)
+        self.callbacks["set_tag_opt"](tag, "['collapsed']", False)
 
     @command_format([("tags", "listof_tags")])
     def cmd_uncollapse(self, **kwargs):
@@ -649,7 +649,7 @@ class TagList(GuiBase):
     @command_format([("tags", "listof_tags")])
     def cmd_toggle_collapse(self, **kwargs):
         for tag in kwargs["tags"]:
-            if self.callbacks["get_tag_opt"](tag, "collapsed"):
+            if self.callbacks["get_tag_opt"](tag, "['collapsed']"):
                 self._uncollapse_tag(tag)
             else:
                 self._collapse_tag(tag)
@@ -664,11 +664,11 @@ class TagList(GuiBase):
         try:
             rgx = re.compile(regex)
         except Exception, e:
-            self.callbacks["set_opt"]("error_msg", e)
+            self.callbacks["set_var"]("error_msg", e)
             return
 
         story = self.first_story
-        terms = self.callbacks["get_opt"]("taglist.search_attributes")
+        terms = self.callbacks["get_opt"]("['taglist']['search_attributes']")
 
         while story:
             for t in terms:
@@ -770,7 +770,7 @@ class TagList(GuiBase):
         tag = kwargs["tag"].tag
         config = kwargs["config"]
 
-        argv = ["canto-remote", "config", "Tag " + tag + "." + config]
+        argv = ["canto-remote", "one-config", "['tags']['" + tag + "']" + config]
         argv = [ encoder(x) for x in argv ]
         self._remote_argv(argv)
 
@@ -787,7 +787,7 @@ class TagList(GuiBase):
             sel_is_tag = True
 
         self.tags = self.callbacks["get_var"]("curtags")
-        hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")
+        hide_empty = self.callbacks["get_opt"]("['taglist']['hide_empty_tags']")
 
         t = []
         cur_item_offset = 0
@@ -803,7 +803,7 @@ class TagList(GuiBase):
             tag.set_tag_offset(i)
             tag.set_visible_tag_offset(len(t))
 
-            if self.callbacks["get_tag_opt"](tag, "collapsed"):
+            if self.callbacks["get_tag_opt"](tag, "['collapsed']"):
                 cur_sel_offset += 1
             else:
                 cur_sel_offset += len(tag)
@@ -866,7 +866,7 @@ class TagList(GuiBase):
             prev_obj = tag
 
             # Collapsed tags (with items) skip stories.
-            if self.callbacks["get_tag_opt"](tag, "collapsed"):
+            if self.callbacks["get_tag_opt"](tag, "['collapsed']"):
                 if prev_sel:
                     prev_sel.next_sel = tag
                 tag.prev_sel = prev_sel
@@ -1022,7 +1022,7 @@ class TagList(GuiBase):
         self.first_sel = obj
         while self.first_sel in self.tags:
 
-            if self.callbacks["get_tag_opt"](obj, "collapsed"):
+            if self.callbacks["get_tag_opt"](obj, "['collapsed']"):
                 break
 
             if self.first_sel.next_obj:

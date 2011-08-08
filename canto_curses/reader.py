@@ -40,8 +40,11 @@ class Reader(TextBox):
         self.callbacks["set_var"]("reader_offset", 0)
 
     def on_opt_change(self, change):
-        if "reader.show_description" in change or\
-                "reader.enumerate_links" in change:
+        if "reader" not in change:
+            return
+
+        if "show_description" in change["reader"] or\
+                "enumerate_links" in change["reader"]:
             self.refresh()
 
     def on_attributes(self, attributes):
@@ -55,8 +58,7 @@ class Reader(TextBox):
             self.refresh()
 
     def update_text(self):
-        show_description = self.callbacks["get_opt"]("reader.show_description")
-        enumerate_links = self.callbacks["get_opt"]("reader.enumerate_links")
+        reader_conf = self.callbacks["get_opt"]("['reader']")
 
         s = "No selected story.\n"
 
@@ -84,10 +86,10 @@ class Reader(TextBox):
 
                 self.links += links
 
-                if show_description:
+                if reader_conf['show_description']:
                     s += self.quote_rgx.sub(u"%6\"\\1\"%0", content)
 
-                if enumerate_links:
+                if reader_conf['enumerate_links']:
                     s += "\n\n"
 
                     for idx, (t, url, text) in enumerate(self.links):

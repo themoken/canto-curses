@@ -81,25 +81,26 @@ class Story(PluginHandler):
             self.need_redraw()
 
     def on_opt_change(self, config):
-        for opt in config.keys():
+        if "story" not in config:
+            return
 
-            # Make sure we have access to all needed attrs.
-            if opt == "story.format.attrs":
-                needed_attrs = []
-                for attr in config[opt]:
-                    if attr not in self.content:
-                        needed_attrs.append(attr)
-                if needed_attrs:
-                    log.debug("%s needs: %s" % (self.id, needed_attrs))
-                    self.callbacks["write"]("ATTRIBUTES",\
-                            { self.id : needed_attrs })
-                    self.queue_need_attributes()
+        if "format_attrs" in config["story"]:
+            needed_attrs = []
+            for attr in config["story"]["format_attrs"]:
+                if attr not in self.content:
+                    needed_attrs.append(attr)
+            if needed_attrs:
+                log.debug("%s needs: %s" % (self.id, needed_attrs))
+                self.callbacks["write"]("ATTRIBUTES",\
+                        { self.id : needed_attrs })
+                self.queue_need_attributes()
 
-            if opt in  [ "story.enumerated", "story.format" ]:
-                self.need_redraw()
+        if "enumerated" in config["story"] or "format" in config["story"]:
+            self.need_redraw()
 
-    def on_tag_opt_change(self, tag, config):
-        if self in tag and "enumerated" in config:
+    def on_tag_opt_change(self, config):
+        tagname = self.callbacks["get_tag_name"]()
+        if tagname in config and "enumerated" in config[tagname]:
             self.need_redraw()
 
     # Simple hook wrapper to make sure we don't have multiple
@@ -194,12 +195,13 @@ class Story(PluginHandler):
             self.refresh(width)
 
     def refresh(self, width):
+        story_conf = self.callbacks["get_opt"]("['story']")
         self.width = width
 
         # Make sure we actually have all of the attributes needed
         # to complete the render.
 
-        for attr in self.callbacks["get_opt"]("story.format.attrs"):
+        for attr in story_conf["format_attrs"]:
             if attr not in self.content:
                 self.pad = curses.newpad(1, width)
                 self.pad.addstr("Waiting on content...")
@@ -209,14 +211,8 @@ class Story(PluginHandler):
                 self.queue_need_attributes()
                 return
 
-        # Do we need the enumerated form?
-        enumerated = self.callbacks["get_opt"]("story.enumerated")
-
         # Do we need the relative enumerated form?
-        rel_enumerated = self.callbacks["get_tag_opt"]("enumerated")
-
-        # Get format string
-        fstring = self.callbacks["get_opt"]("story.format")
+        rel_enumerated = self.callbacks["get_tag_opt"]("['enumerated']")
 
         # These are the only things that affect the drawing
         # of this item.
@@ -225,11 +221,11 @@ class Story(PluginHandler):
                   "abs_idx" : self.offset,
                   "rel_idx" : self.rel_offset,
                   "rel_enumerated" : rel_enumerated,
-                  "enumerated" : enumerated,
+                  "enumerated" : story_conf["enumerated"],
                   "state" : self.content["canto-state"][:],
                   "selected" : self.selected,
                   "marked" : self.marked,
-                  "fstring" : fstring }
+                  "fstring" : story_conf["format"] }
 
         # Render once to a FakePad (no IO) to determine the correct
         # amount of lines. Force this to entirely unenumerated because

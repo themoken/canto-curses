@@ -202,20 +202,19 @@ class GuiBase(CommandHandler):
         self._remote(kwargs["remote_args"])
 
     def _goto(self, urls):
-        browser = self.callbacks["get_opt"]("browser")
-        txt_browser = self.callbacks["get_opt"]("txt_browser")
+        browser = self.callbacks["get_conf"]()["browser"]
 
-        if not browser:
+        if not browser["path"]:
             log.error("No browser defined! Cannot goto.")
             return
 
-        if txt_browser:
+        if browser["text"]:
             self.callbacks["pause_interface"]()
 
         for url in urls:
-            pid = self._fork(browser, url, txt_browser)
-            if txt_browser:
+            pid = self._fork(browser["path"], url, browser["text"])
+            if browser["text"]:
                 os.waitpid(pid, 0)
 
-        if txt_browser:
+        if browser["text"]:
             self.callbacks["unpause_interface"]()
