@@ -120,6 +120,9 @@ class Tag(list):
             s.set_offset(self.item_offset + rel)
             s.set_sel_offset(self.sel_offset + rel)
 
+        # Request redraw to update item counts.
+        self.need_redraw()
+
         call_hook("items_added", [ self, added ] )
 
     # Take a list of ordered ids and reorder ourselves, without generating any
@@ -156,6 +159,9 @@ class Tag(list):
             story.set_offset(self.item_offset + i)
             story.set_sel_offset(self.sel_offset + i)
 
+        # Request redraw to update item counts.
+        self.need_redraw()
+
     # Remove Story based on ID
 
     def remove_items(self, ids):
@@ -178,6 +184,9 @@ class Tag(list):
             story.set_offset(self.item_offset + i)
             story.set_sel_offset(self.sel_offset + i)
 
+        # Request redraw to update item counts.
+        self.need_redraw()
+
         call_hook("items_removed", [ self, removed ] )
 
     # Remove all stories from this tag.
@@ -188,6 +197,9 @@ class Tag(list):
 
         call_hook("items_removed", [ self, self[:] ])
         del self[:]
+
+        # Request redraw to update item counts.
+        self.need_redraw()
 
     def get_id(self, id):
         for item in self:
