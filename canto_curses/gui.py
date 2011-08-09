@@ -11,6 +11,7 @@ COMPATIBLE_VERSION = 0.3
 from canto_next.hooks import call_hook, on_hook
 from canto_next.plugins import Plugin
 from canto_next.remote import assign_to_dict
+from canto_next.encoding import decoder
 
 from command import CommandHandler, command_format
 from html import html_entity_convert, char_ref_convert
