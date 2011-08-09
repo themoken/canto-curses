@@ -732,11 +732,21 @@ Press [space] to close."""
         if tag not in self.updates:
             self.updates.append(tag)
 
+    # This function is basically an early version of prot_newtags
+    # that creates the relevant data structures, without evaluating
+    # tags and relying on subsequent config validation.
+
     def stub_tagconfigs(self, tags):
         for tag in tags:
+            # Create tag configs.
             if tag not in self.tag_config:
                 log.debug("Using default tag config for %s" % tag)
                 self.tag_config[tag] = self.tag_template_config.copy()
+
+            # Create initial Tag objects so alltags is properly populated.
+            # This allows us to properly validate tagorder.
+
+            Tag(tag, self.callbacks)
 
     # Process new tags, early flag tells us whether we should bother to
     # propagate tagorder changes and eval tags or if we just want to create Tag
@@ -745,8 +755,6 @@ Press [space] to close."""
     def prot_newtags(self, tags):
 
         c = self.get_conf()
-
-        self.stub_tagconfigs(tags)
 
         for tag in tags:
             if tag not in [ t.tag for t in self.vars["alltags"] ]:
