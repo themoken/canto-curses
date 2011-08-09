@@ -639,9 +639,8 @@ Press [space] to close."""
             log.debug("changes: %s" % changes)
 
             if changes:
-                call_hook("opt_change", [ changes ])
-
                 self.config = new_config
+                call_hook("opt_change", [ changes ])
 
                 if write:
                     self.backend.write("SETCONFIGS",\
