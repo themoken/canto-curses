@@ -539,9 +539,19 @@ Press [space] to close."""
 
         for key in val.keys():
             if type(key) != unicode:
-                return (False, False)
+                if type(key) == str:
+                    newkey = decoder(key)
+                    v = val[key]
+                    del val[key]
+                    val[newkey] = v
+                else:
+                    return (False, False)
+
             if type(val[key]) != unicode:
-                return (False, False)
+                if type(val[key]) == str:
+                    val[key] = decoder(val[key])
+                else:
+                    return (False, False)
 
         return (True, val)
 
