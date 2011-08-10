@@ -481,8 +481,6 @@ Press [space] to close."""
         if type(val) != list:
             return (False, False)
 
-        log.debug("val: %s" % val)
-
         strtags = [ tag.tag for tag in self.vars["alltags"] ]
 
         # Strip items no longer relevant
@@ -495,7 +493,6 @@ Press [space] to close."""
             if tag not in val:
                 val.append(tag)
 
-        log.debug("Validated tag order: %s" % (val,))
         return (True, val)
 
     def validate_window(self, val):
@@ -527,8 +524,6 @@ Press [space] to close."""
             if val["align"] not in tile_aligns:
                 return (False, False)
 
-        log.debug("Validated window: %s" % val)
-
         return (True, val)
 
     # This doesn't validate that the command will actually work, just that the
@@ -556,8 +551,50 @@ Press [space] to close."""
 
         return (True, val)
 
-    def validate_color(self, val):
-        return (True, val)
+    def validate_color(self, val, dict_ok=True):
+        # Integer, and in the valid color range
+        if type(val) == int and val >= -1 and val < 255:
+            return (True, val)
+
+        if type(val) == dict and dict_ok:
+            fg_g, bg_g = (False, False)
+            r = {}
+
+            # Not specified correctly...
+            if "fg" in val:
+                fg_g, fg_v = self.validate_color(val["fg"], False)
+                if fg_g:
+                    r["fg"] = fg_v
+            if "bg" in val:
+                bg_g, bg_v = self.validate_color(val["bg"], False)
+                if bg_g:
+                    r["bg"] = bg_v
+
+            if not r:
+                return (False, False)
+            return (True, r)
+
+        # We have no idea what to do with this crap...
+        if type(val) not in [ unicode, str ]:
+            return (False, False)
+
+        # See if it's an integer as a string
+        try:
+            ival = int(val)
+            return (True, ival)
+        except:
+            # Alias pink and magenta
+            if val == "pink":
+                val = "magenta"
+
+            # Lookup defined curses colors.
+            for color_attr in dir(curses):
+                if not color_attr.startswith("COLOR_"):
+                    continue
+                if val.lower() == color_attr[6:].lower():
+                    return (True, getattr(curses, color_attr))
+
+        return (False, False)
 
     def validate_string_list(self, val):
         return (True, val)
@@ -586,7 +623,7 @@ Press [space] to close."""
 
             # Unknown values, don't validate
             if key not in v:
-                return
+                continue
 
             # Key is section, recurse, only add changes if there
             # are actual changes.
