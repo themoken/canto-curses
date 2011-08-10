@@ -458,6 +458,8 @@ Press [space] to close."""
     def validate_string(self, val, d):
         if type(val) == unicode:
             return (True, val)
+        if type(val) == str:
+            return (True, decoder(val))
         return (False, False)
 
     def validate_bool(self, val, d):
