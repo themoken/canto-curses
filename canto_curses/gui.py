@@ -450,34 +450,34 @@ Press [space] to close."""
     def reconnected(self):
         self.reconn = True
 
-    def validate_uint(self, val):
+    def validate_uint(self, val, d):
         if type(val) == int and val >= 0:
             return (True, val)
         return (False, False)
 
-    def validate_string(self, val):
+    def validate_string(self, val, d):
         if type(val) == unicode:
             return (True, val)
         return (False, False)
 
-    def validate_bool(self, val):
+    def validate_bool(self, val, d):
         if val in [ True, False ]:
             return (True, val)
         return (False, False)
 
-    def validate_update_style(self, val):
+    def validate_update_style(self, val, d):
         if val in [ u"maintain", u"append" ]:
             return (True, val)
         return (False, False)
 
-    def validate_tags(self, val):
+    def validate_tags(self, val, d):
         try:
             re.compile(val)
         except:
             return (False, False)
         return (True, val)
 
-    def validate_tag_order(self, val):
+    def validate_tag_order(self, val, d):
         if type(val) != list:
             return (False, False)
 
@@ -495,7 +495,7 @@ Press [space] to close."""
 
         return (True, val)
 
-    def validate_window(self, val):
+    def validate_window(self, val, d):
         # Ensure all settings exist
         for setting in [ "border", "maxwidth", "maxheight", "align", "float" ]:
             if setting not in val:
@@ -529,7 +529,7 @@ Press [space] to close."""
     # This doesn't validate that the command will actually work, just that the
     # pair is of the correct types.
 
-    def validate_key(self, val):
+    def validate_key(self, val, d):
         if type(val) != dict:
             return (False, False)
 
@@ -549,9 +549,18 @@ Press [space] to close."""
                 else:
                     return (False, False)
 
+        # For keys, because we don't want to specify each and every possible
+        # key explicitly, so we merge in default keys. If a user wants to
+        # ignore a default key, he can set it to None and it won't be merged
+        # over.
+
+        for key in d.keys():
+            if key not in val:
+                val[key] = d[key]
+
         return (True, val)
 
-    def validate_color(self, val, dict_ok=True):
+    def validate_color(self, val, d, dict_ok=True):
         # Integer, and in the valid color range
         if type(val) == int and val >= -1 and val < 255:
             return (True, val)
@@ -562,11 +571,11 @@ Press [space] to close."""
 
             # Not specified correctly...
             if "fg" in val:
-                fg_g, fg_v = self.validate_color(val["fg"], False)
+                fg_g, fg_v = self.validate_color(val["fg"], {}, False)
                 if fg_g:
                     r["fg"] = fg_v
             if "bg" in val:
-                bg_g, bg_v = self.validate_color(val["bg"], False)
+                bg_g, bg_v = self.validate_color(val["bg"], {}, False)
                 if bg_g:
                     r["bg"] = bg_v
 
@@ -596,7 +605,7 @@ Press [space] to close."""
 
         return (False, False)
 
-    def validate_string_list(self, val):
+    def validate_string_list(self, val, d):
         return (True, val)
 
     # Recursively validate config c, with validators in v, falling back on d
@@ -635,7 +644,7 @@ Press [space] to close."""
 
             # Key is basic, validate
             else:
-                good, val = v[key](c[key])
+                good, val = v[key](c[key], d[key])
 
                 # Value is good, pass on
                 if good:
