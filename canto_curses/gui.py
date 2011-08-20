@@ -12,6 +12,7 @@ from canto_next.hooks import call_hook, on_hook
 from canto_next.plugins import Plugin
 from canto_next.remote import assign_to_dict, access_dict
 from canto_next.encoding import decoder
+from canto_next.format import escsplit
 
 from command import CommandHandler, command_format
 from html import html_entity_convert, char_ref_convert
@@ -1074,23 +1075,8 @@ Press [space] to close."""
             return r
         return self.screen.key(k)
 
-    # Search for unescaped & to split up multiple commands.
     def cmdsplit(self, cmd):
-        r = []
-        escaped = False
-        acc = ""
-        for c in cmd:
-            if escaped:
-                acc += c
-                escaped = False
-            elif c == "\\":
-                escaped = True
-            elif c == "&":
-                r.append(acc)
-                acc = ""
-            else:
-                acc += c
-        r.append(acc)
+        r = escsplit(cmd, "&")
 
         # lstrip all commands because we
         # want to use .startswith instead of a regex.
