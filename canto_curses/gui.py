@@ -10,7 +10,7 @@ COMPATIBLE_VERSION = 0.3
 
 from canto_next.hooks import call_hook, on_hook
 from canto_next.plugins import Plugin
-from canto_next.remote import assign_to_dict
+from canto_next.remote import assign_to_dict, access_dict
 from canto_next.encoding import decoder
 
 from command import CommandHandler, command_format
@@ -217,8 +217,8 @@ Press [space] to close."""
                 "key" :
                 {
                     "space" : "destroy",
-                    "d" : "toggle ['reader']['show_description']",
-                    "l" : "toggle ['reader']['enumerate_links']",
+                    "d" : "toggle reader.show_description",
+                    "l" : "toggle reader.enumerate_links",
                     "g" : "goto",
                     "down" : "scroll-down",
                     "up" : "scroll-up",
@@ -247,8 +247,8 @@ Press [space] to close."""
                 {
                     "space" : "foritem & item-state read & reader",
                     "g" : "foritems & goto & item-state read & clearitems",
-                    "E" : "toggle ['taglist']['tags_enumerated']",
-                    "e" : "toggle ['story']['enumerated']",
+                    "E" : "toggle taglist.tags_enumerated",
+                    "e" : "toggle story.enumerated",
                     "R" : "item-state read *",
                     "U" : "item-state -read *",
                     "r" : "tag-state read",
@@ -951,18 +951,14 @@ Press [space] to close."""
     def get_tag_conf(self, tag):
         return eval(repr(self.tag_config[tag.tag]), {}, {})
 
-    # Single option set / get which will query a dict based on a string given
-    # to access a dict, like "['reader']['blah']"
-
-    # These are intended to be used as a convenience when dealing with strings
-    # from the user.
-
     def _get_opt(self, option, d):
-        com = "d" + option.replace("\\","\\\\")
-        return eval(com, {}, { "d" : d })
+        valid, value = access_dict(d, option)
+        if not valid:
+            return None
+        return value
 
     def _set_opt(self, option, value, d):
-        assign_to_dict(d, option.replace("\\","\\\\"), value)
+        assign_to_dict(d, option, value)
 
     def set_opt(self, option, value):
         c = self.get_conf()

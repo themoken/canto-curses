@@ -103,7 +103,7 @@ class Screen(CommandHandler):
 
         self.height, self.width = self.stdscr.getmaxyx()
 
-        color_conf = self.callbacks["get_opt"]("['color']")
+        color_conf = self.callbacks["get_opt"]("color")
 
         for i in xrange(curses.COLOR_PAIRS):
             if ("%s" % i) not in color_conf:
@@ -149,8 +149,7 @@ class Screen(CommandHandler):
     #       - The configured size (given by the config)
 
     def _subw_size_height(self, ci, height):
-        window_conf = self.callbacks["get_opt"]\
-                ("['" +  ci.get_opt_name() + "']['window']")
+        window_conf = self.callbacks["get_opt"](ci.get_opt_name() + ".window")
 
         if not window_conf["maxheight"]:
             window_conf["maxheight"] = height
@@ -159,8 +158,7 @@ class Screen(CommandHandler):
         return min(height, window_conf["maxheight"], req_height)
 
     def _subw_size_width(self, ci, width):
-        window_conf = self.callbacks["get_opt"]\
-                ("['" +  ci.get_opt_name() + "']['window']")
+        window_conf = self.callbacks["get_opt"](ci.get_opt_name() + ".window")
 
         if not window_conf["maxwidth"]:
             window_conf["maxwidth"] = width
@@ -221,8 +219,7 @@ class Screen(CommandHandler):
         # Floating windows are, by design, given a window the size of the
         # entire screen, but only actually written lines are drawn.
 
-        window_conf = self.callbacks["get_opt"]\
-                ("['" +  ci.get_opt_name() + "']['window']")
+        window_conf = self.callbacks["get_opt"](ci.get_opt_name() + ".window")
 
         if window_conf['border'] == "smart":
             top_border = top != 0
@@ -389,7 +386,7 @@ class Screen(CommandHandler):
             # Separate windows by alignment.
             for w in windows:
                 align = self.callbacks["get_opt"]\
-                        ("['" + w.get_opt_name() + "']['window']['align']")
+                        (w.get_opt_name() + ".window.align")
 
                 # Move taglist deeper so that it absorbs any
                 # extra space left in the rest of the layout.
@@ -421,8 +418,7 @@ class Screen(CommandHandler):
         for wt in self.window_types:
             w = wt()
             optname = w.get_opt_name()
-            flt = self.callbacks["get_opt"]\
-                    ("['" + optname + "']['window']['float']")
+            flt = self.callbacks["get_opt"](optname + ".window.float")
             if flt:
                 self.floats.append(w)
             else:
@@ -439,7 +435,7 @@ class Screen(CommandHandler):
         # Init floating windows.
         for f in self.floats: 
             align = self.callbacks["get_opt"]\
-                    ("['" + f.get_opt_name() + "']['window']['align']")
+                    (f.get_opt_name() + ".window.align")
             height = self._subw_size_height(f, self.height)
             width = self._subw_size_width(f, self.width)
 

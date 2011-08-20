@@ -195,7 +195,7 @@ class Story(PluginHandler):
             self.refresh(width)
 
     def refresh(self, width):
-        story_conf = self.callbacks["get_opt"]("['story']")
+        story_conf = self.callbacks["get_opt"]("story")
         self.width = width
 
         # Make sure we actually have all of the attributes needed
@@ -212,7 +212,7 @@ class Story(PluginHandler):
                 return
 
         # Do we need the relative enumerated form?
-        rel_enumerated = self.callbacks["get_tag_opt"]("['enumerated']")
+        rel_enumerated = self.callbacks["get_tag_opt"]("enumerated")
 
         # These are the only things that affect the drawing
         # of this item.

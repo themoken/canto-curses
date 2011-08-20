@@ -58,7 +58,7 @@ class Reader(TextBox):
             self.refresh()
 
     def update_text(self):
-        reader_conf = self.callbacks["get_opt"]("['reader']")
+        reader_conf = self.callbacks["get_opt"]("reader")
 
         s = "No selected story.\n"
 

@@ -83,7 +83,7 @@ class CommandHandler(PluginHandler):
 
         # Translate numeric key into config friendly keyname
 
-        optname = "['" + self.get_opt_name() + "']['key']['"
+        optname = self.get_opt_name() + ".key."
 
         # Add meta prefix.
         if self.meta:
@@ -120,8 +120,6 @@ class CommandHandler(PluginHandler):
                 k = "tab"
 
             optname += k
-
-        optname += "']"
 
         log.debug("trying key: %s" % optname)
 

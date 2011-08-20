@@ -230,7 +230,7 @@ class Tag(list):
     def set_sel_offset(self, offset):
         self.sel_offset = offset
 
-        if not self.callbacks["get_tag_opt"]("['collapsed']"):
+        if not self.callbacks["get_tag_opt"]("collapsed"):
             for i, item in enumerate(self):
                 item.set_sel_offset(offset + i)
 
@@ -274,9 +274,9 @@ class Tag(list):
         self.changed = False
 
     def render_header(self, width, pad):
-        fstring = self.callbacks["get_opt"]("['tag']['format']")
-        taglist_conf = self.callbacks["get_opt"]("['taglist']")
-        collapsed = self.callbacks["get_tag_opt"]("['collapsed']")
+        fstring = self.callbacks["get_opt"]("tag.format")
+        taglist_conf = self.callbacks["get_opt"]("taglist")
+        collapsed = self.callbacks["get_tag_opt"]("collapsed")
 
         # Make sure to strip out the category from category:name
         tag = self.tag.split(':', 1)[1]
