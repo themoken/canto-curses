@@ -608,7 +608,19 @@ Press [space] to close."""
         return (False, False)
 
     def validate_string_list(self, val, d):
-        return (True, val)
+        if type(val) != list:
+            return (False, False)
+
+        r = []
+        for item in val:
+            if type(item) == unicode:
+                r.append(item)
+            elif type(item) == str:
+                r.append(decoder(item))
+            else:
+                return (False, False)
+
+        return (True, r)
 
     # Recursively validate config c, with validators in v, falling back on d
     # when it failed. Return a dict containing all of the changes actually
