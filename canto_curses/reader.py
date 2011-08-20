@@ -9,6 +9,7 @@
 from canto_next.plugins import Plugin
 from canto_next.hooks import on_hook, remove_hook
 
+from parser import prep_for_display
 from command import command_format
 from html import htmlparser
 from text import TextBox
@@ -66,7 +67,7 @@ class Reader(TextBox):
         if sel:
             self.links = [("link",sel.content["link"],"mainlink")]
 
-            s = "%1%B" + sel.content["title"] + "%b\n"
+            s = "%1%B" + prep_for_display(sel.content["title"]) + "%b\n"
 
             # We use the description for most reader content, so if it hasn't
             # been fetched yet then grab that from the server now and setup
@@ -93,6 +94,9 @@ class Reader(TextBox):
                     s += "\n\n"
 
                     for idx, (t, url, text) in enumerate(self.links):
+                        text = prep_for_display(text)
+                        url = prep_for_display(url)
+
                         link_text = "[%B" + unicode(idx) + "%b][" +\
                                 text + "]: " + url + "\n\n"
 

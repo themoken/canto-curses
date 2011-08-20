@@ -19,6 +19,10 @@
 # impossible to cause the code to infinitely recurse with a value like
 # { 'a' : '%a' }.
 
+from canto_next.encoding import decoder
+
+from html import html_entity_convert, char_ref_convert
+
 import traceback
 import logging
 import re
@@ -184,3 +188,12 @@ def eval_theme_string(parsed, values):
         else:
             r += _eval_simple(term, values)
     return r
+
+def prep_for_display(s):
+    if type(s) == str:
+        s = decoder(s)
+    s = s.replace("\\", "\\\\")
+    s = s.replace("%", "\\%")
+    s = html_entity_convert(s)
+    s = char_ref_convert(s)
+    return s

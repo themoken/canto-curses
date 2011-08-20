@@ -10,7 +10,7 @@ from canto_next.plugins import Plugin, PluginHandler
 from canto_next.hooks import on_hook, remove_hook
 
 from theme import FakePad, WrapPad, theme_print, theme_len, theme_process
-from parser import parse_conditionals, eval_theme_string
+from parser import parse_conditionals, eval_theme_string, prep_for_display
 
 import traceback
 import logging
@@ -275,7 +275,14 @@ class Story(PluginHandler):
                    'rd' : "read" in self.content["canto-state"],
                     't' : self.content["title"],
                     'l' : self.content["link"],
-                 'item' : self }
+                 'item' : self,
+                 'prep' : prep_for_display}
+
+        # Prep all text values for display.
+
+        for value in values.keys():
+            if type(values[value]) in [unicode, str]:
+                values[value] = prep_for_display(values[value])
 
         values.update(passthru)
 

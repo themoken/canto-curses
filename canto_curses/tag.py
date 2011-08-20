@@ -8,7 +8,7 @@
 
 from canto_next.hooks import call_hook, on_hook, remove_hook
 
-from parser import parse_conditionals, eval_theme_string
+from parser import parse_conditionals, eval_theme_string, prep_for_display
 from theme import FakePad, WrapPad, theme_print
 from story import Story
 
@@ -310,7 +310,14 @@ class Tag(list):
                     'n' : unread,
                     'to' : self.tag_offset,
                     'vto' : self.visible_tag_offset,
-                    'tag' : self}
+                    'tag' : self,
+                    'prep' : prep_for_display}
+
+        # Prep all text values for display.
+
+        for value in values.keys():
+            if type(values[value]) in [unicode, str]:
+                values[value] = prep_for_display(values[value])
 
         values.update(passthru)
 

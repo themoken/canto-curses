@@ -15,7 +15,6 @@ from canto_next.encoding import decoder
 from canto_next.format import escsplit
 
 from command import CommandHandler, command_format
-from html import html_entity_convert, char_ref_convert
 from story import DEFAULT_FSTRING
 from text import ErrorBox, InfoBox
 from screen import Screen
@@ -717,15 +716,11 @@ Press [space] to close."""
                     continue
 
                 for k in d[given_id]:
-                    a = d[given_id][k]
-                    if type(a) == unicode:
-                        a = a.replace("\\", "\\\\")
-                        a = a.replace("%", "\\%")
-                        a = html_entity_convert(a)
-                        a = char_ref_convert(a)
-                    item.content[k] = a
+                    if type(d[given_id][k]) == str:
+                        item.content[k] = decoder(d[given_id][k])
+                    else:
+                        item.content[k] = d[given_id][k]
                 atts[item] = d[given_id].keys()
-
         if atts:
             call_hook("attributes", [ atts ])
 
