@@ -411,7 +411,7 @@ Press [space] to close."""
 
         self.backend.write("WATCHCONFIGS", u"")
         self.backend.write("CONFIGS", [])
-        self.prot_configs(self.wait_response("CONFIGS")[1], True)
+        self.prot_configs(self.wait_response("CONFIGS")[1])
 
         self.prot_newtags(r[1])
 
@@ -674,6 +674,7 @@ Press [space] to close."""
         return changes
 
     def prot_configs(self, given, write = False):
+        log.debug("prot_configs given: %s" % given)
 
         if "tags" in given:
             for tag in given["tags"].keys():
@@ -683,16 +684,15 @@ Press [space] to close."""
                 changes = self.validate_config(ntc, tc, self.tag_validators)
 
                 if changes:
+                    self.tag_config[tag] = ntc
                     call_hook("tag_opt_change", [ { tag : changes } ])
-                    self.tag_config = new_tag_config
+
                     if write:
                         self.backend.write("SETCONFIGS",\
                                 { "tags" : { tag : changes }})
 
         if "CantoCurses" in given:
             new_config = given["CantoCurses"]
-
-            log.debug("given: %s" % given)
 
             changes = self.validate_config(new_config, self.config,\
                     self.validators)
@@ -942,7 +942,7 @@ Press [space] to close."""
         return eval(repr(self.config), {}, {})
 
     def set_tag_conf(self, tag, conf):
-        self.prot_config({ "tags" : { tag.tag : conf } }, True)
+        self.prot_configs({ "tags" : { tag.tag : conf } }, True)
 
     def get_tag_conf(self, tag):
         return eval(repr(self.tag_config[tag.tag]), {}, {})

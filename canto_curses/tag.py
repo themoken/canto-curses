@@ -96,7 +96,11 @@ class Tag(list):
 
     def on_tag_opt_change(self, opts):
         if self.tag in opts.keys():
-            self.need_redraw()
+            tc = opts[self.tag]
+            if "collapsed" in tc:
+                self.need_refresh()
+            else:
+                self.need_redraw()
 
     # We override eq so that empty tags don't evaluate
     # as equal and screw up things like enumeration.
@@ -253,6 +257,10 @@ class Tag(list):
         if self.selected:
             self.selected = False
             self.need_redraw()
+
+    def need_refresh(self):
+        self.changed = True
+        self.callbacks["set_var"]("needs_refresh", True)
 
     def need_redraw(self):
         self.changed = True
