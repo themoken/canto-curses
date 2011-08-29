@@ -766,7 +766,7 @@ class TagList(GuiBase):
 
     @command_format([("tag","single_tag"),("config","configstring")])
     def cmd_tag_config(self, **kwargs):
-        tag = kwargs["tag"].tag
+        tag = kwargs["tag"].tag.replace(".","\\.")
         config = kwargs["config"]
 
         argv = ["canto-remote", "one-config", "tags." + tag + "." + config]
