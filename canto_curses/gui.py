@@ -379,6 +379,8 @@ Press [space] to close."""
         }
 
         self.aliases = {
+                "browser" : "remote one-config CantoCurses.browser.path",
+                "txt_browser" : "remote one-config CantoCurses.browser.text",
                 "add" : "remote addfeed",
                 "del" : "remote delfeed",
                 "list" : "remote listfeeds",
