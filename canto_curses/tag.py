@@ -90,7 +90,7 @@ class Tag(list):
 
     def on_opt_change(self, opts):
         if "taglist" in opts and\
-                ("tag_enumerated" in opts["taglist"] or\
+                ("tags_enumerated" in opts["taglist"] or\
                 "tags_enumerated_absolute" in opts["taglist"]):
             self.need_redraw()
 
