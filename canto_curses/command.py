@@ -119,6 +119,11 @@ class CommandHandler(PluginHandler):
             elif k == "\t":
                 k = "tab"
 
+            # Need translation because it's an escape
+
+            elif k == "\\":
+                k = "\\\\"
+
             optname += k
 
         log.debug("trying key: %s" % optname)
