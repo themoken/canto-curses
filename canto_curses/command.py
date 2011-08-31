@@ -79,6 +79,27 @@ class CommandHandler(PluginHandler):
 
         return False
 
+    # Verify a string is a possible key combination.
+
+    def _input_key(self, key, depth = 0):
+        if len(key) == 1 and ord(key) <= 255:
+            return True
+        if key in ["space", "tab"]:
+            return True
+
+        # Accept a Ctrl / Meta only once
+        if depth == 0 and (key.startswith("C-") or key.startswith("M-")):
+            return self._input_key(key[2:], 1)
+
+        return ("key_" + key).upper() in dir(curses)
+
+    def input_key(self, args, prompt):
+        term, rem = self._first_term(args, prompt)
+
+        if self._input_key(term):
+            return (True, term, rem)
+        return (False, None, None)
+
     def key(self, k):
 
         # Translate numeric key into config friendly keyname
