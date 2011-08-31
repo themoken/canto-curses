@@ -773,6 +773,34 @@ class TagList(GuiBase):
         argv = [ encoder(x) for x in argv ]
         self._remote_argv(argv)
 
+    def addtagstring(self, args):
+        return self.single_string(args, lambda : self.callbacks["input"]("add tag: "))
+
+    @command_format([("extratag","addtagstring"),("tags","listof_tags")])
+    def cmd_add_tag(self, **kwargs):
+        for tag in kwargs["tags"]:
+            tc = self.callbacks["get_tag_conf"](tag)
+            extratag = kwargs["extratag"]
+
+            if extratag not in tc["extra_tags"]:
+                tc["extra_tags"].append(extratag)
+
+            self.callbacks["set_tag_conf"](tag, tc)
+
+    def deltagstring(self, args):
+        return self.single_string(args, lambda : self.callbacks["input"]("del tag: "))
+
+    @command_format([("extratag","addtagstring"),("tags","listof_tags")])
+    def cmd_del_tag(self, **kwargs):
+        for tag in kwargs["tags"]:
+            tc = self.callbacks["get_tag_conf"](tag)
+            extratag = kwargs["extratag"]
+
+            if extratag in tc["extra_tags"]:
+                tc["extra_tags"].remove(extratag)
+
+            self.callbacks["set_tag_conf"](tag, tc)
+
     def update_tag_lists(self):
         sel = self.callbacks["get_var"]("selected")
         toffset = self.callbacks["get_var"]("target_offset")

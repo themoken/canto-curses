@@ -624,6 +624,20 @@ Press [space] to close."""
 
         return (True, r)
 
+    def _list_diff(self, cur, old):
+        adds = []
+        dels = []
+
+        for item in old:
+            if item not in cur:
+                dels.append(item)
+
+        for item in cur:
+            if item not in old:
+                adds.append(item)
+
+        return (adds, dels)
+
     # Recursively validate config c, with validators in v, falling back on d
     # when it failed. Return a dict containing all of the changes actually
     # made.
@@ -633,6 +647,7 @@ Press [space] to close."""
 
     def validate_config(self, c, d, v):
         changes = {}
+        deletions = {}
 
         # Sub in non-existent values:
 
@@ -654,9 +669,11 @@ Press [space] to close."""
             # are actual changes.
 
             elif type(v[key]) == dict:
-                tmp =  self.validate_config(c[key], d[key], v[key])
-                if tmp:
-                    changes[key] = tmp
+                chgs, dels =  self.validate_config(c[key], d[key], v[key])
+                if chgs:
+                    changes[key] = chgs
+                if dels:
+                    deletions[key] = dels
 
             # Key is basic, validate
             else:
@@ -665,6 +682,10 @@ Press [space] to close."""
                 # Value is good, pass on
                 if good:
                     if val != d[key]:
+                        if type(val) == list:
+                            chgs, dels, = self._list_diff(val, d[key])
+                            if dels:
+                                deletions[key] = dels
                         changes[key] = val
                     c[key] = val
 
@@ -673,7 +694,16 @@ Press [space] to close."""
                     changes[key] = d[key]
                     c[key] = d[key]
 
-        return changes
+        return changes, deletions
+
+    # configs accepts any changes, calls the opt_change hooks and
+    # if write is set, sends those changes to the daemon. It's
+    # called both when receving CONFIGS from the daemon and when
+    # we change opts internally (thus the write flag).
+
+    # Note that changes are the only ones propagated through hooks
+    # because they are a superset of deletions (i.e. a deletion
+    # counts as a change).
 
     def prot_configs(self, given, write = False):
         log.debug("prot_configs given: %s" % given)
@@ -683,7 +713,8 @@ Press [space] to close."""
                 ntc = given["tags"][tag]
                 tc = self.tag_config[tag]
 
-                changes = self.validate_config(ntc, tc, self.tag_validators)
+                changes, deletions =\
+                        self.validate_config(ntc, tc, self.tag_validators)
 
                 if changes:
                     self.tag_config[tag] = ntc
@@ -693,13 +724,16 @@ Press [space] to close."""
                         self.backend.write("SETCONFIGS",\
                                 { "tags" : { tag : changes }})
 
+                if deletions and write:
+                    self.backend.write("DELCONFIGS",\
+                            { "tags" : { tag : deletions }})
+
         if "CantoCurses" in given:
             new_config = given["CantoCurses"]
 
-            changes = self.validate_config(new_config, self.config,\
+            changes, deletions =\
+                    self.validate_config(new_config, self.config,\
                     self.validators)
-
-            log.debug("changes: %s" % changes)
 
             if changes:
                 self.config = new_config
@@ -708,6 +742,10 @@ Press [space] to close."""
                 if write:
                     self.backend.write("SETCONFIGS",\
                             { "CantoCurses" : changes })
+
+            if deletions and write:
+                self.backend.write("DELCONFIGS",\
+                        { "CantoCurses" : deletions })
 
     def prot_attributes(self, d):
         atts = {}

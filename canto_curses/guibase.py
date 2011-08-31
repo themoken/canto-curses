@@ -16,6 +16,7 @@ log = logging.getLogger("COMMON")
 import subprocess
 import tempfile
 import shlex
+import pipes
 import sys
 import os
 
@@ -141,11 +142,37 @@ class GuiBase(CommandHandler):
 
         return r
 
-    # Pass-thru for arbitrary strings.
+    # Pass-thru for arbitrary, unquoted strings.
     def string(self, args, prompt):
         if not args:
             args = prompt()
         return (True, args, None)
+
+    # Grab a single string, potentially quoted or space delimited and pass the
+    # rest.
+
+    def single_string(self, args, prompt):
+        if not args:
+            args = prompt()
+
+        r = [ decoder(s) for s in shlex.split(encoder(args)) ]
+
+        # I wish shlex.split took a max so I didn't have to zip them up
+        # again with pipes.quote.
+
+        if r:
+            return (True, r[0],\
+                    " ".join([pipes.quote(s) for s in r[1:]]))
+        return (True, r, None)
+
+    # Parse a string in shell fashion, returning components.
+
+    def split_string(self, args, prompt):
+        if not args:
+            args = prompt()
+
+        r = [ decoder(s) for s in shlex.split(encoder(args)) ]
+        return (True, r, None)
 
     def one_opt(self, args):
         t, r = self._first_term(args,
