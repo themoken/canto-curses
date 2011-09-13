@@ -162,7 +162,6 @@ class CantoCurses(CantoClient):
             log.error("Error reconnecting: %s" % e)
             self.gui.disconnected()
         else:
-            log.info("Reconnected.")
             self.start_rthread()
             self.gui.reconnected()
 

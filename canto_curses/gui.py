@@ -28,6 +28,28 @@ import re
 
 log = logging.getLogger("GUI")
 
+class GraphicalLog(logging.Handler):
+    def __init__(self, callbacks, screen):
+        logging.Handler.__init__(self)
+        self.callbacks = callbacks
+        self.screen = screen
+
+    def _emit(self, var, window_type, record):
+        if window_type not in self.screen.window_types:
+            self.callbacks["set_var"](var, record.message)
+            self.screen.add_window_callback(window_type)
+        else:
+            cur = self.callbacks["get_var"](var)
+            cur += "\n" + record.message
+            self.callbacks["set_var"](var, cur)
+        self.callbacks["set_var"]("needs_refresh", True)
+
+    def emit(self, record):
+        if record.levelno == logging.INFO:
+            self._emit("info_msg", InfoBox, record)
+        elif record.levelno == logging.ERROR:
+            self._emit("error_msg", ErrorBox, record)
+
 class GuiPlugin(Plugin):
     pass
 
@@ -49,14 +71,10 @@ class CantoCursesGui(CommandHandler):
 Please restart the daemon and use :reconnect.
 
 Until reconnected, it will be impossible to fetch any information, and
-any state changes will be lost.
-
-Press [space] to close."""
+any state changes will be lost."""
 
         self.reconnect_message =\
-""" Successfully Reconnected!
-
-Press [space] to close."""
+""" Successfully Reconnected!"""
 
         # Asynchronous notification flags
         self.disconn = False
@@ -68,8 +86,8 @@ Press [space] to close."""
 
         self.vars = {
             "location" : self.backend.location_args,
-            "error_msg" : "No error. Press [space] to close.",
-            "info_msg" : "No info. Press [space] to close.",
+            "error_msg" : "No error.",
+            "info_msg" : "No info.",
             "reader_item" : None,
             "reader_offset" : 0,
             "errorbox_offset" : 0,
@@ -426,6 +444,10 @@ Press [space] to close."""
         log.debug("Starting curses.")
         self.screen = Screen(self.backend.responses, self.callbacks)
         self.screen.refresh()
+
+        self.glog_handler = GraphicalLog(self.callbacks, self.screen)
+        rootlog = logging.getLogger()
+        rootlog.addHandler(self.glog_handler)
 
         item_tags = [ t.tag for t in self.vars["curtags"]]
         for tag in item_tags:
@@ -899,13 +921,13 @@ Press [space] to close."""
         self.eval_tags()
 
     def prot_except(self, exception):
-        self.set_var("error_msg", "%s" % exception)
+        log.error("%s" % exception)
 
     def prot_errors(self, errors):
-        self.set_var("error_msg", "%s" % errors)
+        log.error("%s" % errors)
 
     def prot_info(self, info):
-        self.set_var("info_msg", "%s" % info)
+        log.info("%s" % info)
 
     def eval_tags(self):
         prevtags = self.vars["curtags"]
@@ -933,7 +955,7 @@ Press [space] to close."""
         # value, which should always cause a fresh message display,
         # even if it's the same error as before.
 
-        if self.vars[tweak] != value or tweak in [ "error_msg", "info_msg"]:
+        if self.vars[tweak] != value:
 
             # If we're selecting or unselecting a story, then
             # we need to make sure it doesn't disappear.
@@ -958,11 +980,6 @@ Press [space] to close."""
                             { "filter-immune" : [ value.id ] })
 
             self.vars[tweak] = value
-
-            if tweak in [ "error_msg" ] and self.screen:
-                self.screen.add_window_callback(ErrorBox)
-            elif tweak in [ "info_msg" ] and self.screen:
-                self.screen.add_window_callback(InfoBox)
 
             call_hook("var_change", { tweak : value })
 
@@ -1133,11 +1150,9 @@ Press [space] to close."""
 
             # Turn signals into commands:
             if self.reconn:
-                log.info("Reconnected.")
                 self.reconn = False
                 priority.insert(0, ("INFO", self.reconnect_message))
             elif self.disconn:
-                log.info("Disconnected.")
                 self.disconn = False
                 priority.insert(0, ("EXCEPT", self.disconnect_message))
 
@@ -1197,6 +1212,8 @@ Press [space] to close."""
                     fullcmd += " " + args
 
                 if fullcmd in ["quit", "exit"]:
+                    rootlog = logging.getLogger()
+                    rootlog.removeHandler(self.glog_handler)
                     self.screen.exit()
                     self.backend.exit()
                     return
