@@ -234,3 +234,27 @@ class CommandHandler(PluginHandler):
             return (args, "")
         args = args.split(" ", 1)
         return (args[0], args[1])
+
+    # Pass-thru for arbitrary, unquoted strings without prompting.
+
+    def string_or_not(self, args):
+        return (True, args, None)
+
+    def named_key(self, args):
+        return self.input_key(args, lambda : self.callbacks["input"]("key: "))
+
+    def bind(self, key, cmd):
+        opt = self.get_opt_name()
+        c = self.callbacks["get_conf"]()
+        if not cmd:
+            if key in c[opt]["key"]:
+                log.info("[%s] %s = %s" % (opt, key, c[opt]["key"][key]))
+                return True
+            else:
+                return False
+        else:
+            log.info("Binding %s.%s to %s" % (opt, key, cmd))
+
+            c[opt]["key"][key] = cmd
+            self.callbacks["set_conf"](c)
+            return True

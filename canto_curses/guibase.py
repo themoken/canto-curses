@@ -250,3 +250,6 @@ class GuiBase(CommandHandler):
 
         if browser["text"]:
             self.callbacks["unpause_interface"]()
+
+    def named_key(self, args):
+        return self.input_key(args, lambda : self.callbacks["input"]("key: "))

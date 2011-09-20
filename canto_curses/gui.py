@@ -186,6 +186,8 @@ any state changes will be lost."""
 
             "main" : { "key" : self.validate_key },
 
+            "screen" : { "key" : self.validate_key },
+
             "color" :
             {
                 "defbg" : self.validate_color,
@@ -361,6 +363,11 @@ any state changes will be lost."""
                     "q" : "quit",
                     "\\" : "refresh",
                 }
+            },
+
+            "screen" :
+            {
+                "key" : {}
             },
 
             "color" :
@@ -1126,6 +1133,12 @@ any state changes will be lost."""
         if r:
             return r
         return self.screen.key(k)
+
+    @command_format([("key", "named_key"),("cmdstring","string_or_not")])
+    def cmd_bind(self, **kwargs):
+        if not self.screen.bind(kwargs["key"], kwargs["cmdstring"]) and\
+            not self.bind(kwargs["key"], kwargs["cmdstring"]):
+            log.info("%s is unbound." % (kwargs["key"],))
 
     def cmdsplit(self, cmd):
         r = escsplit(cmd, "&")

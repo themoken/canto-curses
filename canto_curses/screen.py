@@ -622,6 +622,12 @@ class Screen(CommandHandler):
             return self.focused.key(k)
         return None
 
+    def bind(self, key, cmd):
+        r = self.focused.bind(key, cmd)
+        if not r:
+            return CommandHandler.bind(self, key, cmd)
+        return r
+
     def input_thread(self):
         self.input_lock.acquire()
         while True:
