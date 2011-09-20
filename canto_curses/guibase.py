@@ -142,6 +142,11 @@ class GuiBase(CommandHandler):
 
         return r
 
+    # Pass-thru for arbitrary, unquoted strings without prompting.
+
+    def string_or_not(self, args):
+        return (True, args, None)
+
     # Pass-thru for arbitrary, unquoted strings.
     def string(self, args, prompt):
         if not args:

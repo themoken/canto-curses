@@ -801,19 +801,22 @@ class TagList(GuiBase):
 
             self.callbacks["set_tag_conf"](tag, tc)
 
-    def cmdstring(self, args):
-        return self.string(args, lambda : self.callbacks["input"]("command: "))
-
     def taglist_input_key(self, args):
         return self.input_key(args, lambda : self.callbacks["input"]("taglist key: "))
 
-    @command_format([("key", "taglist_input_key"),("cmdstring","cmdstring")])
+    @command_format([("key", "taglist_input_key"),("cmdstring","string_or_not")])
     def cmd_bind(self, **kwargs):
-        log.info("Binding taglist.%s to %s" % (kwargs["key"], kwargs["cmdstring"]))
-
         c = self.callbacks["get_conf"]()
-        c["taglist"]["key"][kwargs["key"]] = kwargs["cmdstring"]
-        self.callbacks["set_conf"](c)
+        if not kwargs["cmdstring"]:
+            if kwargs["key"] in c["taglist"]["key"]:
+                log.info("%s = %s" % (kwargs["key"], c["taglist"]["key"][kwargs["key"]]))
+            else:
+                log.info("%s is unbound." % (kwargs["key"],))
+        else:
+            log.info("Binding taglist.%s to %s" % (kwargs["key"], kwargs["cmdstring"]))
+
+            c["taglist"]["key"][kwargs["key"]] = kwargs["cmdstring"]
+            self.callbacks["set_conf"](c)
 
     def update_tag_lists(self):
         sel = self.callbacks["get_var"]("selected")
