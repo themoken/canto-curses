@@ -213,9 +213,7 @@ class GuiBase(CommandHandler):
 
         out = out.replace("%","\\%")
 
-        out += "\nPress [space] to continue\n"
-
-        self.callbacks["set_var"]("info_msg", out)
+        log.info(out)
 
     def _remote(self, args):
         args = "canto-remote " + args
