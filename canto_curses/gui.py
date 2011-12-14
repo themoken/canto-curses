@@ -68,7 +68,7 @@ class CantoCursesGui(CommandHandler):
         self.disconnect_message =\
 """ Disconnected!
 
-Please restart the daemon and use :reconnect.
+Please use :reconnect if the daemon is still running.
 
 Until reconnected, it will be impossible to fetch any information, and
 any state changes will be lost."""
