@@ -456,6 +456,22 @@ any state changes will be lost."""
         rootlog = logging.getLogger()
         rootlog.addHandler(self.glog_handler)
 
+        # We know we're going to want at least these attributes for
+        # all stories, as they're part of the fallback format string.
+
+        needed_attrs = [ "title", "canto-state", "link" ]
+
+        # Make sure we grab attributes needed for the story
+        # format and story format.
+
+        for attrlist in [ self.config["story"]["format_attrs"],\
+                self.config["taglist"]["search_attributes"] ]:
+            for sa in attrlist:
+                if sa not in needed_attrs:
+                    needed_attrs.append(sa)
+
+        self.backend.write("AUTOATTR", needed_attrs)
+
         item_tags = [ t.tag for t in self.vars["curtags"]]
         for tag in item_tags:
             self.backend.write("ITEMS", [ tag ])
@@ -794,7 +810,6 @@ any state changes will be lost."""
             call_hook("attributes", [ atts ])
 
     def prot_items(self, updates):
-        needed_attrs = {}
         unprotect = {"auto":[]}
 
         for tag in updates:
@@ -817,24 +832,6 @@ any state changes will be lost."""
                         adds.append(id)
 
                 have_tag.add_items(adds)
-                for id in adds:
-                    story = have_tag.get_id(id)
-
-                    # We *at least* need title, state, and link, these
-                    # will allow us to fall back on the default format string
-                    # which relies on these.
-
-                    needed_attrs[id] = [ "title", "canto-state", "link" ]
-
-                    # Make sure we grab attributes needed for the story
-                    # format and story format.
-
-                    for attrlist in [ self.config["story"]["format_attrs"],\
-                            self.config["taglist"]["search_attributes"] ]:
-                        for sa in attrlist:
-                            if sa not in needed_attrs[id]:
-                                needed_attrs[id].append(sa)
-
                 have_tag.remove_items(removes)
                 for id in removes:
                     unprotect["auto"].append(id)
@@ -846,9 +843,6 @@ any state changes will be lost."""
                 if self.config["update"]["style"] == "maintain":
                     log.debug("Re-ording items (update style maintain)")
                     have_tag.reorder(updates[tag])
-
-        if needed_attrs:
-            self.backend.write("ATTRIBUTES", needed_attrs)
 
         if unprotect["auto"]:
             self.backend.write("UNPROTECT", unprotect)
