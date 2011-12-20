@@ -17,7 +17,7 @@ from canto_next.format import escsplit
 from command import CommandHandler, command_format
 from story import DEFAULT_FSTRING
 from text import ErrorBox, InfoBox
-from screen import Screen
+from screen import Screen, color_translate
 from tag import Tag, DEFAULT_TAG_FSTRING
 
 from Queue import Empty
@@ -641,16 +641,7 @@ any state changes will be lost."""
             ival = int(val)
             return (True, ival)
         except:
-            # Alias pink and magenta
-            if val == "pink":
-                val = "magenta"
-
-            # Lookup defined curses colors.
-            for color_attr in dir(curses):
-                if not color_attr.startswith("COLOR_"):
-                    continue
-                if val.lower() == color_attr[6:].lower():
-                    return (True, getattr(curses, color_attr))
+            return color_translate(val)
 
         return (False, False)
 

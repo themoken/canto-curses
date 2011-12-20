@@ -673,3 +673,17 @@ class Screen(CommandHandler):
 
     def get_opt_name(self):
         return "screen"
+
+def color_translate(val):
+    # Alias pink and magenta
+    if val == "pink":
+        val = "magenta"
+
+    # Lookup defined curses colors.
+    for color_attr in dir(curses):
+        if not color_attr.startswith("COLOR_"):
+            continue
+        if val.lower() == color_attr[6:].lower():
+            return (True, getattr(curses, color_attr))
+
+    return (False, t)
