@@ -608,6 +608,96 @@ class Screen(CommandHandler):
 
         f.close()
 
+    def pair_error(self):
+        log.error("Color index must be between 0 and %d or 'deffg' or 'defbg'" %
+                curses.COLOR_PAIRS)
+
+    def pair(self, args):
+        t, c, r = self.single_string(args,\
+                lambda : self.input_callback("color index: "))
+        if not t:
+            return (False, None, None)
+
+        # NOTE: We subtract 1 and have the theme_trans setup like
+        # this because the user and the themes should see pairs
+        # enumerated from 1, where curses enumerates from 0.
+
+        try:
+            c = int(c)
+            if 0 < c <= curses.COLOR_PAIRS:
+                return (True, unicode(c - 1), r)
+            else:
+                self.pair_error()
+        except:
+            if c in ["deffg","defbg"]:
+                return (True, c, r)
+            theme_trans = {
+                    "main" : "0",
+                    "unread" : "1",
+                    "read" : "2",
+                    "image" : "3",
+                    "link" : "4",
+                    "quote" : "5",
+            }
+            if c in theme_trans:
+                return (True, theme_trans[c], r)
+            self.pair_error()
+        return (False, None, None)
+
+    def color(self, c, r):
+        try:
+            c = int(c)
+            if -1 <= c <= curses.COLORS:
+                return (True, c, r)
+            else:
+                log.error("Color must be between 0 and %d" %
+                        curses.COLORS)
+                return (False, None, None)
+        except:
+            ok, c = color_translate(c)
+            if not ok:
+                log.error("Unknown color string: %s" % c)
+                return (False, None, None)
+        return (True, c, r)
+
+    def color_int(self, args):
+        t, c, r = self.single_string(args,\
+                lambda : self.input_callback("color: "))
+        if not t:
+            return (False, None, None)
+        return self.color(c, r)
+
+    def opt_color_int(self, args):
+        if not args:
+            return (True, None, "")
+        return self.color_int(args)
+
+    @command_format([("idx", "pair"),("fg","color_int"),("bg","opt_color_int")])
+    def cmd_color(self, **kwargs):
+        conf = self.callbacks["get_conf"]()
+        idx = kwargs["idx"]
+
+        fg = None
+        bg = None
+
+        if type(conf["color"][idx]) == dict:
+            fg = conf["color"][idx]["fg"]
+            bg = conf["color"][idx]["bg"]
+        else:
+            fg = conf["color"][idx]
+
+        fg = kwargs["fg"]
+        if kwargs["bg"]:
+            bg = kwargs["bg"]
+
+        # Deffg and defbg obviously only have one color.
+        if idx in [ "deffg", "deffg" ] or not bg:
+            conf["color"][idx] = fg
+        else:
+            conf["color"][idx] = { "fg" : fg, "bg" : bg }
+
+        self.callbacks["set_conf"](conf)
+
     # Pass a command to focused window:
 
     def command(self, cmd):
