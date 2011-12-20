@@ -7,10 +7,13 @@
 #   published by the Free Software Foundation.
 
 from canto_next.plugins import PluginHandler, Plugin, add_arg_transform
+from canto_next.encoding import encoder, decoder
 
 import traceback
 import logging
 import curses
+import shlex
+import pipes
 
 log = logging.getLogger("COMMAND")
 
@@ -234,6 +237,23 @@ class CommandHandler(PluginHandler):
             return (args, "")
         args = args.split(" ", 1)
         return (args[0], args[1])
+
+    # Grab a single string, potentially quoted or space delimited and pass the
+    # rest.
+
+    def single_string(self, args, prompt):
+        if not args:
+            args = prompt()
+
+        r = [ decoder(s) for s in shlex.split(encoder(args)) ]
+
+        # I wish shlex.split took a max so I didn't have to zip them up
+        # again with pipes.quote.
+
+        if r:
+            return (True, r[0],\
+                    " ".join([pipes.quote(s) for s in r[1:]]))
+        return (True, r, None)
 
     # Pass-thru for arbitrary, unquoted strings without prompting.
 
