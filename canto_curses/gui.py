@@ -53,6 +53,9 @@ class GraphicalLog(logging.Handler):
 class GuiPlugin(Plugin):
     pass
 
+CONN_NEED_NOTIFY = 1
+CONN_NOTIFIED = 2
+
 class CantoCursesGui(CommandHandler):
     def __init__(self, backend):
         CommandHandler.__init__(self)
@@ -70,15 +73,14 @@ class CantoCursesGui(CommandHandler):
 
 Please use :reconnect if the daemon is still running.
 
-Until reconnected, it will be impossible to fetch any information, and
-any state changes will be lost."""
+Until reconnected, it will be impossible to fetch any information, and any state changes will be lost."""
 
         self.reconnect_message =\
 """ Successfully Reconnected!"""
 
         # Asynchronous notification flags
-        self.disconn = False
-        self.reconn = False
+        self.disconn = 0
+        self.reconn = 0
         self.ticked = False
         self.winched = False
 
@@ -119,7 +121,7 @@ any state changes will be lost."""
             "get_tag_opt" : self.get_tag_opt,
             "set_tag_opt" : self.set_tag_opt,
             "switch_tags" : self.switch_tags,
-            "write" : self.backend.write
+            "write" : self.write
         }
 
         self.keys = {
@@ -414,9 +416,13 @@ any state changes will be lost."""
                 "sort" : "transform",
         }
 
+        self.daemon_init()
+
+    def daemon_init(self):
+
         # Make sure that we're not mismatching versions.
 
-        self.backend.write("VERSION", u"")
+        self.write("VERSION", u"")
         r = self.wait_response("VERSION")
         if r[1] != COMPATIBLE_VERSION:
             s = "Incompatible daemon version (%s) detected! Expected: %s" %\
@@ -428,16 +434,16 @@ any state changes will be lost."""
             log.debug("Got compatible daemon version.")
 
         # Start watching for new and deleted tags.
-        self.backend.write("WATCHNEWTAGS", [])
-        self.backend.write("WATCHDELTAGS", [])
+        self.write("WATCHNEWTAGS", [])
+        self.write("WATCHDELTAGS", [])
 
-        self.backend.write("LISTTAGS", u"")
+        self.write("LISTTAGS", u"")
         r = self.wait_response("LISTTAGS")
 
         self.stub_tagconfigs(r[1])
 
-        self.backend.write("WATCHCONFIGS", u"")
-        self.backend.write("CONFIGS", [])
+        self.write("WATCHCONFIGS", u"")
+        self.write("CONFIGS", [])
         self.prot_configs(self.wait_response("CONFIGS")[1])
 
         self.prot_newtags(r[1])
@@ -470,14 +476,14 @@ any state changes will be lost."""
                 if sa not in needed_attrs:
                     needed_attrs.append(sa)
 
-        self.backend.write("AUTOATTR", needed_attrs)
+        self.write("AUTOATTR", needed_attrs)
 
         item_tags = [ t.tag for t in self.vars["curtags"]]
         for tag in item_tags:
-            self.backend.write("ITEMS", [ tag ])
+            self.write("ITEMS", [ tag ])
 
         # Start watching all given tags.
-        self.backend.write("WATCHTAGS", item_tags)
+        self.write("WATCHTAGS", item_tags)
 
         # Holster for future updated tags.
         self.updates = []
@@ -491,11 +497,17 @@ any state changes will be lost."""
             else:
                 log.debug("waiting: %s != %s" % (r[0], cmd))
 
+    def write(self, cmd, args):
+        if not self.disconn:
+            self.backend.write(cmd, args)
+        else:
+            log.debug("Disconnected. Discarding %s - %s" % (cmd, args))
+
     def disconnected(self):
-        self.disconn = True
+        self.disconn = CONN_NEED_NOTIFY
 
     def reconnected(self):
-        self.reconn = True
+        self.reconn = CONN_NEED_NOTIFY
 
     def validate_uint(self, val, d):
         if type(val) == int and val >= 0:
@@ -757,12 +769,10 @@ any state changes will be lost."""
                     call_hook("tag_opt_change", [ { tag : changes } ])
 
                     if write:
-                        self.backend.write("SETCONFIGS",\
-                                { "tags" : { tag : changes }})
+                        self.write("SETCONFIGS", { "tags" : { tag : changes }})
 
                 if deletions and write:
-                    self.backend.write("DELCONFIGS",\
-                            { "tags" : { tag : deletions }})
+                    self.write("DELCONFIGS", { "tags" : { tag : deletions }})
 
         if "CantoCurses" in given:
             new_config = given["CantoCurses"]
@@ -776,12 +786,10 @@ any state changes will be lost."""
                 call_hook("opt_change", [ changes ])
 
                 if write:
-                    self.backend.write("SETCONFIGS",\
-                            { "CantoCurses" : changes })
+                    self.write("SETCONFIGS", { "CantoCurses" : changes })
 
             if deletions and write:
-                self.backend.write("DELCONFIGS",\
-                        { "CantoCurses" : deletions })
+                self.write("DELCONFIGS", { "CantoCurses" : deletions })
 
     def prot_attributes(self, d):
         atts = {}
@@ -836,7 +844,7 @@ any state changes will be lost."""
                     have_tag.reorder(updates[tag])
 
         if unprotect["auto"]:
-            self.backend.write("UNPROTECT", unprotect)
+            self.write("UNPROTECT", unprotect)
 
     def prot_tagchange(self, tag):
         if tag not in self.updates:
@@ -856,7 +864,12 @@ any state changes will be lost."""
             # Create initial Tag objects so alltags is properly populated.
             # This allows us to properly validate tagorder.
 
-            Tag(tag, self.callbacks)
+            # We check that one doesn't already exist so that, if we're
+            # reconnecting, we don't end up with multiple Tag objects for each
+            # tag.
+
+            if tag not in [ t.tag for t in self.vars["alltags"] ]:
+                Tag(tag, self.callbacks)
 
     # Process new tags, early flag tells us whether we should bother to
     # propagate tagorder changes and eval tags or if we just want to create Tag
@@ -963,13 +976,12 @@ any state changes will be lost."""
                     # Set an additional protection, filter-immune so hardened
                     # filters won't eliminate it.
 
-                    self.backend.write("UNPROTECT",\
+                    self.write("UNPROTECT",\
                             { "filter-immune" : [ self.vars[tweak].id ] })
 
                 if value and hasattr(value, "id"):
                     self.vars["protected_ids"].append(value.id)
-                    self.backend.write("PROTECT",\
-                            { "filter-immune" : [ value.id ] })
+                    self.write("PROTECT", { "filter-immune" : [ value.id ] })
 
             self.vars[tweak] = value
 
@@ -1073,13 +1085,13 @@ any state changes will be lost."""
     @command_format([("transform","transform")])
     def cmd_transform(self, **kwargs):
         d = { "defaults" : { "global_transform" : kwargs["transform"] } }
-        self.backend.write("SETCONFIGS", d)
+        self.write("SETCONFIGS", d)
         self._refresh()
 
     # Setup a temporary, per socket transform.
     @command_format([("transform","transform")])
     def cmd_temp_transform(self, **kwargs):
-        self.backend.write("TRANSFORM", kwargs["transform"])
+        self.write("TRANSFORM", kwargs["transform"])
         self._refresh()
 
     @command_format([])
@@ -1093,7 +1105,7 @@ any state changes will be lost."""
     def _refresh(self):
         for tag in self.vars["curtags"]:
             tag.reset()
-            self.backend.write("ITEMS", [ tag.tag ])
+            self.write("ITEMS", [ tag.tag ])
 
     def winch(self):
         self.winched = True
@@ -1105,7 +1117,7 @@ any state changes will be lost."""
         self.ticked = False
         if self.update_interval <= 0:
             if self.updates:
-                self.backend.write("ITEMS", self.updates)
+                self.write("ITEMS", self.updates)
 
             self.update_interval =\
                     self.config["update"]["auto"]["interval"]
@@ -1147,13 +1159,15 @@ any state changes will be lost."""
                 self.do_tick()
 
             # Turn signals into commands:
-            if self.reconn:
-                self.reconn = False
+            if self.reconn == CONN_NEED_NOTIFY:
                 priority.insert(0, ("INFO", self.reconnect_message))
-            elif self.disconn:
-                self.disconn = False
+                self.disconn = 0
+                self.reconn = CONN_NOTIFIED
+                self.daemon_init()
+            elif self.disconn == CONN_NEED_NOTIFY:
                 priority.insert(0, ("EXCEPT", self.disconnect_message))
-
+                self.reconn = 0
+                self.disconn = CONN_NOTIFIED
             if self.winched:
                 self.winched = False
                 # CMD because it's handled lower, by Screen
