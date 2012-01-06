@@ -242,6 +242,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
                     "d" : "toggle reader.show_description",
                     "l" : "toggle reader.enumerate_links",
                     "g" : "goto",
+                    "f" : "fetch",
                     "down" : "scroll-down",
                     "up" : "scroll-up",
                     "npage" : "page-down",
@@ -1226,6 +1227,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 if fullcmd in ["quit", "exit"]:
                     rootlog = logging.getLogger()
                     rootlog.removeHandler(self.glog_handler)
+                    call_hook("exit", [])
                     self.screen.exit()
                     self.backend.exit()
                     return

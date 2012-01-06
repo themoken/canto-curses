@@ -15,6 +15,7 @@ log = logging.getLogger("COMMON")
 
 import subprocess
 import tempfile
+import urllib2
 import shlex
 import sys
 import os
@@ -28,6 +29,9 @@ class GuiBase(CommandHandler):
 
         self.plugin_class = BasePlugin
         self.update_plugin_lookups()
+
+        self.tempdirs = []
+        self.tempfiles = []
 
         self.editor = None
 
@@ -230,6 +234,63 @@ class GuiBase(CommandHandler):
 
         if browser["text"]:
             self.callbacks["unpause_interface"]()
+
+    # Like goto, except download the file to /tmp before executing browser.
+
+    def _fetch(self, urls):
+        for url in urls:
+            # Get a path (sans query strings, etc.) for the URL
+            path = urllib2.urlparse.urlparse(url).path
+
+            # Return just the basename of the path (no directories)
+            fname = os.path.basename(path)
+
+            # Grab a temporary directory. This allows us to create a file with
+            # an unperturbed filename so scripts can freely use regex /
+            # extension matching in addition to mimetype detection.
+
+            tmpdir = tempfile.mkdtemp(prefix="canto-")
+            tmpnam = tmpdir + '/' + fname
+
+            tmp = open(tmpnam, 'w+b')
+
+            # Grab the HTTP info / prepare to read.
+            response = urllib2.urlopen(url)
+
+            # Grab in kilobyte chunks to avoid wasting memory on something
+            # that's going to be immediately written to disk.
+
+            while True:
+                r = response.read(1024)
+                if not r:
+                    break
+                tmp.write(r)
+
+            response.close()
+            tmp.close()
+
+            # Keep track of tmpdirs to cleanup later.
+
+            self.tempdirs.append(tmpdir)
+            self.tempfiles.append(tmpnam)
+
+            # Invoke browser on tempfile.
+
+            self._goto([tmp.name])
+
+    def clean_tempfiles(self):
+        log.debug("Cleaning up tempfiles...")
+        for tf in self.tempfiles:
+            log.debug("\t%s" % tf)
+            os.unlink(tf)
+        self.tempfiles = []
+
+        for td in self.tempdirs:
+            log.debug("\t%s" % td)
+            os.rmdir(td)
+        self.tempdirs = []
+
+        log.debug("Done!")
 
     def named_key(self, args):
         return self.input_key(args, lambda : self.callbacks["input"]("key: "))

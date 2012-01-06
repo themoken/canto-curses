@@ -34,6 +34,7 @@ class Reader(TextBox):
 
         self.quote_rgx = re.compile(u"[\\\"](.*?)[\\\"]")
         on_hook("opt_change", self.on_opt_change)
+        on_hook("exit", self.clean_tempfiles)
 
     def die(self):
         remove_hook("opt_change", self.on_opt_change)
@@ -122,9 +123,15 @@ class Reader(TextBox):
 
     @command_format([("links", "listof_links")])
     def cmd_goto(self, **kwargs):
-        # link = ( type, url, text ) 
+        # link = ( type, url, text )
         links = [ l[1] for l in kwargs["links"] ]
         self._goto(links)
+
+    @command_format([("links", "listof_links")])
+    def cmd_fetch(self, **kwargs):
+        # link = ( type, url, text )
+        links = [ l[1] for l in kwargs["links"] ]
+        self._fetch(links)
 
     def get_opt_name(self):
         return "reader"
