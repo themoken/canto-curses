@@ -80,8 +80,33 @@ class Reader(TextBox):
                 s += "%BWaiting for content...%b\n"
                 on_hook("attributes", self.on_attributes)
             else:
+
+                # Add enclosures before HTML parsing so that we can add a link
+                # and have the remaining link logic pick it up as normal.
+
+                extra_content = ""
+
+                if reader_conf['show_enclosures']:
+                    for enc in sel.content["enclosures"]:
+                        # No point in enclosures without links
+                        if "href" not in enc:
+                            continue
+
+                        if "type" not in enc:
+                            enc["type"] = "unknown"
+
+                        if not extra_content:
+                            extra_content = "\n\n"
+
+                        extra_content += "<a href=\""
+                        extra_content += enc["href"]
+                        extra_content += "\">("
+                        extra_content += enc["type"]
+                        extra_content += ")</a>\n"
+
                 content, links =\
-                        htmlparser.convert(sel.content["description"])
+                        htmlparser.convert(sel.content["description"] +\
+                            extra_content)
 
                 # 0 always is the mainlink, append other links
                 # to the list.

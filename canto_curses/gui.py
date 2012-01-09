@@ -152,7 +152,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "window" : self.validate_window,
                 "key" : self.validate_key,
                 "enumerate_links" : self.validate_bool,
-                "show_description" : self.validate_bool
+                "show_description" : self.validate_bool,
+                "show_enclosures" : self.validate_bool,
             },
 
             "taglist" :
@@ -236,6 +237,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
                 "enumerate_links" : False,
                 "show_description" : True,
+                "show_enclosures" : True,
                 "key" :
                 {
                     "space" : "destroy",
@@ -466,7 +468,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
         # We know we're going to want at least these attributes for
         # all stories, as they're part of the fallback format string.
 
-        needed_attrs = [ "title", "canto-state", "link" ]
+        needed_attrs = [ "title", "canto-state", "link", "enclosures" ]
 
         # Make sure we grab attributes needed for the story
         # format and story format.
