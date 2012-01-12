@@ -34,7 +34,6 @@ class Reader(TextBox):
 
         self.quote_rgx = re.compile(u"[\\\"](.*?)[\\\"]")
         on_hook("opt_change", self.on_opt_change)
-        on_hook("exit", self.clean_tempfiles)
 
     def die(self):
         remove_hook("opt_change", self.on_opt_change)

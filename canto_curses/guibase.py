@@ -6,9 +6,12 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from command import CommandHandler, command_format
+from canto_next.hooks import call_hook, on_hook
 from canto_next.encoding import encoder, decoder
 from canto_next.plugins import Plugin
+
+from command import CommandHandler, command_format
+
 import logging
 
 log = logging.getLogger("COMMON")
@@ -29,9 +32,6 @@ class GuiBase(CommandHandler):
 
         self.plugin_class = BasePlugin
         self.update_plugin_lookups()
-
-        self.tempdirs = []
-        self.tempfiles = []
 
         self.editor = None
 
@@ -81,29 +81,71 @@ class GuiBase(CommandHandler):
         self.callbacks["set_tag_opt"](tag, option, t)
         return r
 
-    def _fork(self, path, href, text):
+    def _fork(self, path, href, text, fetch=False):
+
+        # Prepare temporary files, if fetch.
+
+        if fetch:
+            # Get a path (sans query strings, etc.) for the URL
+            tmppath = urllib2.urlparse.urlparse(href).path
+
+            # Return just the basename of the path (no directories)
+            fname = os.path.basename(tmppath)
+
+            # Grab a temporary directory. This allows us to create a file with
+            # an unperturbed filename so scripts can freely use regex /
+            # extension matching in addition to mimetype detection.
+
+            tmpdir = tempfile.mkdtemp(prefix="canto-")
+            tmpnam = tmpdir + '/' + fname
+
+            on_hook("exit", lambda : (os.unlink(tmpnam)))
+            on_hook("exit", lambda : (os.rmdir(tmpdir)))
+
         pid = os.fork()
-        if not pid :
-            # A lot of programs don't appreciate
-            # having their fds closed, so instead
-            # we dup them to /dev/null.
 
-            fd = os.open("/dev/null", os.O_RDWR)
-            os.dup2(fd, sys.stderr.fileno())
+        # Parents can now bail.
+        if pid:
+            return pid
 
-            if not text:
-                os.setpgid(os.getpid(), os.getpid())
-                os.dup2(fd, sys.stdout.fileno())
+        if fetch:
+            tmp = open(tmpnam, 'w+b')
 
-            path = path.replace("%u", href)
-            path = encoder(path)
+            # Grab the HTTP info / prepare to read.
+            response = urllib2.urlopen(href)
 
-            os.execv("/bin/sh", ["/bin/sh", "-c", path])
+            # Grab in kilobyte chunks to avoid wasting memory on something
+            # that's going to be immediately written to disk.
 
-            # Just in case.
-            sys.exit(0)
+            while True:
+                r = response.read(1024)
+                if not r:
+                    break
+                tmp.write(r)
 
-        return pid
+            response.close()
+            tmp.close()
+
+            href = tmpnam
+
+        # A lot of programs don't appreciate
+        # having their fds closed, so instead
+        # we dup them to /dev/null.
+
+        fd = os.open("/dev/null", os.O_RDWR)
+        os.dup2(fd, sys.stderr.fileno())
+
+        if not text:
+            os.setpgid(os.getpid(), os.getpid())
+            os.dup2(fd, sys.stdout.fileno())
+
+        path = path.replace("%u", href)
+        path = encoder(path)
+
+        os.execv("/bin/sh", ["/bin/sh", "-c", path])
+
+        # Just in case.
+        sys.exit(0)
 
     def _edit(self, text):
         if not self.editor:
@@ -217,7 +259,7 @@ class GuiBase(CommandHandler):
     def cmd_remote(self, **kwargs):
         self._remote(kwargs["remote_args"])
 
-    def _goto(self, urls):
+    def _goto(self, urls, fetch=False):
         browser = self.callbacks["get_conf"]()["browser"]
 
         if not browser["path"]:
@@ -228,7 +270,7 @@ class GuiBase(CommandHandler):
             self.callbacks["pause_interface"]()
 
         for url in urls:
-            pid = self._fork(browser["path"], url, browser["text"])
+            pid = self._fork(browser["path"], url, browser["text"], fetch)
             if browser["text"]:
                 os.waitpid(pid, 0)
 
@@ -238,59 +280,7 @@ class GuiBase(CommandHandler):
     # Like goto, except download the file to /tmp before executing browser.
 
     def _fetch(self, urls):
-        for url in urls:
-            # Get a path (sans query strings, etc.) for the URL
-            path = urllib2.urlparse.urlparse(url).path
-
-            # Return just the basename of the path (no directories)
-            fname = os.path.basename(path)
-
-            # Grab a temporary directory. This allows us to create a file with
-            # an unperturbed filename so scripts can freely use regex /
-            # extension matching in addition to mimetype detection.
-
-            tmpdir = tempfile.mkdtemp(prefix="canto-")
-            tmpnam = tmpdir + '/' + fname
-
-            tmp = open(tmpnam, 'w+b')
-
-            # Grab the HTTP info / prepare to read.
-            response = urllib2.urlopen(url)
-
-            # Grab in kilobyte chunks to avoid wasting memory on something
-            # that's going to be immediately written to disk.
-
-            while True:
-                r = response.read(1024)
-                if not r:
-                    break
-                tmp.write(r)
-
-            response.close()
-            tmp.close()
-
-            # Keep track of tmpdirs to cleanup later.
-
-            self.tempdirs.append(tmpdir)
-            self.tempfiles.append(tmpnam)
-
-            # Invoke browser on tempfile.
-
-            self._goto([tmp.name])
-
-    def clean_tempfiles(self):
-        log.debug("Cleaning up tempfiles...")
-        for tf in self.tempfiles:
-            log.debug("\t%s" % tf)
-            os.unlink(tf)
-        self.tempfiles = []
-
-        for td in self.tempdirs:
-            log.debug("\t%s" % td)
-            os.rmdir(td)
-        self.tempdirs = []
-
-        log.debug("Done!")
+        self._goto(urls, True)
 
     def named_key(self, args):
         return self.input_key(args, lambda : self.callbacks["input"]("key: "))
