@@ -151,6 +151,19 @@ class CantoCurses(CantoClient):
     def sigusr1(self, a = None, b = None):
         pass
 
+    def child(self, a = None, b = None):
+        try:
+            while True:
+                pid, status = os.waitpid(-1, os.WNOHANG)
+                if pid == 0:
+                    break
+                log.debug("CHLD %d has died: %d" % (pid, status))
+        except Exception, e:
+            if e.errno == errno.ECHILD:
+                log.debug("CHLD no children?")
+            else:
+                raise
+
     def disconnected(self, conn):
         self.response_alive = False
         self.gui.disconnected()
@@ -177,6 +190,7 @@ class CantoCurses(CantoClient):
         signal.signal(signal.SIGUSR1, self.sigusr1)
         signal.signal(signal.SIGWINCH, self.winch)
         signal.signal(signal.SIGALRM, self.alarm)
+        signal.signal(signal.SIGCHLD, self.child)
         signal.alarm(1)
 
         # Block on signals.
