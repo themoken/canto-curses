@@ -259,22 +259,6 @@ class CantoCurses(CantoClient):
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
 
-        self.write("PING", "")
-
-        # Exploit the fact that requests are made in order and PING/PONG to
-        # ensure all previous traffic is done. Strictly this is unnecessary, but
-        # perhaps useful to know the daemon state on the way out.
-
-        while True:
-            if not self.responses.empty():
-                r = self.responses.get()
-                log.debug("r = %s" % (r, ))
-                if r[0] == "PONG":
-                    break
-            if not self.response_alive:
-                log.debug("Unabled to sync, connection closed.")
-                break
-
         self.response_alive = False
 
         log.info("Exiting.")
