@@ -23,10 +23,12 @@ from tag import Tag, DEFAULT_TAG_FSTRING
 from Queue import Empty
 import logging
 import curses
+import pprint
 import sys
 import re
 
 log = logging.getLogger("GUI")
+pp = pprint.PrettyPrinter(indent=4)
 
 class GraphicalLog(logging.Handler):
     def __init__(self, callbacks, screen):
@@ -451,8 +453,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
         self.prot_newtags(r[1])
 
-        log.debug("FINAL CONFIG:\n%s" % self.config)
-        log.debug("FINAL TAG CONFIG:\n%s" % self.tag_config)
+        log.debug("FINAL CONFIG:\n%s" % pp.pformat(self.config))
+        log.debug("FINAL TAG CONFIG:\n%s" % pp.pformat(self.tag_config))
 
         # We've got the config, and the tags, go ahead and
         # fire up curses.
@@ -563,17 +565,21 @@ Until reconnected, it will be impossible to fetch any information, and any state
         # Ensure all settings exist
         for setting in [ "border", "maxwidth", "maxheight", "align", "float" ]:
             if setting not in val:
-                return (False, False)
+                log.debug("Couldn't find %s setting" % setting)
+                val[setting] = d[setting]
 
         # Ensure all settings are in their correct range
         if val["border"] not in ["full", "none", "smart"]:
+            log.error("border setting must = full OR none OR smart")
             return (False, False)
 
         if val["float"] not in [ True, False ]:
+            log.error("float must be True or False")
             return (False, False)
 
         for int_setting in ["maxwidth", "maxheight" ]:
             if type(val[int_setting]) != int or val[int_setting] < 0:
+                log.error("%s must be a positive integer" % int_setting)
                 return (False, False)
 
         float_aligns = [ "topleft", "topright", "center", "neutral",\
@@ -583,9 +589,11 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
         if val["float"]:
             if val["align"] not in float_aligns:
+                log.error("%s is not a valid alignment for a floating window" % val["align"])
                 return (False, False)
         else:
             if val["align"] not in tile_aligns:
+                log.error("%s is not a valid alignment for a tiled window" % val["align"])
                 return (False, False)
 
         return (True, val)
