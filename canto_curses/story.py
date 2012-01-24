@@ -53,15 +53,14 @@ class Story(PluginHandler):
         self.offset = 0
         self.rel_offset = 0
 
-        # Status of hooks
-        self.att_queued = False
-
         on_hook("opt_change", self.on_opt_change)
         on_hook("tag_opt_change", self.on_tag_opt_change)
+        on_hook("attributes", self.on_attributes)
 
     def die(self):
         remove_hook("opt_change", self.on_opt_change)
         remove_hook("tag_opt_change", self.on_tag_opt_change)
+        remove_hook("attributes", self.on_attributes)
 
     def __eq__(self, other):
         if not other:
@@ -72,9 +71,6 @@ class Story(PluginHandler):
 
     def on_attributes(self, attributes):
         if self in attributes:
-            remove_hook("attributes", self.on_attributes)
-            self.att_queued = False
-
             # Don't bother checking attributes. If we're still
             # lacking, need_redraw will re-enable this hook
 
@@ -93,7 +89,6 @@ class Story(PluginHandler):
                 log.debug("%s needs: %s" % (self.id, needed_attrs))
                 self.callbacks["write"]("ATTRIBUTES",\
                         { self.id : needed_attrs })
-                self.queue_need_attributes()
 
         if "enumerated" in config["story"] or "format" in config["story"]:
             self.need_redraw()
@@ -102,14 +97,6 @@ class Story(PluginHandler):
         tagname = self.callbacks["get_tag_name"]()
         if tagname in config and "enumerated" in config[tagname]:
             self.need_redraw()
-
-    # Simple hook wrapper to make sure we don't have multiple
-    # on_attribute hooks registered.
-
-    def queue_need_attributes(self):
-        if not self.att_queued:
-            on_hook("attributes", self.on_attributes)
-            self.att_queued = True
 
     # Add / remove state. Return True if an actual change, False otherwise.
 
@@ -206,9 +193,6 @@ class Story(PluginHandler):
                 self.pad = curses.newpad(1, width)
                 self.pad.addstr("Waiting on content...")
                 self.lines = 1
-
-                # Sign up for notification
-                self.queue_need_attributes()
                 return
 
         # Do we need the relative enumerated form?
