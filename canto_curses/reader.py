@@ -37,8 +37,6 @@ class Reader(TextBox):
 
     def die(self):
         remove_hook("opt_change", self.on_opt_change)
-        self.callbacks["set_var"]("reader_item", None)
-        self.callbacks["set_var"]("reader_offset", 0)
 
     def on_opt_change(self, change):
         if "reader" not in change:
