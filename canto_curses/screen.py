@@ -702,7 +702,8 @@ class Screen(CommandHandler):
 
     def command(self, cmd):
         if not CommandHandler.command(self, cmd) and self.focused:
-            self.focused.command(cmd)
+            return self.focused.command(cmd)
+        return None
 
     def key(self, k):
         r = CommandHandler.key(self, k)

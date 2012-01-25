@@ -34,8 +34,7 @@ def command_format(types):
 
                 valid, result, rem = validator(rem.lstrip())
                 if not valid:
-                    log.error("Couldn't properly parse %s" % kwargs["args"])
-                    return
+                    return False
 
                 realkwargs[kw] = result
 
@@ -73,14 +72,18 @@ class CommandHandler(PluginHandler):
         if hasattr(self, attr):
             try:
                 func = getattr(self, attr)
-                func(self, args = args)
+                r = func(self, args = args)
+                # Consider returning None as OK
+                if r == None:
+                    return True
+                return r
             except Exception, e:
                 tb = traceback.format_exc(e)
                 log.error("Exception running command %s" % command)
                 log.error("\n" + "".join(tb))
                 log.error("Continuing...")
 
-        return False
+        return None
 
     # Verify a string is a possible key combination.
 

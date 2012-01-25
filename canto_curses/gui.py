@@ -1164,6 +1164,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
         # actually break down into multiple actions.
 
         priority = []
+        command_string = []
 
         while True:
             if self.ticked:
@@ -1187,6 +1188,9 @@ Until reconnected, it will be impossible to fetch any information, and any state
             if priority:
                 cmd = priority[0]
                 priority = priority[1:]
+            elif command_string:
+                cmd = command_string[0]
+                command_string = command_string[1:]
             else:
                 try:
                     cmd = self.backend.responses.get(True, 0.1)
@@ -1216,7 +1220,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
                 if len(cmds) > 1:
                     log.debug("single command split into: %s" % cmds)
-                    priority.extend([("CMD", c) for c in cmds])
+                    command_string.extend([("CMD", c) for c in cmds])
                     continue
 
                 if " " in cmd[1]:
@@ -1243,8 +1247,14 @@ Until reconnected, it will be impossible to fetch any information, and any state
                     return
 
                 # Variable Operations
-                if not self.command(fullcmd):
-                    self.screen.command(fullcmd)
+                r = self.command(fullcmd)
+                if r == None:
+                    r = self.screen.command(fullcmd)
+
+                if r == False:
+                    log.debug("Command string canceled: %s" %\
+                            (command_string,))
+                    command_string = []
             else:
                 protfunc = "prot_" + cmd[0].lower()
                 if hasattr(self, protfunc):
