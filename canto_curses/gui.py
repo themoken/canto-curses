@@ -1049,6 +1049,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
     def opt(self, args):
         t, r = self._first_term(args,
                 lambda : self.screen.input_callback("opt: "))
+        if not t:
+            return (False, None, None)
 
         # Ensure that that option exists. We just use self.config because we
         # know we're not changing any values.

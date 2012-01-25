@@ -522,6 +522,8 @@ class Screen(CommandHandler):
         if not args:
             return (True, 0, "")
         t, r = self._first_term(args, None)
+        if not t:
+            return (False, None, None)
         try:
             t = int(t)
         except:

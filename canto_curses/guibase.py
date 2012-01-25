@@ -210,7 +210,8 @@ class GuiBase(CommandHandler):
     def one_opt(self, args):
         t, r = self._first_term(args,
                 lambda : self.input("opt: "))
-
+        if not t:
+            return (False, None, None)
         try:
             self.callbacks["get_opt"](t)
         except:

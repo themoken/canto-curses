@@ -101,7 +101,8 @@ class CommandHandler(PluginHandler):
 
     def input_key(self, args, prompt):
         term, rem = self._first_term(args, prompt)
-
+        if not term:
+            return (False, None, None)
         if self._input_key(term):
             return (True, term, rem)
         return (False, None, None)
@@ -222,6 +223,8 @@ class CommandHandler(PluginHandler):
 
     def _int(self, args, curint, maxint, prompt):
         t, r = self._first_term(args, prompt)
+        if not t:
+            return (None, "")
         try:
             t = self._convert_special(t, curint, maxint)
         except:
@@ -234,12 +237,12 @@ class CommandHandler(PluginHandler):
             args = prompt().split(" ")
             if len(args) > 1:
                 log.error("Ignoring extra characters: %s" % " ".join(args[1:]))
-            return (args[0], "")
+            return (args[0].rstrip(), "")
 
         if " " not in args:
-            return (args, "")
+            return (args.rstrip(), "")
         args = args.split(" ", 1)
-        return (args[0], args[1])
+        return (args[0].rstrip(), args[1])
 
     # Grab a single string, potentially quoted or space delimited and pass the
     # rest.

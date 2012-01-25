@@ -291,6 +291,8 @@ class TagList(GuiBase):
 
     def state(self, args):
         t, r = self._first_term(args, lambda : self.input("state: "))
+        if not t:
+            return (False, None, None)
         return (True, t, r)
 
     def item(self, args):
@@ -301,7 +303,7 @@ class TagList(GuiBase):
         else:
             curint = 0
 
-        t, r = self._int(args, curint, self.last_item.offset,
+        t, r = self._int(args, curint, self.last_story.offset,
                 lambda : self.eprompt("item: "))
 
         if t != None:
