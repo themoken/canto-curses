@@ -155,5 +155,10 @@ class Reader(TextBox):
         links = [ l[1] for l in kwargs["links"] ]
         self._fetch(links)
 
+    @command_format([])
+    def cmd_destroy(self, **kwargs):
+        self.callbacks["set_var"]("reader_item", None)
+        self.callbacks["die"](self)
+
     def get_opt_name(self):
         return "reader"
