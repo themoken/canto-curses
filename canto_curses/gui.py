@@ -1150,6 +1150,19 @@ Until reconnected, it will be impossible to fetch any information, and any state
             not self.bind(kwargs["key"], kwargs["cmdstring"]):
             log.info("%s is unbound." % (kwargs["key"],))
 
+    def cmdescape(self, cmd):
+        escaped = False
+        r = ""
+        for c in cmd:
+            if escaped:
+                r += c
+                escaped = False
+            elif c == "\\":
+                escaped = True
+            else:
+                r += c
+        return r.rstrip()
+
     def cmdsplit(self, cmd):
         r = escsplit(cmd, "&")
 
@@ -1240,6 +1253,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 if args:
                     fullcmd += " " + args
 
+                fullcmd = self.cmdescape(fullcmd)
+
                 if fullcmd in ["quit", "exit"]:
                     rootlog = logging.getLogger()
                     rootlog.removeHandler(self.glog_handler)
@@ -1248,7 +1263,6 @@ Until reconnected, it will be impossible to fetch any information, and any state
                     self.backend.exit()
                     return
 
-                # Variable Operations
                 r = self.command(fullcmd)
                 if r == None:
                     r = self.screen.command(fullcmd)
