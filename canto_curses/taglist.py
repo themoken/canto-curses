@@ -266,6 +266,7 @@ class TagList(GuiBase):
 
     def listof_tags(self, args):
         s = self.callbacks["get_var"]("selected")
+        visible_tags = self.callbacks["get_var"]("taglist_visible_tags")
         got_tag = None
 
         if s:
@@ -279,14 +280,13 @@ class TagList(GuiBase):
             return (True, [got_tag], "")
 
         if got_tag:
-            curint = self.tags.index(got_tag)
+            curint = visible_tags.index(got_tag)
         else:
             curint = 0
 
-        ints = self._listof_int(args, curint, len(self.tags),\
+        ints = self._listof_int(args, curint, len(visible_tags),\
                 lambda : self.teprompt("tags: "))
 
-        visible_tags = self.callbacks["get_var"]("taglist_visible_tags")
         return(True, [ visible_tags[i] for i in ints ], "")
 
     def state(self, args):
