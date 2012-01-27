@@ -714,6 +714,10 @@ class TagList(GuiBase):
             start = self.first_story
             cur = start
 
+        # There's nothing to search
+        if not start:
+            return
+
         curpos = cur.curpos
 
         while not cur or not cur.marked:
@@ -744,6 +748,10 @@ class TagList(GuiBase):
         else:
             start = self.last_story
             cur = start
+
+        # There's nothing to search
+        if not start:
+            return
 
         curpos = cur.curpos
 
