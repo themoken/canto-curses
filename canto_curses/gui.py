@@ -892,7 +892,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
         for tag in tags:
             if tag not in [ t.tag for t in self.vars["alltags"] ]:
-                log.info("Adding tag %s" % tag)
+                log.info("New tag %s" % tag)
                 Tag(tag, self.callbacks)
 
                 # If we don't have configuration for this
@@ -963,7 +963,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
         # If evaluated tags differ, we need to refresh.
 
         if prevtags != self.vars["curtags"] and self.screen:
-            log.debug("Evaluated Tags Changed")
+            log.debug("Evaluated Tags Changed: %s" % [ t.tag for t in self.vars["curtags"]])
             call_hook("eval_tags_changed", [])
 
     def set_var(self, tweak, value):
@@ -1149,6 +1149,16 @@ Until reconnected, it will be impossible to fetch any information, and any state
         if not self.screen.bind(kwargs["key"], kwargs["cmdstring"]) and\
             not self.bind(kwargs["key"], kwargs["cmdstring"]):
             log.info("%s is unbound." % (kwargs["key"],))
+
+    @command_format([("tags","string_or_not")])
+    def cmd_tagregex(self, **kwargs):
+        c = self.get_conf()
+        if not kwargs["tags"]:
+            log.info("tags = %s" % c["tags"])
+        else:
+            c["tags"] = kwargs["tags"]
+        self.set_conf(c)
+        self.eval_tags()
 
     def cmdescape(self, cmd):
         escaped = False

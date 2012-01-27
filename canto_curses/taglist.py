@@ -807,6 +807,17 @@ class TagList(GuiBase):
         sel = self.callbacks["get_var"]("selected")
         toffset = self.callbacks["get_var"]("target_offset")
 
+        # We unset selection selection because we're unsure that the selection
+        # will still be visible, and we needn't have gotten an
+        # on_items_removed call.
+
+        # Using on_items_added later will restore the selection if possible.
+
+        self.first_sel = None
+        self._set_cursor(None, 0)
+        self.callbacks["set_var"]("old_selected", sel)
+        self.callbacks["set_var"]("old_toffset", toffset)
+
         # Determine if our selection is a tag.
         # If it is, and it is no longer visible,
         # then we have to unset the selection.
@@ -818,9 +829,9 @@ class TagList(GuiBase):
         self.tags = self.callbacks["get_var"]("curtags")
         hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")
 
-        t = []
         cur_item_offset = 0
         cur_sel_offset = 0
+        t = []
 
         for i, tag in enumerate(self.tags):
             if hide_empty and len(tag) == 0:
@@ -837,38 +848,46 @@ class TagList(GuiBase):
             else:
                 cur_sel_offset += len(tag)
                 cur_item_offset += len(tag)
+
+            # Because sel is unset, this will restore the selection if it's
+            # in the current tags.
+
+            self.on_items_added(tag, tag)
+
             t.append(tag)
 
-        # Eliminate selected tag if tag disappeared.
-        if sel_is_tag and sel not in t:
-            self._set_cursor(None, 0)
-            self.callbacks["set_var"]("old_selected", sel)
-            self.callbacks["set_var"]("old_toffset", toffset)
+        # Restore selected tag, if it exists
 
-        # Restore old_selected if it reappeared, if no
-        # selection has been made.
-
-        # Note: Unlike the item restoration, we don't have
-        # to re-reference here because the Tag objects shouldn't
-        # have changed, where the Story objects are regenerated.
-
-        oldsel = self.callbacks["get_var"]("old_selected")
-        if not sel and oldsel and oldsel in t:
-            toffset = self.callbacks["get_var"]("old_toffset")
-            self._set_cursor(oldsel, toffset)
-            self.callbacks["set_var"]("old_selected", None)
-
-        # Deal with setting the first drawable object when
-        # if we have visible tags, or unsetting it if all
-        # tags are no longer visible.
-
-        if t and not self.callbacks["get_var"]("target_obj"):
-            self.callbacks["set_var"]("target_obj", t[0])
-            self.callbacks["set_var"]("target_offset", 0)
-        elif not t and self.callbacks["get_var"]("target_obj"):
-            self.callbacks["set_var"]("target_obj", None)
+        if sel_is_tag and sel in t:
+            self._set_cursor(sel, toffset)
 
         self.callbacks["set_var"]("taglist_visible_tags", t)
+
+    def update_target_obj(self):
+        # Set initial target_obj if none already set, or if it's stale.
+
+        target_obj = self.callbacks["get_var"]("target_obj")
+        vistags = self.callbacks["get_var"]("taglist_visible_tags")
+
+        if vistags:
+            if not target_obj:
+                self.callbacks["set_var"]("target_obj", vistags[0])
+                self.callbacks["set_var"]("target_offset", 0)
+            else:
+                try:
+                    tag = self.item_to_tag(target_obj)
+                except:
+                    if target_obj not in vistags:
+                        # Not a story in tags and not a tag? Reset.
+                        self.callbacks["set_var"]("target_obj", vistags[0])
+                        self.callbacks["set_var"]("target_offset", 0)
+                else:
+                    # Re-reference story.
+                    target_obj = tag[tag.index(target_obj)]
+                    self.callbacks["set_var"]("target_obj", target_obj)
+        else:
+            self.callbacks["set_var"]("target_obj", None)
+            self.callbacks["set_var"]("target_offset", 0)
 
     # Refresh updates information used to render the objects.
     # Effectively, we build a doubly linked list out of all
@@ -878,6 +897,7 @@ class TagList(GuiBase):
         log.debug("Taglist REFRESH!\n")
 
         self.update_tag_lists()
+        self.update_target_obj()
 
         self.first_story = None
 
