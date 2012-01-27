@@ -940,7 +940,10 @@ Until reconnected, it will be impossible to fetch any information, and any state
         log.error("%s" % exception)
 
     def prot_errors(self, errors):
-        log.error("%s" % errors)
+        for key in errors.keys():
+            val = errors[key][1][0]
+            symptom = errors[key][1][1]
+            log.error("%s = %s : %s" % (key, val, symptom))
 
     def prot_info(self, info):
         log.info("%s" % info)
