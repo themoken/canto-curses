@@ -679,24 +679,24 @@ class Screen(CommandHandler):
         conf = self.callbacks["get_conf"]()
         idx = kwargs["idx"]
 
-        fg = None
-        bg = None
-
         if type(conf["color"][idx]) == dict:
             fg = conf["color"][idx]["fg"]
             bg = conf["color"][idx]["bg"]
         else:
             fg = conf["color"][idx]
+            bg = None
 
         fg = kwargs["fg"]
-        if kwargs["bg"]:
+        if kwargs["bg"] != None:
             bg = kwargs["bg"]
 
         # Deffg and defbg obviously only have one color.
-        if idx in [ "deffg", "deffg" ] or not bg:
+        if idx in [ "deffg", "deffg" ] or bg == None:
             conf["color"][idx] = fg
         else:
             conf["color"][idx] = { "fg" : fg, "bg" : bg }
+
+        log.debug("color set: %s" % conf["color"][idx])
 
         self.callbacks["set_conf"](conf)
 
