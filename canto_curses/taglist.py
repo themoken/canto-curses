@@ -819,12 +819,10 @@ class TagList(GuiBase):
         # will still be visible, and we needn't have gotten an
         # on_items_removed call.
 
-        # Using on_items_added later will restore the selection if possible.
+        # We may restore the selection later, if possible.
 
         self.first_sel = None
         self._set_cursor(None, 0)
-        self.callbacks["set_var"]("old_selected", sel)
-        self.callbacks["set_var"]("old_toffset", toffset)
 
         # Determine if our selection is a tag.
         # If it is, and it is no longer visible,
@@ -857,10 +855,10 @@ class TagList(GuiBase):
                 cur_sel_offset += len(tag)
                 cur_item_offset += len(tag)
 
-            # Because sel is unset, this will restore the selection if it's
-            # in the current tags.
-
-            self.on_items_added(tag, tag)
+            # Maintain item selection
+            if sel in tag:
+                newsel = tag[tag.index(sel)]
+                self._set_cursor(newsel, toffset)
 
             t.append(tag)
 
@@ -883,16 +881,12 @@ class TagList(GuiBase):
                 self.callbacks["set_var"]("target_offset", 0)
             else:
                 try:
-                    tag = self.item_to_tag(target_obj)
-                except:
+                    tag = self.tag_by_item(target_obj)
+                except Exception, e:
                     if target_obj not in vistags:
                         # Not a story in tags and not a tag? Reset.
                         self.callbacks["set_var"]("target_obj", vistags[0])
                         self.callbacks["set_var"]("target_offset", 0)
-                else:
-                    # Re-reference story.
-                    target_obj = tag[tag.index(target_obj)]
-                    self.callbacks["set_var"]("target_obj", target_obj)
         else:
             self.callbacks["set_var"]("target_obj", None)
             self.callbacks["set_var"]("target_offset", 0)
