@@ -71,9 +71,10 @@ class Reader(TextBox):
             # been fetched yet then grab that from the server now and setup
             # a hook to get notified when sel's attributes are changed.
 
-            if "description" not in sel.content:
+            if "description" not in sel.content\
+                    and "content" not in sel.content:
                 self.callbacks["write"]("ATTRIBUTES",\
-                        { sel.id : ["description" ] })
+                        { sel.id : ["description", "content"] })
                 s += "%BWaiting for content...%b\n"
                 on_hook("attributes", self.on_attributes)
             else:
@@ -101,9 +102,16 @@ class Reader(TextBox):
                         extra_content += enc["type"]
                         extra_content += ")</a>\n"
 
-                content, links =\
-                        htmlparser.convert(sel.content["description"] +\
-                            extra_content)
+                # Grab text content over description, as it's likely got more
+                # information.
+
+                mainbody = sel.content["description"]
+                if "content" in sel.content:
+                    for c in sel.content["content"]:
+                        if "type" in c and "text" in c["type"]:
+                            mainbody = c["value"]
+
+                content, links = htmlparser.convert(mainbody + extra_content)
 
                 # 0 always is the mainlink, append other links
                 # to the list.
