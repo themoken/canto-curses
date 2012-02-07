@@ -62,7 +62,7 @@ class InputBox(GuiBase):
         self.pad.move(0, self.minx)
         maxx = self.pad.getmaxyx()[1]
         try:
-            self.pad.addstr(encoder(self.result[-1 * (maxx - self.minx):]))
+            self.pad.addstr(self.result[-1 * (maxx - self.minx):])
         except:
             pass
         self.pad.clrtoeol()
