@@ -82,15 +82,27 @@ static PyObject * py_wsize(PyObject *self, PyObject *args)
     return Py_BuildValue("i", sizeof(WINDOW));
 }
 
-static PyMethodDef MvWMethods[] = {
-    {"waddch", py_waddch, METH_VARARGS, "waddch() wrapper."},
-    {"wcwidth", py_wcwidth, METH_VARARGS, "wcwidth() wrapper."},
-    {"wsize", py_wsize, METH_VARARGS, "Returns sizeof(WINDOW)"},
-    {NULL, NULL, 0, NULL}
+static PyMethodDef WCMethods[] = {
+    {"waddch", (PyCFunction)py_waddch, METH_VARARGS, "waddch() wrapper."},
+    {"wcwidth", (PyCFunction)py_wcwidth, METH_VARARGS, "wcwidth() wrapper."},
+    {"wsize", (PyCFunction)py_wsize, METH_VARARGS, "Returns sizeof(WINDOW)"},
+    {NULL, NULL},
+};
+
+static struct PyModuleDef moduledef = {
+	PyModuleDef_HEAD_INIT,
+	"widecurse",
+	NULL,
+	-1,
+	WCMethods,
+	NULL,
+	NULL,
+	NULL,
+	NULL
 };
 
 PyMODINIT_FUNC
-initwidecurse(void)
+PyInit_widecurse(void)
 {
-    Py_InitModule("widecurse", MvWMethods);
+    return PyModule_Create(&moduledef);
 }

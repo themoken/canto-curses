@@ -6,10 +6,10 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from theme import FakePad, WrapPad, theme_print, theme_lstrip, theme_border
-from command import command_format
-from guibase import GuiBase
-from theme import theme_print
+from .theme import FakePad, WrapPad, theme_print, theme_lstrip, theme_border
+from .command import command_format
+from .guibase import GuiBase
+from .theme import theme_print
 
 import logging
 import curses
@@ -91,11 +91,11 @@ class TextBox(GuiBase):
     def render_top_border(self, pad):
         tb, lb, bb, rb = self.callbacks["border"]()
 
-        lc = u" "
+        lc = " "
         if lb:
             lc = "%1%C" + theme_border("tl") + "%c%0"
 
-        rc = u" "
+        rc = " "
         if rb:
             rc = "%1%C" + theme_border("tr") + "%c%0"
 
@@ -105,11 +105,11 @@ class TextBox(GuiBase):
     def render_bottom_border(self, pad):
         tb, lb, bb, rb = self.callbacks["border"]()
 
-        lc = u" "
+        lc = " "
         if lb:
             lc = "%1%C" + theme_border("bl") + "%c%0"
 
-        rc = u" "
+        rc = " "
         if rb:
             rc = "%1%C" + theme_border("br") + "%c%0"
 
@@ -130,10 +130,10 @@ class TextBox(GuiBase):
 
         # Prepare left and right borders
 
-        l = u" "
+        l = " "
         if lb:
             l = "%1%C" + theme_border("ls") + " %c%0"
-        r = u" "
+        r = " "
         if rb:
             r = "%1%C " + theme_border("rs") + "%c%0"
 

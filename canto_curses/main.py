@@ -7,13 +7,12 @@
 #   published by the Free Software Foundation.
 
 from canto_next.client import CantoClient
-from canto_next.encoding import decoder
 from canto_next.plugins import try_plugins
 
-from gui import CantoCursesGui
+from .gui import CantoCursesGui
 
 from threading import Thread
-from Queue import Queue
+from queue import Queue
 
 import logging
 
@@ -76,7 +75,7 @@ class CantoCurses(CantoClient):
             else:
                 CantoClient.__init__(self, None,\
                         port = self.port, address = self.addr)
-        except Exception, e:
+        except Exception as e:
             log.error("Error: %s" % e)
             sys.exit(-1)
 
@@ -117,7 +116,7 @@ class CantoCurses(CantoClient):
                 if r:
                     self.responses.put(r)
 
-        except Exception, e:
+        except Exception as e:
             log.error("Response thread exception: %s" % (e,))
 
         log.debug("Response thread exiting.")
@@ -158,7 +157,7 @@ class CantoCurses(CantoClient):
                 if pid == 0:
                     break
                 log.debug("CHLD %d has died: %d" % (pid, status))
-        except Exception, e:
+        except Exception as e:
             if e.errno == errno.ECHILD:
                 log.debug("CHLD no children?")
             else:
@@ -171,7 +170,7 @@ class CantoCurses(CantoClient):
     def reconnect(self):
         try:
             self.connect()
-        except Exception, e:
+        except Exception as e:
             log.error("Error reconnecting: %s" % e)
             self.gui.disconnected()
         else:
@@ -218,7 +217,7 @@ class CantoCurses(CantoClient):
         else:
             try:
                 os.makedirs(self.conf_dir)
-            except Exception, e:
+            except Exception as e:
                 log.error("Exception making %s : %s" % (self.conf_dir, e))
                 return -1
         return self.ensure_files()
@@ -254,7 +253,7 @@ class CantoCurses(CantoClient):
         except KeyboardInterrupt:
             pass
 
-        except Exception, e:
+        except Exception as e:
             tb = traceback.format_exc(e)
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))

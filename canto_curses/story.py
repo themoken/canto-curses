@@ -9,8 +9,8 @@
 from canto_next.plugins import Plugin, PluginHandler
 from canto_next.hooks import on_hook, remove_hook
 
-from theme import FakePad, WrapPad, theme_print, theme_len, theme_process
-from parser import parse_conditionals, eval_theme_string, prep_for_display
+from .theme import FakePad, WrapPad, theme_print, theme_len, theme_process
+from .parser import parse_conditionals, eval_theme_string, prep_for_display
 
 import traceback
 import logging
@@ -70,7 +70,7 @@ class Story(PluginHandler):
         return self.id == other.id
 
     def on_attributes(self, attributes):
-        if self in attributes:
+        if self.id in attributes:
             # Don't bother checking attributes. If we're still
             # lacking, need_redraw will re-enable this hook
 
@@ -236,7 +236,7 @@ class Story(PluginHandler):
 
         try:
             parsed = parse_conditionals(state["fstring"])
-        except Exception, e:
+        except Exception as e:
             log.warn("Failed to parse conditionals in fstring: %s" % state["fstring"])
             log.warn("\n" + "".join(traceback.format_exc(e)))
             log.warn("Falling back to default.")
@@ -264,15 +264,15 @@ class Story(PluginHandler):
 
         # Prep all text values for display.
 
-        for value in values.keys():
-            if type(values[value]) in [unicode, str]:
+        for value in list(values.keys()):
+            if type(values[value]) in [str, str]:
                 values[value] = prep_for_display(values[value])
 
         values.update(passthru)
 
         try:
             s = eval_theme_string(parsed, values)
-        except Exception, e:
+        except Exception as e:
             log.warn("Failed to evaluate fstring: %s" % state["fstring"])
             log.warn("\n" + "".join(traceback.format_exc(e)))
             log.warn("Falling back to default")
@@ -285,9 +285,9 @@ class Story(PluginHandler):
 
         lines = 0
 
-        left = u"%C %c"
-        left_more = u"%C     %c"
-        right = u"%C %c"
+        left = "%C %c"
+        left_more = "%C     %c"
+        right = "%C %c"
 
         try:
             while s:
@@ -308,7 +308,7 @@ class Story(PluginHandler):
                             pad.getyx()[1] - (theme_len(right) + 3))
 
                     # Write out the ellipsis.
-                    for i in xrange(3):
+                    for i in range(3):
                         pad.waddch('.')
 
                     # Handling any dangling codes
@@ -328,7 +328,7 @@ class Story(PluginHandler):
         # case scenario is that one story's worth of space
         # is going to be fucked up.
 
-        except Exception, e:
+        except Exception as e:
             log.debug("Story exception: %s" % (e,))
 
         # Return number of lines this story took to render entirely.

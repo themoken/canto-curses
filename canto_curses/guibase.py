@@ -7,10 +7,10 @@
 #   published by the Free Software Foundation.
 
 from canto_next.hooks import call_hook, on_hook
-from canto_next.encoding import encoder, decoder
+from canto_next.encoding import encoder
 from canto_next.plugins import Plugin
 
-from command import CommandHandler, command_format
+from .command import CommandHandler, command_format
 
 import logging
 
@@ -18,7 +18,7 @@ log = logging.getLogger("COMMON")
 
 import subprocess
 import tempfile
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import shlex
 import sys
 import os
@@ -112,7 +112,7 @@ class GuiBase(CommandHandler):
             tmp = open(tmpnam, 'w+b')
 
             # Grab the HTTP info / prepare to read.
-            response = urllib2.urlopen(href)
+            response = urllib.request.urlopen(href)
 
             # Grab in kilobyte chunks to avoid wasting memory on something
             # that's going to be immediately written to disk.
@@ -199,8 +199,7 @@ class GuiBase(CommandHandler):
         if not args:
             args = prompt()
 
-        r = [ decoder(s) for s in shlex.split(encoder(args)) ]
-        return (True, r, None)
+        return (True, shlex.split(args), None)
 
     def one_opt(self, args):
         t, r = self._first_term(args,
@@ -227,7 +226,8 @@ class GuiBase(CommandHandler):
 
         log.debug("Calling remote: %s" % argv)
 
-        out = decoder(subprocess.check_output(argv))
+        # check_output return bytes, we must decode.
+        out = subprocess.check_output(argv).decode()
 
         log.debug("Output:")
         log.debug(out)

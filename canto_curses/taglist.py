@@ -10,9 +10,9 @@ from canto_next.hooks import on_hook, remove_hook, call_hook
 from canto_next.plugins import Plugin
 from canto_next.encoding import encoder
 
-from command import command_format
-from guibase import GuiBase
-from reader import Reader
+from .command import command_format
+from .guibase import GuiBase
+from .reader import Reader
 
 import logging
 import curses
@@ -664,7 +664,7 @@ class TagList(GuiBase):
     def search(self, regex):
         try:
             rgx = re.compile(regex)
-        except Exception, e:
+        except Exception as e:
             self.callbacks["set_var"]("error_msg", e)
             return
 
@@ -882,7 +882,7 @@ class TagList(GuiBase):
             else:
                 try:
                     tag = self.tag_by_item(target_obj)
-                except Exception, e:
+                except Exception as e:
                     if target_obj not in vistags:
                         # Not a story in tags and not a tag? Reset.
                         self.callbacks["set_var"]("target_obj", vistags[0])

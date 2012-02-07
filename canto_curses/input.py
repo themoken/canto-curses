@@ -25,7 +25,7 @@
 
 from canto_next.encoding import encoder
 from canto_next.plugins import Plugin
-from guibase import GuiBase
+from .guibase import GuiBase
 
 import logging
 log = logging.getLogger("INPUT")
@@ -100,7 +100,7 @@ class InputBox(GuiBase):
             return 0
         else:
             idx = self.x - self.minx
-            self.result = self.result[:idx] + unichr(ch) + self.result[idx:]
+            self.result = self.result[:idx] + chr(ch) + self.result[idx:]
             self.x += 1
 
         self.refresh()

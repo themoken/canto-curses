@@ -8,9 +8,9 @@
 
 from canto_next.hooks import call_hook, on_hook, remove_hook
 
-from parser import parse_conditionals, eval_theme_string, prep_for_display
-from theme import FakePad, WrapPad, theme_print
-from story import Story
+from .parser import parse_conditionals, eval_theme_string, prep_for_display
+from .theme import FakePad, WrapPad, theme_print
+from .story import Story
 
 import traceback
 import logging
@@ -95,7 +95,7 @@ class Tag(list):
             self.need_redraw()
 
     def on_tag_opt_change(self, opts):
-        if self.tag in opts.keys():
+        if self.tag in list(opts.keys()):
             tc = opts[self.tag]
             if "collapsed" in tc:
                 self.need_refresh()
@@ -303,7 +303,7 @@ class Tag(list):
 
         try:
             parsed = parse_conditionals(fstring)
-        except Exception, e:
+        except Exception as e:
             log.warn("Failed to parse conditionals in fstring: %s" %
                     fstring)
             log.warn("\n" + "".join(traceback.format_exc(e)))
@@ -323,15 +323,15 @@ class Tag(list):
 
         # Prep all text values for display.
 
-        for value in values.keys():
-            if type(values[value]) in [unicode, str]:
+        for value in list(values.keys()):
+            if type(values[value]) in [str, str]:
                 values[value] = prep_for_display(values[value])
 
         values.update(passthru)
 
         try:
             s = eval_theme_string(parsed, values)
-        except Exception, e:
+        except Exception as e:
             log.warn("Failed to evaluate fstring: %s" % fstring)
             log.warn("\n" + "".join(traceback.format_exc(e)))
             log.warn("Falling back to default")
@@ -339,12 +339,12 @@ class Tag(list):
             parsed = parse_conditionals(DEFAULT_TAG_FSTRING)
             s = eval_theme_string(parsed, values)
 
-        s += u"\n"
+        s += "\n"
 
         lines = 0
 
         while s:
-            s = theme_print(pad, s, width, u"", u"")
+            s = theme_print(pad, s, width, "", "")
             lines += 1
 
         return lines

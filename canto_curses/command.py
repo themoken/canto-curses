@@ -7,7 +7,6 @@
 #   published by the Free Software Foundation.
 
 from canto_next.plugins import PluginHandler, Plugin, add_arg_transform
-from canto_next.encoding import encoder, decoder
 
 import traceback
 import logging
@@ -77,7 +76,7 @@ class CommandHandler(PluginHandler):
                 if r == None:
                     return True
                 return r
-            except Exception, e:
+            except Exception as e:
                 tb = traceback.format_exc(e)
                 log.error("Exception running command %s" % command)
                 log.error("\n" + "".join(tb))
@@ -188,7 +187,7 @@ class CommandHandler(PluginHandler):
             args = prompt()
 
         if args == "*" and maxint:
-            return range(0, maxint)
+            return list(range(0, maxint))
 
         if " " in args:
             terms = args.split(" ")
@@ -208,9 +207,9 @@ class CommandHandler(PluginHandler):
                     log.error("Can't parse %s as range" % term)
                     continue
                 if maxint:
-                    r.extend(range(min(a, maxint), min(b + 1, maxint)))
+                    r.extend(list(range(min(a, maxint), min(b + 1, maxint))))
                 else:
-                    r.extend(range(a, b + 1))
+                    r.extend(list(range(a, b + 1)))
             else:
                 try:
                     term = self._convert_special(term, curint, maxint)
@@ -251,7 +250,7 @@ class CommandHandler(PluginHandler):
         if not args:
             args = prompt()
 
-        r = [ decoder(s) for s in shlex.split(encoder(args)) ]
+        r = shlex.split(args)
 
         # I wish shlex.split took a max so I didn't have to zip them up
         # again with pipes.quote.

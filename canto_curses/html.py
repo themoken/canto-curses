@@ -6,8 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from HTMLParser import HTMLParser
-import htmlentitydefs
+from html.parser import HTMLParser
+import html.entities
 import re
 
 import logging
@@ -41,7 +41,7 @@ class CantoHTML(HTMLParser):
 
     def handle_data(self, text):
         if self.verbatim <= 0:
-            text = text.replace(u"\n", u" ")
+            text = text.replace("\n", " ")
 
         if self.link_open:
             log.debug("adding %s to link_text" % text)
@@ -51,21 +51,21 @@ class CantoHTML(HTMLParser):
 
     def convert_charref(self, ref):
         try:
-            if ref[0] in [u'x',u'X']:
+            if ref[0] in ['x','X']:
                 c = int(ref[1:], 16)
             else:
                 c = int(ref)
         except:
-            return u"[?]"
-        return unichr(c)
+            return "[?]"
+        return chr(c)
 
     def handle_charref(self, ref):
         self.result += self.convert_charref(ref)
 
     def convert_entityref(self, ref):
-        if ref in htmlentitydefs.name2codepoint:
-            return unichr(htmlentitydefs.name2codepoint[ref])
-        return u"[?]"
+        if ref in html.entities.name2codepoint:
+            return chr(html.entities.name2codepoint[ref])
+        return "[?]"
 
     def handle_entityref(self, ref):
         self.result += self.convert_entityref(ref)
@@ -94,7 +94,7 @@ class CantoHTML(HTMLParser):
                 self.link_text = ""
                 self.link_href = ""
                 self.link_open = False
-                self.result += "[" + unicode(len(self.links)) + "]%0"
+                self.result += "[" + str(len(self.links)) + "]%0"
 
         elif tag in ["img"]:
             if open:
@@ -104,67 +104,67 @@ class CantoHTML(HTMLParser):
                     attrs["alt"] = ""
                 self.links.append(("image", attrs["src"], attrs["alt"]))
                 self.handle_data("%4" + attrs["alt"] +\
-                        "[" + unicode(len(self.links)) + "]%0")
+                        "[" + str(len(self.links)) + "]%0")
 
-        elif tag in [u"h" + unicode(x) for x in xrange(1,7)]:
+        elif tag in ["h" + str(x) for x in range(1,7)]:
             if open:
-                self.result += u"\n%B"
+                self.result += "\n%B"
             else:
-                self.result += u"%b\n"
-        elif tag in [u"blockquote"]:
+                self.result += "%b\n"
+        elif tag in ["blockquote"]:
             if open:
-                self.result += u"\n%Q"
+                self.result += "\n%Q"
             else:
-                self.result += u"%q\n"
-        elif tag in [u"pre",u"code"]:
+                self.result += "%q\n"
+        elif tag in ["pre","code"]:
             if open:
-                if tag == u"pre":
-                    self.result += u"\n%Q"
+                if tag == "pre":
+                    self.result += "\n%Q"
                 self.verbatim += 1
             else:
-                if tag == u"pre":
-                    self.result += u"%q\n"
+                if tag == "pre":
+                    self.result += "%q\n"
                 self.verbatim -= 1
-        elif tag in [u"sup"]:
+        elif tag in ["sup"]:
             if open:
-                self.result += u"^"
-        elif tag in [u"p", u"br", u"div"]:
-            self.result += u"\n"
-        elif tag in [u"ul", u"ol"]:
+                self.result += "^"
+        elif tag in ["p", "br", "div"]:
+            self.result += "\n"
+        elif tag in ["ul", "ol"]:
             if open:
-                self.result += u"\n%I"
+                self.result += "\n%I"
                 self.list_stack.append([tag,0])
             else:
                 # Grumble grumble. Bad HTML.
                 if len(self.list_stack):
                     self.list_stack.pop()
-                self.result += u"%i\n"
-        elif tag in [u"li"]:
+                self.result += "%i\n"
+        elif tag in ["li"]:
             if open:
-                self.result += u"\n"
+                self.result += "\n"
 
                 # List item with no start tag, default to ul
                 if not len(self.list_stack):
                     self.list_stack.append(["ul",0])
 
-                if self.list_stack[-1][0] == u"ul":
-                    self.result += u"\u25CF "
+                if self.list_stack[-1][0] == "ul":
+                    self.result += "\u25CF "
                 else:
                     self.list_stack[-1][1] += 1
-                    self.result += unicode(self.list_stack[-1][1])+ ". "
+                    self.result += str(self.list_stack[-1][1])+ ". "
             else:
-                self.result += u"\n"
+                self.result += "\n"
 
-        elif tag in [u"i", u"small", u"em"]:
+        elif tag in ["i", "small", "em"]:
             if open:
-                self.result += u"%6%B"
+                self.result += "%6%B"
             else:
-                self.result += u"%b%0"
-        elif tag in [u"b", u"strong"]:
+                self.result += "%b%0"
+        elif tag in ["b", "strong"]:
             if open:
-                self.result += u"%B"
+                self.result += "%B"
             else:
-                self.result += u"%b"
+                self.result += "%b"
 
     def ent_wrapper(self, match):
         return self.convert_entityref(match.groups()[0])
@@ -188,12 +188,12 @@ class CantoHTML(HTMLParser):
 
 htmlparser = CantoHTML()
 
-html_entity_regex = re.compile(u"&(\w{1,8});")
+html_entity_regex = re.compile("&(\w{1,8});")
 
 def html_entity_convert(s):
     return html_entity_regex.sub(htmlparser.ent_wrapper, s)
 
-char_ref_regex = re.compile(u"&#([xX]?[0-9a-fA-F]+)[^0-9a-fA-F]")
+char_ref_regex = re.compile("&#([xX]?[0-9a-fA-F]+)[^0-9a-fA-F]")
 
 def char_ref_convert(s):
     return char_ref_regex.sub(htmlparser.char_wrapper, s)

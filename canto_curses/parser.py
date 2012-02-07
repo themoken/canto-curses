@@ -19,9 +19,7 @@
 # impossible to cause the code to infinitely recurse with a value like
 # { 'a' : '%a' }.
 
-from canto_next.encoding import decoder
-
-from html import html_entity_convert, char_ref_convert
+from .html import html_entity_convert, char_ref_convert
 
 import traceback
 import logging
@@ -148,7 +146,7 @@ def _eval_simple(uni, values):
             escaped = True
 
         elif c == '}' and in_code and long_code:
-            r += unicode(eval(code, {}, values))
+            r += str(eval(code, {}, values))
             code = ""
             in_code = False
             long_code = False
@@ -158,7 +156,7 @@ def _eval_simple(uni, values):
             if long_code:
                 code += c
             elif c in values:
-                r += unicode(values[c])
+                r += str(values[c])
                 in_code = False
             else:
                 Exception("Unknown escape: %s" % c)
@@ -190,8 +188,6 @@ def eval_theme_string(parsed, values):
     return r
 
 def prep_for_display(s):
-    if type(s) == str:
-        s = decoder(s)
     s = s.replace("\\", "\\\\")
     s = s.replace("%", "\\%")
     s = html_entity_convert(s)

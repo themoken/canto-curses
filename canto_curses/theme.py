@@ -7,7 +7,7 @@
 #   published by the Free Software Foundation.
 
 from canto_next.encoding import encoder, locale_enc
-from widecurse import waddch, wcwidth
+from .widecurse import waddch, wcwidth
 
 import curses
 
@@ -261,7 +261,7 @@ def theme_process(pad, uni):
 
 def theme_lstrip(pad, uni):
     newlines = 0
-    codes = u""
+    codes = ""
     escaped = False
 
     for i, c in enumerate(uni):
@@ -292,14 +292,14 @@ def theme_lstrip(pad, uni):
 
     return (newlines * "\n") + r
 
-utf_chars = { "ls" : u"│",
-              "rs" : u"│",
-              "ts" : u"─",
-              "bs" : u"─",
-              "tl" : u"┌",
-              "tr" : u"┐",
-              "bl" : u"└",
-              "br" : u"┘" }
+utf_chars = { "ls" : "│",
+              "rs" : "│",
+              "ts" : "─",
+              "bs" : "─",
+              "tl" : "┌",
+              "tr" : "┐",
+              "bl" : "└",
+              "br" : "┘" }
 
 ascii_chars = { "ls" : "|",
                 "rs" : "|",

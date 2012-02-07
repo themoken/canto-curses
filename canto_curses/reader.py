@@ -9,10 +9,10 @@
 from canto_next.plugins import Plugin
 from canto_next.hooks import on_hook, remove_hook
 
-from parser import prep_for_display
-from command import command_format
-from html import htmlparser
-from text import TextBox
+from .parser import prep_for_display
+from .command import command_format
+from .html import htmlparser
+from .text import TextBox
 
 import logging
 import re
@@ -32,7 +32,7 @@ class Reader(TextBox):
     def init(self, pad, callbacks):
         TextBox.init(self, pad, callbacks)
 
-        self.quote_rgx = re.compile(u"[\\\"](.*?)[\\\"]")
+        self.quote_rgx = re.compile("[\\\"](.*?)[\\\"]")
         on_hook("opt_change", self.on_opt_change)
 
     def die(self):
@@ -48,7 +48,7 @@ class Reader(TextBox):
 
     def on_attributes(self, attributes):
         sel = self.callbacks["get_var"]("reader_item")
-        if sel in attributes:
+        if sel.id in attributes:
             remove_hook("attributes", self.on_attributes)
 
             # Don't bother checking attributes. If we're still
@@ -119,7 +119,7 @@ class Reader(TextBox):
                 self.links += links
 
                 if reader_conf['show_description']:
-                    s += self.quote_rgx.sub(u"%6\"\\1\"%0", content)
+                    s += self.quote_rgx.sub("%6\"\\1\"%0", content)
 
                 if reader_conf['enumerate_links']:
                     s += "\n\n"
@@ -128,7 +128,7 @@ class Reader(TextBox):
                         text = prep_for_display(text)
                         url = prep_for_display(url)
 
-                        link_text = "[%B" + unicode(idx) + "%b][" +\
+                        link_text = "[%B" + str(idx) + "%b][" +\
                                 text + "]: " + url + "\n\n"
 
                         if t == "link":

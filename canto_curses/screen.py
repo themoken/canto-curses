@@ -10,10 +10,10 @@ from canto_next.plugins import Plugin
 from canto_next.encoding import locale_enc
 from canto_next.hooks import on_hook, remove_hook
 
-from command import CommandHandler, command_format
-from taglist import TagList
-from input import InputBox
-import widecurse
+from .command import CommandHandler, command_format
+from .taglist import TagList
+from .input import InputBox
+from .widecurse import wsize
 
 from threading import Thread, Event, Lock
 import logging
@@ -97,15 +97,17 @@ class Screen(CommandHandler):
             curses.noecho()
             curses.start_color()
             curses.use_default_colors()
-        except Exception, e:
+        except Exception as e:
             log.error("Curses setup failed: %s" % e.msg)
             return -1
 
         self.height, self.width = self.stdscr.getmaxyx()
+        self.height = int(self.height)
+        self.width = int(self.width)
 
         color_conf = self.callbacks["get_opt"]("color")
 
-        for i in xrange(curses.COLOR_PAIRS):
+        for i in range(curses.COLOR_PAIRS):
             if ("%s" % i) not in color_conf:
                 continue
 
@@ -137,7 +139,7 @@ class Screen(CommandHandler):
         if "color" in conf:
             self.callbacks["set_var"]("needs_resize", True)
 
-        for key in conf.keys():
+        for key in list(conf.keys()):
             if type(conf[key]) == dict and "window" in conf[key]:
                 self.callbacks["set_var"]("needs_resize", True)
                 break
@@ -244,6 +246,8 @@ class Screen(CommandHandler):
         # Height + 1 to account for the last curses pad line
         # not being fully writable.
 
+        log.debug("h: %s w: %s" % (self.height, self.width))
+        log.debug("h: %s w: %s" % (height, width))
         pad = curses.newpad(height + 1, width)
 
         # Pass on callbacks we were given from CantoCursesGui
@@ -293,9 +297,9 @@ class Screen(CommandHandler):
             # possible slice we can *guarantee*.
 
             if orientation == "horizontal":
-                size = self._subw_size_width(unit, (width - used) / units)
+                size = self._subw_size_width(unit, int((width - used) / units))
             else:
-                size = self._subw_size_height(unit, (height - used) / units)
+                size = self._subw_size_height(unit, int((height - used) / units))
 
             used += size
 
@@ -320,12 +324,12 @@ class Screen(CommandHandler):
             # this set of windows.
 
             if orientation == "horizontal":
-                available = (width - used) / units
+                available = int((width - used) / units)
                 r = self._subw(unit, top, left + offset,\
                         height, available, "vertical")
                 sizes[i] = self._subw_layout_size(r, "width")
             else:
-                available = (height - used) / units
+                available = int((height - used) / units)
                 r = self._subw(unit, top + offset, left,\
                         available, width, "horizontal")
                 sizes[i] = self._subw_layout_size(r, "height")
@@ -605,7 +609,7 @@ class Screen(CommandHandler):
 
             # Overwrite struct output.
             f.seek(startpos, 0)
-            f.write("\0" * widecurse.wsize())
+            f.write("\0" * wsize())
             f.seek(endpos, 0)
 
         f.close()
@@ -627,7 +631,7 @@ class Screen(CommandHandler):
         try:
             c = int(c)
             if 0 < c <= curses.COLOR_PAIRS:
-                return (True, unicode(c - 1), r)
+                return (True, str(c - 1), r)
             else:
                 self.pair_error()
         except:

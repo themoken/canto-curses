@@ -11,16 +11,15 @@ COMPATIBLE_VERSION = 0.3
 from canto_next.hooks import call_hook, on_hook
 from canto_next.plugins import Plugin
 from canto_next.remote import assign_to_dict, access_dict
-from canto_next.encoding import decoder
 from canto_next.format import escsplit
 
-from command import CommandHandler, command_format
-from story import DEFAULT_FSTRING
-from text import ErrorBox, InfoBox
-from screen import Screen, color_translate
-from tag import Tag, DEFAULT_TAG_FSTRING
+from .command import CommandHandler, command_format
+from .story import DEFAULT_FSTRING
+from .text import ErrorBox, InfoBox
+from .screen import Screen, color_translate
+from .tag import Tag, DEFAULT_TAG_FSTRING
 
-from Queue import Empty
+from queue import Empty
 import logging
 import curses
 import pprint
@@ -427,13 +426,13 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
         # Make sure that we're not mismatching versions.
 
-        self.write("VERSION", u"")
+        self.write("VERSION", "")
         r = self.wait_response("VERSION")
         if r[1] != COMPATIBLE_VERSION:
             s = "Incompatible daemon version (%s) detected! Expected: %s" %\
                 (r[1], COMPATIBLE_VERSION)
             log.debug(s)
-            print s
+            print(s)
             sys.exit(-1)
         else:
             log.debug("Got compatible daemon version.")
@@ -442,12 +441,12 @@ Until reconnected, it will be impossible to fetch any information, and any state
         self.write("WATCHNEWTAGS", [])
         self.write("WATCHDELTAGS", [])
 
-        self.write("LISTTAGS", u"")
+        self.write("LISTTAGS", "")
         r = self.wait_response("LISTTAGS")
 
         self.stub_tagconfigs(r[1])
 
-        self.write("WATCHCONFIGS", u"")
+        self.write("WATCHCONFIGS", "")
         self.write("CONFIGS", [])
         self.prot_configs(self.wait_response("CONFIGS")[1])
 
@@ -520,10 +519,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
         return (False, False)
 
     def validate_string(self, val, d):
-        if type(val) == unicode:
-            return (True, val)
         if type(val) == str:
-            return (True, decoder(val))
+            return (True, val)
         return (False, False)
 
     def validate_bool(self, val, d):
@@ -532,7 +529,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
         return (False, False)
 
     def validate_update_style(self, val, d):
-        if val in [ u"maintain", u"append" ]:
+        if val in [ "maintain", "append" ]:
             return (True, val)
         return (False, False)
 
@@ -605,28 +602,19 @@ Until reconnected, it will be impossible to fetch any information, and any state
         if type(val) != dict:
             return (False, False)
 
-        for key in val.keys():
-            if type(key) != unicode:
-                if type(key) == str:
-                    newkey = decoder(key)
-                    v = val[key]
-                    del val[key]
-                    val[newkey] = v
-                else:
-                    return (False, False)
+        for key in list(val.keys()):
+            if type(key) != str:
+                return (False, False)
 
-            if type(val[key]) != unicode:
-                if type(val[key]) == str:
-                    val[key] = decoder(val[key])
-                else:
-                    return (False, False)
+            if type(val[key]) != str:
+                return (False, False)
 
         # For keys, because we don't want to specify each and every possible
         # key explicitly, so we merge in default keys. If a user wants to
         # ignore a default key, he can set it to None and it won't be merged
         # over.
 
-        for key in d.keys():
+        for key in list(d.keys()):
             if key not in val:
                 val[key] = d[key]
 
@@ -656,7 +644,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
             return (True, r)
 
         # We have no idea what to do with this crap...
-        if type(val) not in [ unicode, str ]:
+        if type(val) != str:
             return (False, False)
 
         # See if it's an integer as a string
@@ -674,10 +662,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
         r = []
         for item in val:
-            if type(item) == unicode:
+            if type(item) == str:
                 r.append(item)
-            elif type(item) == str:
-                r.append(decoder(item))
             else:
                 return (False, False)
 
@@ -712,13 +698,13 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
         log.debug("d = %s" % d)
 
-        for key in v.keys():
+        for key in list(v.keys()):
             if key not in c:
                 c[key] = d[key]
 
         # Validate existing values.
 
-        for key in c.keys():
+        for key in list(c.keys()):
 
             # Unknown values, don't validate
             if key not in v:
@@ -768,7 +754,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
         log.debug("prot_configs given: %s" % given)
 
         if "tags" in given:
-            for tag in given["tags"].keys():
+            for tag in list(given["tags"].keys()):
                 ntc = given["tags"][tag]
                 tc = self.tag_config[tag]
 
@@ -811,11 +797,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
                     continue
 
                 for k in d[given_id]:
-                    if type(d[given_id][k]) == str:
-                        item.content[k] = decoder(d[given_id][k])
-                    else:
-                        item.content[k] = d[given_id][k]
-                atts[item] = d[given_id].keys()
+                    item.content[k] = d[given_id][k]
+                atts[item.id] = list(d[given_id].keys())
         if atts:
             call_hook("attributes", [ atts ])
 
@@ -940,7 +923,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
         log.error("%s" % exception)
 
     def prot_errors(self, errors):
-        for key in errors.keys():
+        for key in list(errors.keys()):
             val = errors[key][1][0]
             symptom = errors[key][1][1]
             log.error("%s = %s : %s" % (key, val, symptom))
