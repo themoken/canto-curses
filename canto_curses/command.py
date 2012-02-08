@@ -59,6 +59,12 @@ class CommandHandler(PluginHandler):
         self.plugin_class = CommandPlugin
         self.update_plugin_lookups()
 
+        self.key_translations =\
+                { '.' : "period",
+                  '\t' : "tab",
+                  ' ' : "space",
+                  "\\" : "\\\\" }
+
         self.meta = False
 
     def command(self, command):
@@ -84,12 +90,17 @@ class CommandHandler(PluginHandler):
 
         return None
 
+    def translate_key(self, key):
+        if key in self.key_translations:
+            return self.key_translations[key]
+        return key
+
     # Verify a string is a possible key combination.
 
     def _input_key(self, key, depth = 0):
         if len(key) == 1 and ord(key) <= 255:
             return True
-        if key in ["space", "tab"]:
+        if key in self.key_translations:
             return True
 
         # Accept a Ctrl / Meta only once
@@ -137,21 +148,7 @@ class CommandHandler(PluginHandler):
                 optname += "C-"
                 k += 96
 
-            k = chr(k)
-
-            # Need translation because they're invisible
-
-            if k == " ":
-                k = "space"
-            elif k == "\t":
-                k = "tab"
-
-            # Need translation because it's an escape
-
-            elif k == "\\":
-                k = "\\\\"
-
-            optname += k
+            optname += self.translate_key(chr(k))
 
         log.debug("trying key: %s" % optname)
 
@@ -270,6 +267,7 @@ class CommandHandler(PluginHandler):
 
     def bind(self, key, cmd):
         opt = self.get_opt_name()
+        key = self.translate_key(key)
         c = self.callbacks["get_conf"]()
         if not cmd:
             if key in c[opt]["key"]:
