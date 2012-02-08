@@ -178,12 +178,17 @@ class CantoHTML(HTMLParser):
         # handling is done per case in the handler itself so that
         # bad HTML doesn't necessarily lead to garbage output.
 
-        self.feed(s)
+        try:
+            self.feed(s)
+        except Exception as e:
+            r = "Error Parsing Content:\n\n"
+            r += ("%s" % e)
+            l = []
+        else:
+            r = self.result
+            l = self.links
 
-        r = self.result
-        l = self.links
         self.reset()
-
         return (r,l)
 
 htmlparser = CantoHTML()
