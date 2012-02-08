@@ -714,7 +714,7 @@ class TagList(GuiBase):
             cur = start
 
         # There's nothing to search
-        if not start:
+        if not cur:
             return
 
         curpos = cur.curpos
@@ -749,7 +749,7 @@ class TagList(GuiBase):
             cur = start
 
         # There's nothing to search
-        if not start:
+        if not cur:
             return
 
         curpos = cur.curpos
@@ -909,6 +909,12 @@ class TagList(GuiBase):
             tag.prev_obj = prev_obj
             tag.next_obj = None
 
+            tag.prev_story = prev_story
+            tag.next_story = None
+
+            tag.prev_sel = prev_sel
+            tag.next_sel = None
+
             if prev_obj:
                 prev_obj.next_obj = tag
 
@@ -918,8 +924,6 @@ class TagList(GuiBase):
             if self.callbacks["get_tag_opt"](tag, "collapsed"):
                 if prev_sel:
                     prev_sel.next_sel = tag
-                tag.prev_sel = prev_sel
-                tag.next_sel = None
                 prev_sel = tag
                 continue
 
@@ -937,6 +941,15 @@ class TagList(GuiBase):
                 story.prev_story = prev_story
                 story.next_story = None
                 prev_story = story
+
+                # We want next_story to be accessible from all objects, so head
+                # back and set it for any without one, even if it wasn't the
+                # last story object (i.e. if it's a tag)
+
+                cur = story.prev_obj
+                while cur and cur.next_story == None:
+                    cur.next_story = story
+                    cur = cur.prev_obj
 
                 if prev_sel:
                     prev_sel.next_sel = story
