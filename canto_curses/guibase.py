@@ -241,7 +241,6 @@ class GuiBase(CommandHandler):
 
     def _remote(self, args):
         args = "canto-remote " + args
-        args = encoder(args)
 
         # Add location args, so the remote is connecting
         # to the correct daemon.

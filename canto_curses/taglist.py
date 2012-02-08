@@ -8,7 +8,6 @@
 
 from canto_next.hooks import on_hook, remove_hook, call_hook
 from canto_next.plugins import Plugin
-from canto_next.encoding import encoder
 
 from .command import command_format
 from .guibase import GuiBase
@@ -780,7 +779,6 @@ class TagList(GuiBase):
         config = kwargs["config"]
 
         argv = ["canto-remote", "one-config", "tags." + tag + "." + config]
-        argv = [ encoder(x) for x in argv ]
         self._remote_argv(argv)
 
     def addtagstring(self, args):

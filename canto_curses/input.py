@@ -23,7 +23,6 @@
 # the same functionality on a single line basis, but the design is still
 # based on Textbox.
 
-from canto_next.encoding import encoder
 from canto_next.plugins import Plugin
 from .guibase import GuiBase
 
