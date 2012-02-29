@@ -48,7 +48,7 @@ class Reader(TextBox):
 
     def on_attributes(self, attributes):
         sel = self.callbacks["get_var"]("reader_item")
-        if sel.id in attributes:
+        if sel and sel.id in attributes:
             remove_hook("attributes", self.on_attributes)
 
             # Don't bother checking attributes. If we're still
