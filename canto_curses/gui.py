@@ -19,7 +19,7 @@ from .text import ErrorBox, InfoBox
 from .screen import Screen, color_translate
 from .tag import Tag, DEFAULT_TAG_FSTRING
 
-from queue import Empty
+from queue import Queue, Empty
 import logging
 import curses
 import pprint
@@ -63,6 +63,8 @@ class CantoCursesGui(CommandHandler):
 
         self.plugin_class = GuiPlugin
         self.update_plugin_lookups()
+
+        self.input_queue = Queue()
 
         self.backend = backend
         self.screen = None
@@ -459,7 +461,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
         # fire up curses.
 
         log.debug("Starting curses.")
-        self.screen = Screen(self.backend.responses, self.callbacks)
+        self.screen = Screen(self.input_queue, self.callbacks)
         self.screen.refresh()
 
         self.glog_handler = GraphicalLog(self.callbacks, self.screen)
@@ -1204,9 +1206,12 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 command_string = command_string[1:]
             else:
                 try:
-                    cmd = self.backend.responses.get(True, 0.1)
+                    cmd = self.input_queue.get(True, 0.1)
                 except Empty:
-                    continue
+                    try:
+                        cmd = self.backend.responses.get(True, 0.1)
+                    except Empty:
+                        continue
 
             if cmd[0] == "KEY":
                 resolved = self.key(cmd[1])
