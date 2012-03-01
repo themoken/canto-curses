@@ -308,8 +308,15 @@ class Story(PluginHandler):
                             pad.getyx()[1] - (theme_len(right) + 3))
 
                     # Write out the ellipsis.
+
                     for i in range(3):
-                        pad.waddch('.')
+                        try:
+                            pad.waddch(".")
+                        except:
+                            # We have to encode this as UTF-8 because of python
+                            # bug 12567, fixed in 3.3
+
+                            pad.waddch(".".encode("UTF-8"))
 
                     # Handling any dangling codes
                     theme_process(pad, s)
