@@ -238,7 +238,7 @@ class Story(PluginHandler):
             parsed = parse_conditionals(state["fstring"])
         except Exception as e:
             log.warn("Failed to parse conditionals in fstring: %s" % state["fstring"])
-            log.warn("\n" + "".join(traceback.format_exc(e)))
+            log.warn("\n" + "".join(traceback.format_exc()))
             log.warn("Falling back to default.")
             parsed = parse_conditionals(DEFAULT_FSTRING)
 
@@ -274,7 +274,7 @@ class Story(PluginHandler):
             s = eval_theme_string(parsed, values)
         except Exception as e:
             log.warn("Failed to evaluate fstring: %s" % state["fstring"])
-            log.warn("\n" + "".join(traceback.format_exc(e)))
+            log.warn("\n" + "".join(traceback.format_exc()))
             log.warn("Falling back to default")
 
             parsed = parse_conditionals(DEFAULT_FSTRING)
@@ -336,7 +336,9 @@ class Story(PluginHandler):
         # is going to be fucked up.
 
         except Exception as e:
-            log.debug("Story exception: %s" % (e,))
+            tb = traceback.format_exc()
+            log.debug("Story exception:")
+            log.debug("\n" + "".join(tb))
 
         # Return number of lines this story took to render entirely.
         return lines

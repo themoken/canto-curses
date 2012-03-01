@@ -306,7 +306,7 @@ class Tag(list):
         except Exception as e:
             log.warn("Failed to parse conditionals in fstring: %s" %
                     fstring)
-            log.warn("\n" + "".join(traceback.format_exc(e)))
+            log.warn("\n" + "".join(traceback.format_exc()))
             log.warn("Falling back to default.")
             parsed = parse_conditionals(DEFAULT_TAG_FSTRING)
 
@@ -333,7 +333,7 @@ class Tag(list):
             s = eval_theme_string(parsed, values)
         except Exception as e:
             log.warn("Failed to evaluate fstring: %s" % fstring)
-            log.warn("\n" + "".join(traceback.format_exc(e)))
+            log.warn("\n" + "".join(traceback.format_exc()))
             log.warn("Falling back to default")
 
             parsed = parse_conditionals(DEFAULT_TAG_FSTRING)

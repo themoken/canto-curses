@@ -254,7 +254,7 @@ class CantoCurses(CantoClient):
             pass
 
         except Exception as e:
-            tb = traceback.format_exc(e)
+            tb = traceback.format_exc()
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
 

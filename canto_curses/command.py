@@ -83,7 +83,7 @@ class CommandHandler(PluginHandler):
                     return True
                 return r
             except Exception as e:
-                tb = traceback.format_exc(e)
+                tb = traceback.format_exc()
                 log.error("Exception running command %s" % command)
                 log.error("\n" + "".join(tb))
                 log.error("Continuing...")
