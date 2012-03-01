@@ -22,7 +22,7 @@ log = logging.getLogger("TAG")
 # like a Tag takes IDs from the backend and renders an ncurses pad. No class
 # other than Tag actually touches Story objects directly.
 
-DEFAULT_TAG_FSTRING = "%C%1%?{sel}(%R:)%?{c}([+]:[-])%?{en}([%{to}]:)%?{aen}([%{vto}]:) %t [%B%2%n%1%b]%?{sel}(%r:)%0"
+DEFAULT_TAG_FSTRING = "%1%?{sel}(%R:)%?{c}([+]:[-])%?{en}([%{to}]:)%?{aen}([%{vto}]:) %t [%B%2%n%1%b]%?{sel}(%r:)%0"
 
 class Tag(list):
     def __init__(self, tag, callbacks):
