@@ -1016,6 +1016,8 @@ class TagList(GuiBase):
             tag.do_changes(self.width)
             if target_offset < tag.lines:
                 target_offset = tag.lines
+        elif target_offset < 0:
+            target_offset = 0
 
         # If we're trying to render too close to the bottom, we also
         # need an adjustment.
