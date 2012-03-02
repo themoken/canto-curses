@@ -1051,7 +1051,7 @@ class TagList(GuiBase):
 
         while curpos > 0:
             if obj.prev_obj:
-                obj.do_changes(self.width)
+                obj.prev_obj.do_changes(self.width)
                 curpos -= obj.prev_obj.lines
                 obj = obj.prev_obj
 
