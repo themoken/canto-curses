@@ -1104,6 +1104,10 @@ class TagList(GuiBase):
             if self.callbacks["get_tag_opt"](obj, "collapsed"):
                 break
 
+            # We use obj instead of sel here because next_sel will only be set
+            # if the current object is selectable, which it isn't if it's not
+            # collapsed.
+
             if self.first_sel.next_obj:
                 self.first_sel = self.first_sel.next_obj
             else:
@@ -1129,8 +1133,8 @@ class TagList(GuiBase):
                     tag = obj
                 else:
                     tag = self.tag_by_item(obj)
+                    tag.do_changes(self.width)
 
-                tag.do_changes(self.width)
                 if curpos >= tag.lines:
                     self._partial_render(tag, 0, 0)
                     rendered_header = True
