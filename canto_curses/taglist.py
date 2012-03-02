@@ -538,10 +538,16 @@ class TagList(GuiBase):
 
         target_offset = self.callbacks["get_var"]("target_offset")
 
-        tag = self.tag_by_item(sel)
-        while sel.next_story:
-            sel = sel.next_story
-            if self.tag_by_item(sel) != tag:
+        if sel not in self.tags:
+            tag = self.tag_by_item(sel)
+        else:
+            tag = sel
+
+        while sel.next_sel:
+            sel = sel.next_sel
+
+            # This will be true for stories as well as selectable tags
+            if sel not in tag:
                 break
 
         self._set_cursor(sel, target_offset)
@@ -555,18 +561,27 @@ class TagList(GuiBase):
 
         target_offset = self.callbacks["get_var"]("target_offset")
 
-        tag = self.tag_by_item(sel)
-        while sel.prev_story:
-            sel = sel.prev_story
-            newtag = self.tag_by_item(sel)
-            if newtag != tag:
+        if sel not in self.tags:
+            tag = self.tag_by_item(sel)
+        else:
+            tag = sel
 
-                # Choose the first item in the tag. next_obj
-                # is guaranteed to be a story by the knowledge
-                # that we have a visible story in it.
+        while sel.prev_sel:
+            sel = sel.prev_sel
 
-                sel = newtag.next_obj
-                break
+            if sel not in self.tags:
+                newtag = self.tag_by_item(sel)
+                if newtag != tag:
+
+                    # If the current cursor is an item, in a newtag, we know
+                    # the tag's next_obj is the first story, which may also be
+                    # this item.
+
+                    sel = newtag.next_obj
+                    break
+            else:
+                if sel != tag:
+                    break
 
         self._set_cursor(sel, target_offset)
 
