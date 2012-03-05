@@ -47,7 +47,7 @@ class CantoHTML(HTMLParser):
             log.debug("adding %s to link_text" % text)
             self.link_text += text
 
-        self.result += text
+        self.result += text.replace("\\","\\\\").replace("%","\\%")
 
     def convert_charref(self, ref):
         try:

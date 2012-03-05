@@ -111,8 +111,10 @@ class Reader(TextBox):
                         if "type" in c and "text" in c["type"]:
                             mainbody = c["value"]
 
-                content = prep_for_display(mainbody + extra_content)
-                content, links = htmlparser.convert(content)
+                # This needn't be prep_for_display'd because the HTML parser
+                # handles that.
+
+                content, links = htmlparser.convert(mainbody + extra_content)
 
                 # 0 always is the mainlink, append other links
                 # to the list.
