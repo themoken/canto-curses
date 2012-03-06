@@ -40,6 +40,9 @@ class CantoHTML(HTMLParser):
         self.handle_tag(tag, {}, 0)
 
     def handle_data(self, text):
+        self.handle_data_clean(text.replace("%","\\%",).replace("\\","\\\\"))
+
+    def handle_data_clean(self, text):
         if self.verbatim <= 0:
             text = text.replace("\n", " ")
 
@@ -47,7 +50,7 @@ class CantoHTML(HTMLParser):
             log.debug("adding %s to link_text" % text)
             self.link_text += text
 
-        self.result += text.replace("\\","\\\\").replace("%","\\%")
+        self.result += text
 
     def convert_charref(self, ref):
         try:
@@ -103,7 +106,7 @@ class CantoHTML(HTMLParser):
                 if "alt" not in attrs:
                     attrs["alt"] = ""
                 self.links.append(("image", attrs["src"], attrs["alt"]))
-                self.handle_data("%4" + attrs["alt"] +\
+                self.handle_data_clean("%4" + attrs["alt"] +\
                         "[" + str(len(self.links)) + "]%0")
 
         elif tag in ["h" + str(x) for x in range(1,7)]:
