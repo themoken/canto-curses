@@ -167,6 +167,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "tags_enumerated_absolute" : self.validate_bool,
                 "hide_empty_tags" : self.validate_bool,
                 "search_attributes" : self.validate_string_list,
+                "cursor" : self.validate_taglist_cursor,
             },
 
             "story" :
@@ -300,6 +301,13 @@ Until reconnected, it will be impossible to fetch any information, and any state
                     "p" : "prev-marked",
                     "M" : "item-state -marked *",
                 },
+
+                "cursor" :
+                {
+                    "type" : "edge",
+                    "scroll" : "scroll",
+                    "edge" : 5,
+                },
             },
 
             "story" :
@@ -420,6 +428,9 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "q" : "quit",
                 "filter" : "transform",
                 "sort" : "transform",
+                "cursor_type" : "remote one-config CantoCurses.taglist.cursor.type",
+                "cursor_scroll" : "remote one-config CantoCurses.taglist.cursor.scroll",
+                "cursor_edge" : "remote one-config --eval CantoCurses.taglist.cursor.edge",
         }
 
         self.daemon_init()
@@ -670,6 +681,27 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 return (False, False)
 
         return (True, r)
+
+    def validate_taglist_cursor(self, val, d):
+        if type(val) != dict:
+            return (False, False)
+
+        for setting in [ "type","scroll","edge" ]:
+            if setting not in val:
+                val[setting] = d[setting]
+
+        if val["type"] not in ["edge","top","middle","bottom"]:
+            log.error("Cursor type %s unknown!" % (val["type"],))
+            return (False, False)
+
+        if val["scroll"] not in ["scroll", "page"]:
+            log.error("Cursor scroll type %s unknown!" % (val["scroll"],))
+
+        if type(val["edge"]) != int or val["edge"] < 0:
+            log.error("Cursor edge invalid, must be int >= 0: %s" % (val["edge"],))
+            return (False, False)
+
+        return (True, val)
 
     def _list_diff(self, cur, old):
         adds = []

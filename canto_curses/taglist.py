@@ -435,6 +435,49 @@ class TagList(GuiBase):
         self.callbacks["set_var"]("selected", item)
 
         if item:
+
+            conf = self.callbacks["get_conf"]()
+            curstyle = conf["taglist"]["cursor"]
+
+            # Convert window position for absolute positioning, edge
+            # positioning uses given window_location.
+
+            if curstyle["type"] == "top":
+                window_location = 0
+            elif curstyle["type"] == "middle":
+                window_location = int((self.height - 1) / 2)
+            elif curstyle["type"] == "bottom":
+                window_location = self.height - 1
+
+            # If the tag header is larger than the edge, the scroll will never
+            # be triggered (redraw resets screen position to keep items visible
+            # despite the tag header).
+
+            if item in self.tags:
+                tag = item
+            else:
+                tag = self.tag_by_item(item)
+
+            tag.do_changes(self.width)
+            wl_top = max(curstyle["edge"], tag.lines)
+
+            # Similarly, if the current item is larger than the (edge + 1), the
+            # scroll won't be triggered, so we take the max edge there too.
+
+            item.do_changes(self.width)
+            wl_bottom = (self.height - 1) - max(curstyle["edge"], item.lines)
+
+            if window_location > wl_bottom:
+                if curstyle["scroll"] == "scroll":
+                    window_location = wl_bottom
+                elif curstyle["scroll"] == "page":
+                    window_location = wl_top
+            elif window_location < wl_top:
+                if curstyle["scroll"] == "scroll":
+                    window_location = wl_top
+                elif curstyle["scroll"] == "page":
+                    window_location = wl_bottom
+
             self.callbacks["set_var"]("target_obj", item)
             self.callbacks["set_var"]("target_offset", window_location)
             item.select()
