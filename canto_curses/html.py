@@ -59,7 +59,7 @@ class CantoHTML(HTMLParser):
             else:
                 c = int(ref)
         except:
-            return "[?]"
+            return ref
         return chr(c)
 
     def handle_charref(self, ref):
