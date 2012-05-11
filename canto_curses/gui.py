@@ -998,20 +998,27 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
             if tweak in [ "selected", "reader_item" ]:
                 if self.vars[tweak] and hasattr(self.vars[tweak], "id"):
+                    self.vars["protected_ids"].remove(self.vars[tweak].id)
+                    self.write("UNPROTECT",\
+                            { "filter-immune" : [ self.vars[tweak].id ] })
 
+                    # Fake a TAGCHANGE because unprotected items have the
+                    # possibility to filtered out and we only refresh items for
+                    # tags that get a TAGCHANGE on tick.
+
+                    for tag in self.vars["alltags"]:
+                        if self.vars[tweak].id in tag.get_ids():
+                            self.prot_tagchange(tag.tag)
+
+                if value and hasattr(value, "id"):
                     # protected_ids just tells the prot_items to not allow
                     # this item to have it's auto protection stripped.
 
-                    self.vars["protected_ids"].remove(self.vars[tweak].id)
+                    self.vars["protected_ids"].append(value.id)
 
                     # Set an additional protection, filter-immune so hardened
                     # filters won't eliminate it.
 
-                    self.write("UNPROTECT",\
-                            { "filter-immune" : [ self.vars[tweak].id ] })
-
-                if value and hasattr(value, "id"):
-                    self.vars["protected_ids"].append(value.id)
                     self.write("PROTECT", { "filter-immune" : [ value.id ] })
 
             self.vars[tweak] = value
