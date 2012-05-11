@@ -40,7 +40,7 @@ class CantoHTML(HTMLParser):
         self.handle_tag(tag, {}, 0)
 
     def handle_data(self, text):
-        self.handle_data_clean(text.replace("%","\\%",).replace("\\","\\\\"))
+        self.handle_data_clean(text.replace("\\","\\\\",).replace("%","\\%"))
 
     def handle_data_clean(self, text):
         if self.verbatim <= 0:
