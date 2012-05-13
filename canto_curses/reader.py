@@ -73,7 +73,7 @@ class Reader(TextBox):
 
             if "description" not in sel.content\
                     and "content" not in sel.content:
-                self.callbacks["write"]("ATTRIBUTES",\
+                self.callbacks["prio_write"]("ATTRIBUTES",\
                         { sel.id : ["description", "content"] })
                 s += "%BWaiting for content...%b\n"
                 on_hook("attributes", self.on_attributes)

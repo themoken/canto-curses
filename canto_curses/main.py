@@ -55,8 +55,9 @@ class CantoCurses(CantoClient):
         # (debug option)
         self.log_fname_pid = False
 
-        # Response queue.
+        # Response queues.
         self.responses = None
+        self.prio_responses = None
 
         self.short_args = 'vl'
         optl = self.common_args(self.short_args)
@@ -78,6 +79,11 @@ class CantoCurses(CantoClient):
         except Exception as e:
             log.error("Error: %s" % e)
             sys.exit(-1)
+
+        # __init__ above started one connection, start another
+        # for priority stuff.
+
+        self.connect()
 
         # Make sure we have permissions on the relevant, non-daemon files in
         # the target directory (None of these will be used until we set_log)
@@ -121,6 +127,23 @@ class CantoCurses(CantoClient):
 
         log.debug("Response thread exiting.")
 
+    def prio_response_thread(self):
+        try:
+            while self.prio_response_alive:
+                r = self.read(None, 1)
+
+                # HUP
+                if r == 16:
+                    self.prio_response_alive = False
+                    break
+                if r:
+                    self.prio_responses.put(r)
+
+        except Exception as e:
+            log.error("Priority response thread exception: %s" % (e,))
+
+        log.debug("Priority response thread exiting.")
+
     def start_rthread(self):
         self.response_alive = True
 
@@ -132,6 +155,20 @@ class CantoCurses(CantoClient):
         # so the __init__ can ram some discovery requests through.
 
         thread = Thread(target=self.response_thread)
+        thread.daemon = True
+        thread.start()
+
+    def start_prthread(self):
+        self.prio_response_alive = True
+
+        # If we're reconnecting, don't recreate Queue
+        if not self.prio_responses:
+            self.prio_responses = Queue()
+
+        # Thead *must* be running before gui instantiated
+        # so the __init__ can ram some discovery requests through.
+
+        thread = Thread(target=self.prio_response_thread)
         thread.daemon = True
         thread.start()
 
@@ -180,6 +217,9 @@ class CantoCurses(CantoClient):
     def run(self):
         # Initial response thread setup.
         self.start_rthread()
+
+        # Prio response thread setup.
+        self.start_prthread()
 
         # Initial Gui setup.
         self.gui = CantoCursesGui(self)

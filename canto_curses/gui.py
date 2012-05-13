@@ -124,7 +124,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
             "get_tag_opt" : self.get_tag_opt,
             "set_tag_opt" : self.set_tag_opt,
             "switch_tags" : self.switch_tags,
-            "write" : self.write
+            "write" : self.write,
+            "prio_write" : self.prio_write,
         }
 
         self.keys = {
@@ -514,11 +515,14 @@ Until reconnected, it will be impossible to fetch any information, and any state
             else:
                 log.debug("waiting: %s != %s" % (r[0], cmd))
 
-    def write(self, cmd, args):
+    def write(self, cmd, args, conn=0):
         if not self.disconn:
-            self.backend.write(cmd, args)
+            self.backend.write(cmd, args, conn)
         else:
             log.debug("Disconnected. Discarding %s - %s" % (cmd, args))
+
+    def prio_write(self, cmd, args):
+        self.write(cmd, args, 1)
 
     def disconnected(self):
         self.disconn = CONN_NEED_NOTIFY
@@ -1244,13 +1248,24 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 cmd = command_string[0]
                 command_string = command_string[1:]
             else:
+                cmd = None
+
                 try:
                     cmd = self.input_queue.get(True, 0.1)
                 except Empty:
-                    try:
+                    pass
+
+                try:
+                    if not cmd:
+                        cmd = self.backend.prio_responses.get(True, 0.1)
+                except Empty:
+                    pass
+
+                try:
+                    if not cmd:
                         cmd = self.backend.responses.get(True, 0.1)
-                    except Empty:
-                        continue
+                except Empty:
+                    continue
 
             if cmd[0] == "KEY":
                 resolved = self.key(cmd[1])
