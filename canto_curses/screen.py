@@ -552,7 +552,6 @@ class Screen(CommandHandler):
     def refresh(self):
         for c in self.tiles + self.floats:
             c.refresh()
-        curses.doupdate()
 
     def redraw(self):
         for c in self.tiles + self.floats:
