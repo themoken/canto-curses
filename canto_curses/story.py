@@ -71,10 +71,11 @@ class Story(PluginHandler):
 
     def on_attributes(self, attributes):
         if self.id in attributes:
-            # Don't bother checking attributes. If we're still
-            # lacking, need_redraw will re-enable this hook
-
-            self.need_redraw()
+            for attr in attributes[self.id]:
+                if attr not in self.content or self.content[attr] !=\
+                        attributes[self.id][attr]:
+                    self.content[attr] = attributes[self.id][attr]
+                    self.need_redraw()
 
     def on_opt_change(self, config):
         if "story" not in config:

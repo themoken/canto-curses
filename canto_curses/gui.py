@@ -827,18 +827,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 self.write("DELCONFIGS", { "CantoCurses" : deletions })
 
     def prot_attributes(self, d):
-        atts = {}
-        for given_id in d:
-            for tag in self.vars["alltags"]:
-                item = tag.get_id(given_id)
-                if not item:
-                    continue
-
-                for k in d[given_id]:
-                    item.content[k] = d[given_id][k]
-                atts[item.id] = list(d[given_id].keys())
-        if atts:
-            call_hook("attributes", [ atts ])
+        call_hook("attributes", [ d ])
 
     def prot_items(self, updates):
         unprotect = {"auto":[]}
