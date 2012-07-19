@@ -295,6 +295,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
                     "J" : "next-tag",
                     "K" : "prev-tag",
                     "c" : "toggle-collapse",
+                    "C" : "collapse *",
+                    "V" : "uncollapse *",
                     "$" : "item-state read t:. 0-.",
                     "/" : "search",
                     "?" : "search-regex",
