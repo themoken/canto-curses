@@ -491,6 +491,11 @@ class Screen(CommandHandler):
 
         self.refresh()
 
+        # Force a doupdate because refresh doesn't, but we have possibly
+        # uncovered part of the screen that isn't handled by any other window.
+
+        curses.doupdate()
+
     # The pause interface callback keeps the interface from updating. This is
     # useful if we have to temporarily surrender the screen (i.e. text browser).
 
