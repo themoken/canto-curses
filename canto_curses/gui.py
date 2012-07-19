@@ -226,7 +226,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
             "update" :
             {
                 "style" : "append",
-                "auto" : { "interval" : 60 }
+                "auto" : { "interval" : 5 }
             },
 
             "reader" :
@@ -911,8 +911,6 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 if tag not in self.tag_config:
                     log.debug("Using default tag config for %s" % tag)
                     self.tag_config[tag] = self.tag_template_config.copy()
-            else:
-                log.warn("Got NEWTAG for already existing tag!")
 
             if tag not in c["tagorder"]:
                 c["tagorder"] = self.config["tagorder"] + [ tag ]
