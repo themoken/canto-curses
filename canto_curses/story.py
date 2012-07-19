@@ -267,7 +267,7 @@ class Story(PluginHandler):
         # Prep all text values for display.
 
         for value in list(values.keys()):
-            if type(values[value]) in [str, str]:
+            if type(values[value]) == str:
                 values[value] = prep_for_display(values[value])
 
         values.update(passthru)
