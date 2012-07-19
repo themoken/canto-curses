@@ -7,7 +7,6 @@
 #   published by the Free Software Foundation.
 
 from canto_next.hooks import call_hook, on_hook
-from canto_next.encoding import encoder
 from canto_next.plugins import Plugin
 
 from .command import CommandHandler, command_format
@@ -140,7 +139,6 @@ class GuiBase(CommandHandler):
             os.dup2(fd, sys.stdout.fileno())
 
         path = path.replace("%u", href)
-        path = encoder(path)
 
         os.execv("/bin/sh", ["/bin/sh", "-c", path])
 
@@ -163,7 +161,7 @@ class GuiBase(CommandHandler):
         fd, path = tempfile.mkstemp(text=True)
 
         f = os.fdopen(fd, "w")
-        f.write(encoder(text))
+        f.write(text)
         f.close()
 
         # Invoke editor
