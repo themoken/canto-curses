@@ -302,6 +302,10 @@ class TagList(GuiBase):
         else:
             curint = 0
 
+        # Handle 0 items
+        if not self.last_story:
+            return (False, None, None)
+
         t, r = self._int(args, curint, self.last_story.offset,
                 lambda : self.eprompt("item: "))
 
