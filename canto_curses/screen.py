@@ -582,6 +582,9 @@ class Screen(CommandHandler):
         self.subwindows()
         self.refresh()
 
+        # Force a curses doupdate because refresh doesn't.
+        curses.doupdate()
+
     # Focus idx-th window.
     @command_format([("idx", "optint")])
     def cmd_focus(self, **kwargs):
