@@ -72,8 +72,9 @@ class Story(PluginHandler):
     def on_attributes(self, attributes):
         if self.id in attributes:
             for attr in attributes[self.id]:
-                if attr not in self.content or self.content[attr] !=\
-                        attributes[self.id][attr]:
+                if attr not in self.content or\
+                        (attr != "canto-state" and self.content[attr] !=\
+                        attributes[self.id][attr]):
                     self.content[attr] = attributes[self.id][attr]
                     self.need_redraw()
 
