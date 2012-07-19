@@ -176,6 +176,19 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "enumerated" : self.validate_bool,
                 "format" : self.validate_string,
                 "format_attrs" : self.validate_string_list,
+
+                "selected": self.validate_string,
+                "unselected":  self.validate_string,
+                "selected_end": self.validate_string ,
+                "unselected_end": self.validate_string,
+                "read": self.validate_string,
+                "unread": self.validate_string,
+                "read_end": self.validate_string,
+                "unread_end": self.validate_string,
+                "marked": self.validate_string,
+                "unmarked": self.validate_string,
+                "marked_end": self.validate_string,
+                "unmarked_end": self.validate_string,
             },
 
             "input" : { "window" : self.validate_window },
@@ -318,6 +331,20 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "enumerated" : False,
                 "format" : DEFAULT_FSTRING,
                 "format_attrs" : [ "title" ],
+
+                # Themability
+                "selected": "%R",
+                "unselected": "",
+                "selected_end": "%r",
+                "unselected_end": "",
+                "read": "%3",
+                "unread": "%2%B",
+                "read_end": "%0",
+                "unread_end": "%b%0",
+                "marked": "*%8%B",
+                "unmarked": "",
+                "marked_end": "%b%0",
+                "unmarked_end": "",
             },
 
             "input" :
@@ -434,6 +461,18 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "cursor_type" : "remote one-config CantoCurses.taglist.cursor.type",
                 "cursor_scroll" : "remote one-config CantoCurses.taglist.cursor.scroll",
                 "cursor_edge" : "remote one-config --eval CantoCurses.taglist.cursor.edge",
+                "story.unselected" : "remote one-config CantoCurses.story.unselected",
+                "story.selected" : "remote one-config CantoCurses.story.selected",
+                "story.selected_end" : "remote one-config CantoCurses.story.selected_end",
+                "story.unselected_end" : "remote one-config CantoCurses.story.unselected_end",
+                "story.unread" : "remote one-config CantoCurses.story.unread",
+                "story.read" : "remote one-config CantoCurses.story.read",
+                "story.read_end" : "remote one-config CantoCurses.story.read_end",
+                "story.unread_end" : "remote one-config CantoCurses.story.unread_end",
+                "story.unmarked" : "remote one-config CantoCurses.story.unmarked",
+                "story.marked" : "remote one-config CantoCurses.story.marked",
+                "story.marked_end" : "remote one-config CantoCurses.story.marked_end",
+                "story.unmarked_end" : "remote one-config CantoCurses.story.unmarked_end",
         }
 
         self.daemon_init()
@@ -736,7 +775,6 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
         # Sub in non-existent values:
 
-        log.debug("d = %s" % d)
 
         for key in list(v.keys()):
             if key not in c:

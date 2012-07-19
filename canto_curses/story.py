@@ -25,7 +25,7 @@ class StoryPlugin(Plugin):
 # its own state only because it affects its representation, it's up to a higher
 # class to actually communicate state changes to the backend.
 
-DEFAULT_FSTRING = "%1%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%R:)%?{rd}(%3:%2%B)%?{m}(*%8%B:)%t%?{m}(%b%0:)%?{rd}(%0:%b%0)%?{sel}(%r:)%0"
+DEFAULT_FSTRING = "%1%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})%?{m}(%{marked}:%{unmarked})%t%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})%0"
 
 class Story(PluginHandler):
     def __init__(self, id, callbacks):
@@ -92,8 +92,9 @@ class Story(PluginHandler):
                 self.callbacks["write"]("ATTRIBUTES",\
                         { self.id : needed_attrs })
 
-        if "enumerated" in config["story"] or "format" in config["story"]:
-            self.need_redraw()
+        # All other story options are formats / enumerations, redraw.
+
+        self.need_redraw()
 
     def on_tag_opt_change(self, config):
         tagname = self.callbacks["get_tag_name"]()
@@ -251,6 +252,15 @@ class Story(PluginHandler):
         passthru = {}
         for c in "RrDdUuBbSs012345678":
             passthru[c] = "%" + c
+
+        # Add refactored themability variables:
+
+        story_conf = self.callbacks["get_opt"]("story")
+        for attr in [ "selected", "read", "marked" ]:
+            passthru[attr] = story_conf[attr]
+            passthru["un" + attr] = story_conf["un" + attr]
+            passthru[attr + "_end"] = story_conf[attr + "_end"]
+            passthru["un" + attr + "_end"] = story_conf["un" + attr + "_end"]
 
         values = { 'en' : state["enumerated"],
                     'i' : state["abs_idx"],
