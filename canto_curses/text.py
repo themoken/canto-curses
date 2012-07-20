@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from .theme import FakePad, WrapPad, theme_print, theme_lstrip, theme_border
+from .theme import FakePad, WrapPad, theme_print, theme_lstrip, theme_border, theme_reset
 from .command import command_format
 from .guibase import GuiBase
 from .theme import theme_print
@@ -148,6 +148,8 @@ class TextBox(GuiBase):
         # Account for potential bottom rendered on redraw.
         if bb:
             lines += 1
+
+        theme_reset()
 
         # Return one extra line because the rest of the reader
         # code knows to avoid the dead cell on the bottom right

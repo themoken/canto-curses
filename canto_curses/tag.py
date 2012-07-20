@@ -9,7 +9,7 @@
 from canto_next.hooks import call_hook, on_hook, remove_hook
 
 from .parser import parse_conditionals, eval_theme_string, prep_for_display
-from .theme import FakePad, WrapPad, theme_print
+from .theme import FakePad, WrapPad, theme_print, theme_reset
 from .story import Story
 
 import traceback
@@ -353,5 +353,7 @@ class Tag(list):
         while s:
             s = theme_print(pad, s, width, "", "")
             lines += 1
+
+        theme_reset()
 
         return lines

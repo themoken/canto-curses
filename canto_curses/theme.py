@@ -292,6 +292,11 @@ def theme_lstrip(pad, uni):
 
     return (newlines * "\n") + r
 
+def theme_reset():
+    for key in attr_count:
+        attr_count[key] = 0
+    color_stack = []
+
 utf_chars = { "ls" : "│",
               "rs" : "│",
               "ts" : "─",

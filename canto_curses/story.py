@@ -9,7 +9,7 @@
 from canto_next.plugins import Plugin, PluginHandler
 from canto_next.hooks import on_hook, remove_hook
 
-from .theme import FakePad, WrapPad, theme_print, theme_len, theme_process
+from .theme import FakePad, WrapPad, theme_print, theme_len, theme_process, theme_reset
 from .parser import parse_conditionals, eval_theme_string, prep_for_display
 
 import traceback
@@ -351,6 +351,9 @@ class Story(PluginHandler):
             tb = traceback.format_exc()
             log.debug("Story exception:")
             log.debug("\n" + "".join(tb))
+
+        # Reset theme counters
+        theme_reset()
 
         # Return number of lines this story took to render entirely.
         return lines
