@@ -143,7 +143,14 @@ Until reconnected, it will be impossible to fetch any information, and any state
             "tags" : self.validate_tags,
             "tagorder" : self.validate_tag_order,
 
-            "tag" : { "format" : self.validate_string },
+            "tag" :
+            {
+                "format" : self.validate_string,
+                "selected" : self.validate_string,
+                "unselected" : self.validate_string,
+                "selected_end" : self.validate_string,
+                "unselected_end" : self.validate_string,
+            },
 
             "update" :
             {
@@ -234,7 +241,14 @@ Until reconnected, it will be impossible to fetch any information, and any state
             "tags" : r"maintag:.*",
             "tagorder" : [],
 
-            "tag" : { "format" : DEFAULT_TAG_FSTRING },
+            "tag" :
+            {
+                "format" : DEFAULT_TAG_FSTRING,
+                "selected" : "%R",
+                "unselected" : "",
+                "selected_end" : "%r",
+                "unselected_end" : "",
+            },
 
             "update" :
             {
@@ -473,6 +487,10 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "story.marked" : "remote one-config CantoCurses.story.marked",
                 "story.marked_end" : "remote one-config CantoCurses.story.marked_end",
                 "story.unmarked_end" : "remote one-config CantoCurses.story.unmarked_end",
+                "tag.unselected" : "remote one-config CantoCurses.tag.unselected",
+                "tag.selected" : "remote one-config CantoCurses.tag.selected",
+                "tag.selected_end" : "remote one-config CantoCurses.tag.selected_end",
+                "tag.unselected_end" : "remote one-config CantoCurses.tag.unselected_end",
         }
 
         self.daemon_init()

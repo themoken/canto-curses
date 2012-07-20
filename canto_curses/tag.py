@@ -22,7 +22,7 @@ log = logging.getLogger("TAG")
 # like a Tag takes IDs from the backend and renders an ncurses pad. No class
 # other than Tag actually touches Story objects directly.
 
-DEFAULT_TAG_FSTRING = "%1%?{sel}(%R:)%?{c}([+]:[-])%?{en}([%{to}]:)%?{aen}([%{vto}]:) %t [%B%2%n%1%b]%?{sel}(%r:)%0"
+DEFAULT_TAG_FSTRING = "%1%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%?{en}([%{to}]:)%?{aen}([%{vto}]:) %t [%B%2%n%1%b]%?{sel}(%{selected_end}:%{unselected_end})%0"
 
 class Tag(list):
     def __init__(self, tag, callbacks):
@@ -92,6 +92,9 @@ class Tag(list):
         if "taglist" in opts and\
                 ("tags_enumerated" in opts["taglist"] or\
                 "tags_enumerated_absolute" in opts["taglist"]):
+            self.need_redraw()
+
+        if "tag" in opts:
             self.need_redraw()
 
     def on_tag_opt_change(self, opts):
@@ -282,7 +285,7 @@ class Tag(list):
         self.changed = False
 
     def render_header(self, width, pad):
-        fstring = self.callbacks["get_opt"]("tag.format")
+        tag_conf = self.callbacks["get_opt"]("tag")
         taglist_conf = self.callbacks["get_opt"]("taglist")
         collapsed = self.callbacks["get_tag_opt"]("collapsed")
 
@@ -301,6 +304,10 @@ class Tag(list):
         for c in "RrDdUuBbSs012345678":
             passthru[c] = "%" + c
 
+        for attr in [ "selected", "unselected", "selected_end", "unselected_end" ]:
+            passthru[attr] = tag_conf[attr]
+
+        fstring = tag_conf["format"]
         try:
             parsed = parse_conditionals(fstring)
         except Exception as e:
