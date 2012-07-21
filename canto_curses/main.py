@@ -25,6 +25,8 @@ logging.basicConfig(
 
 log = logging.getLogger("CANTO-CURSES")
 
+version = REPLACE_WITH_VERSION
+
 import traceback
 import locale
 import getopt
@@ -59,7 +61,7 @@ class CantoCurses(CantoClient):
         self.responses = None
         self.prio_responses = None
 
-        self.short_args = 'vl'
+        self.short_args = 'vlV'
         optl = self.common_args(self.short_args)
 
         if optl == -1:
@@ -104,6 +106,9 @@ class CantoCurses(CantoClient):
                 rootlog.setLevel(max(rootlog.level - 10,0))
             if opt in ["-l"]:
                 self.log_fname_pid = True
+            if opt in ['-V']:
+                print("canto-curses %s" % version)
+                return 1
         return 0
 
     # The response_thread takes anything received from the socket and puts it
