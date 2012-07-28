@@ -155,7 +155,11 @@ Until reconnected, it will be impossible to fetch any information, and any state
             "update" :
             {
                 "style" : self.validate_update_style,
-                "auto" : { "interval" : self.validate_uint }
+                "auto" :
+                {
+                    "interval" : self.validate_uint,
+                    "enabled" : self.validate_bool,
+                }
             },
 
             "reader" :
@@ -253,7 +257,11 @@ Until reconnected, it will be impossible to fetch any information, and any state
             "update" :
             {
                 "style" : "append",
-                "auto" : { "interval" : 5 }
+                "auto" :
+                {
+                    "interval" : 20,
+                    "enabled" : True
+                }
             },
 
             "reader" :
@@ -491,6 +499,9 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "tag.selected" : "remote one-config CantoCurses.tag.selected",
                 "tag.selected_end" : "remote one-config CantoCurses.tag.selected_end",
                 "tag.unselected_end" : "remote one-config CantoCurses.tag.unselected_end",
+                "update_interval" : "remote one-config --eval CantoCurses.update.auto.interval",
+                "update_style" : "remote one-config CantoCurses.update.style",
+                "update_auto" : "remote one-config --eval CantoCurses.update.auto.enabled",
         }
 
         self.daemon_init()
@@ -1204,6 +1215,10 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
     def do_tick(self):
         self.ticked = False
+
+        if not self.config["update"]["auto"]["enabled"]:
+            return
+
         if self.update_interval <= 0:
             if self.updates:
                 self.write("ITEMS", self.updates)
