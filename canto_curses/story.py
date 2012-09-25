@@ -9,7 +9,7 @@
 from canto_next.plugins import Plugin, PluginHandler
 from canto_next.hooks import on_hook, remove_hook
 
-from .theme import FakePad, WrapPad, theme_print, theme_len, theme_process, theme_reset
+from .theme import FakePad, WrapPad, theme_print, theme_len, theme_process, theme_reset, theme_border
 from .parser import parse_conditionals, eval_theme_string, prep_for_display
 
 import traceback
@@ -49,6 +49,10 @@ class Story(PluginHandler):
         self.width = 0
         self.lines = 0
 
+        # Lines not in our pad, but placed after us (tag footer)
+
+        self.extra_lines = 0
+
         # Offset globally and in-tag.
         self.offset = 0
         self.rel_offset = 0
@@ -79,6 +83,9 @@ class Story(PluginHandler):
                     self.need_redraw()
 
     def on_opt_change(self, config):
+        if "taglist" in config and "border" in config["taglist"]:
+            self.need_redraw()
+
         if "story" not in config:
             return
 
@@ -297,9 +304,16 @@ class Story(PluginHandler):
 
         lines = 0
 
-        left = "%C %c"
-        left_more = "%C     %c"
-        right = "%C %c"
+        taglist_conf = self.callbacks["get_opt"]("taglist")
+
+        if taglist_conf["border"]:
+            left = "%C%B%1" + theme_border("ls") + "%0%b %c"
+            left_more = "%C%B%1" + theme_border("ls") + "%0%b     %c"
+            right = "%C %B%1" + theme_border("rs") + "%0%b%c"
+        else:
+            left = "%C %c"
+            left_more = "%C     %c"
+            right = "%C %c"
 
         try:
             while s:

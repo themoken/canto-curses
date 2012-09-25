@@ -9,7 +9,7 @@
 from canto_next.hooks import call_hook, on_hook, remove_hook
 
 from .parser import parse_conditionals, eval_theme_string, prep_for_display
-from .theme import FakePad, WrapPad, theme_print, theme_reset
+from .theme import FakePad, WrapPad, theme_print, theme_reset, theme_border
 from .story import Story
 
 import traceback
@@ -29,6 +29,7 @@ class Tag(list):
         list.__init__(self)
         self.tag = tag
         self.pad = None
+        self.footpad = None
 
         # Note that Tag() is only given the top-level CantoCursesGui
         # callbacks as it shouldn't be doing input / refreshing
@@ -61,6 +62,8 @@ class Tag(list):
 
         # Information from last refresh
         self.lines = 0
+        self.footlines = 0
+        self.extra_lines = 0
         self.width = 0
 
         # Global indices (for enumeration)
@@ -91,7 +94,8 @@ class Tag(list):
     def on_opt_change(self, opts):
         if "taglist" in opts and\
                 ("tags_enumerated" in opts["taglist"] or\
-                "tags_enumerated_absolute" in opts["taglist"]):
+                "tags_enumerated_absolute" in opts["taglist"] or\
+                "border" in opts["taglist"]):
             self.need_redraw()
 
         if "tag" in opts:
@@ -282,6 +286,17 @@ class Tag(list):
         self.render_header(width, WrapPad(self.pad))
 
         self.lines = lines
+
+        lines = self.render_footer(width, FakePad(width))
+
+        if lines:
+            self.footpad = curses.newpad(lines, width)
+            self.render_footer(width, WrapPad(self.footpad))
+        else:
+            self.footpad = None
+
+        self.footlines = lines
+
         self.changed = False
 
     def render_header(self, width, pad):
@@ -354,6 +369,22 @@ class Tag(list):
             s = theme_print(pad, s, width, "", "")
             lines += 1
 
+        if not collapsed and taglist_conf["border"]:
+            theme_print(pad, theme_border("ts") * (width - 2), width,\
+                    "%B%1"+ theme_border("tl"), theme_border("tr") + "%0%b")
+            lines += 1
+
         theme_reset()
 
         return lines
+
+    def render_footer(self, width, pad):
+        taglist_conf = self.callbacks["get_opt"]("taglist")
+        collapsed = self.callbacks["get_tag_opt"]("collapsed")
+
+        if not collapsed and taglist_conf["border"]:
+            theme_print(pad, theme_border("bs") * (width - 2), width,\
+                    "%B%1" + theme_border("bl"), theme_border("br") + "%0%b")
+            theme_reset()
+            return 1
+        return 0

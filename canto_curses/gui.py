@@ -180,6 +180,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "hide_empty_tags" : self.validate_bool,
                 "search_attributes" : self.validate_string_list,
                 "cursor" : self.validate_taglist_cursor,
+                "border" : self.validate_bool,
             },
 
             "story" :
@@ -306,6 +307,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "tags_enumerated" : False,
                 "tags_enumerated_absolute" : False,
                 "hide_empty_tags" : True,
+                "border" : False,
                 "search_attributes" : [ "title" ],
 
                 "key" :
@@ -502,6 +504,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "update_interval" : "remote one-config --eval CantoCurses.update.auto.interval",
                 "update_style" : "remote one-config CantoCurses.update.style",
                 "update_auto" : "remote one-config --eval CantoCurses.update.auto.enabled",
+                "border" : "remote one-config --eval CantoCurses.taglist.border",
         }
 
         self.daemon_init()

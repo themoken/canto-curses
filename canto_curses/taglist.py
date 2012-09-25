@@ -85,6 +85,11 @@ class TagList(GuiBase):
                 return tag
         raise Exception("Couldn't find tag of item: %s" % item)
 
+    def tag_by_obj(self, obj):
+        if obj in self.tags:
+            return obj
+        return self.tag_by_item(obj)
+
     def on_items_added(self, tag, items):
         # Items being added implies we need to remap them
         self.callbacks["set_var"]("needs_refresh", True)
@@ -380,7 +385,7 @@ class TagList(GuiBase):
 
         while o and o != ns:
             o.do_changes(self.width)
-            lines += o.lines
+            lines += o.lines + o.extra_lines
             o = o.next_obj
 
         return (ns, lines)
@@ -402,7 +407,7 @@ class TagList(GuiBase):
         while o and o != ps:
             o = o.prev_obj
             o.do_changes(self.width)
-            lines += o.lines
+            lines += o.lines + o.extra_lines
 
         return (ps, lines)
 
@@ -1027,8 +1032,14 @@ class TagList(GuiBase):
     # curpos - position in visible windown, can be negative
     # main_offset - starting line from top of pad
 
-    def _partial_render(self, obj, main_offset, curpos):
-        lines = obj.lines
+    def _partial_render(self, obj, main_offset, curpos, footer = False):
+        if not footer:
+            lines = obj.lines
+            pad = obj.pad
+        else:
+            lines = obj.footlines
+            pad = obj.footpad
+
         draw_lines = lines
 
         if curpos + lines > 0:
@@ -1046,8 +1057,8 @@ class TagList(GuiBase):
                 draw_lines = self.height - main_offset
 
             if draw_lines:
-                obj.pad.overwrite(self.pad, start, 0, main_offset, 0,
-                        main_offset + (draw_lines - 1), self.width - 2)
+                pad.overwrite(self.pad, start, 0, main_offset, 0,
+                        main_offset + (draw_lines - 1), self.width - 1)
                 return (main_offset + draw_lines, curpos + lines)
 
         return (main_offset, curpos + lines)
@@ -1099,7 +1110,7 @@ class TagList(GuiBase):
         while curpos > 0:
             if obj.prev_obj:
                 obj.prev_obj.do_changes(self.width)
-                curpos -= obj.prev_obj.lines
+                curpos -= (obj.prev_obj.lines + obj.prev_obj.extra_lines)
                 obj = obj.prev_obj
 
             # If there aren't enough items to render before this item and
@@ -1173,18 +1184,40 @@ class TagList(GuiBase):
             # Copy item into window
             w_offset, curpos = self._partial_render(obj, w_offset, curpos)
 
+            # If we're at the end of a list, or the next item is a tag we need
+            # to render the tag footer for the current tag.
+
             # Render floating header, if we've covered enough ground.
 
             if not rendered_header and curpos > 0:
+                tag = self.tag_by_obj(obj)
+                tag.do_changes(self.width)
+
+                if curpos >= tag.lines:
+                    self._partial_render(tag, 0, 0)
+                    rendered_header = True
+
+            # Do this before the floating header so that if no items are going
+            # to be visible, the header is still displayed without the close.
+
+            obj.extra_lines = 0
+
+            if not obj.next_obj or obj.next_obj in self.tags:
                 if obj in self.tags:
                     tag = obj
                 else:
                     tag = self.tag_by_item(obj)
                     tag.do_changes(self.width)
+                    obj.extra_lines = tag.footlines
 
-                if curpos >= tag.lines:
-                    self._partial_render(tag, 0, 0)
-                    rendered_header = True
+                w_offset, curpos = self._partial_render(tag, w_offset, curpos, True)
+
+                # Set this because if we don't have room above the footer for
+                # the header (implied by this block executing with
+                # rendered_header == False), then actually rendering one looks
+                # broken.
+
+                rendered_header = True
 
             if w_offset >= self.height:
                 break
