@@ -361,8 +361,6 @@ class Tag(list):
             parsed = parse_conditionals(DEFAULT_TAG_FSTRING)
             s = eval_theme_string(parsed, values)
 
-        s += "\n"
-
         lines = 0
 
         while s:
