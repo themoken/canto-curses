@@ -34,9 +34,11 @@ class Reader(TextBox):
 
         self.quote_rgx = re.compile("[\\\"](.*?)[\\\"]")
         on_hook("opt_change", self.on_opt_change)
+        on_hook("var_change", self.on_var_change)
 
     def die(self):
         remove_hook("opt_change", self.on_opt_change)
+        remove_hook("var_change", self.on_var_change)
 
     def on_opt_change(self, change):
         if "reader" not in change:
@@ -54,6 +56,14 @@ class Reader(TextBox):
             # Don't bother checking attributes. If we're still
             # lacking, refresh  will re-enable this hook
 
+            self.refresh()
+
+    def on_var_change(self, variables):
+        # If we've been instantiated and unfocused, and selection changes,
+        # we need to be redrawn.
+
+        if "selected" in variables:
+            self.callbacks["set_var"]("reader_item", variables["selected"])
             self.refresh()
 
     def update_text(self):

@@ -454,7 +454,7 @@ class Screen(CommandHandler):
             self._subw_init(f, top, left, height, width)
 
         # Default to giving first window focus.
-        self._focus(0)
+        self._focus_abs(0)
 
     def refresh_callback(self, c, t, l, b, r):
         if c in self.floats:
@@ -522,7 +522,7 @@ class Screen(CommandHandler):
         self.subwindows()
 
         # Focus new window
-        self._focus(0)
+        self._focus_abs(0)
 
         self.refresh()
 
@@ -588,18 +588,39 @@ class Screen(CommandHandler):
     # Focus idx-th window.
     @command_format([("idx", "optint")])
     def cmd_focus(self, **kwargs):
-        self._focus(kwargs["idx"])
+        self._focus_abs(kwargs["idx"])
 
-    def _focus(self, idx):
+    def _focus_abs(self, idx):
         focus_order = self.tiles + self.floats
         focus_order.reverse()
         l = len(focus_order)
 
-        if -1 * l < idx < l:
-            self.focused = focus_order[idx]
-            log.debug("Focusing window %d (%s)" % (idx, self.focused))
+        if idx < 0:
+            idx = -1 * (idx % l)
         else:
-            log.debug("Couldn't find window %d" % idx)
+            idx %= l
+
+        self._focus(focus_order[idx])
+
+    @command_format([("idx", "optint")])
+    def cmd_focus_rel(self, **kwargs):
+        focus_order = [w for w in self.tiles + self.floats if not w.is_input()]
+        log.debug("focus_order: %s" % focus_order)
+        focus_order.reverse()
+
+        idx = focus_order.index(self.focused) + kwargs["idx"]
+        l = len(focus_order)
+
+        if idx < 0:
+            idx = -1 * (idx % l)
+        else:
+            idx %= l
+
+        self._focus(focus_order[idx])
+
+    def _focus(self, win):
+        self.focused = win
+        log.debug("Focusing window (%s)" % (self.focused,))
 
     # Dump all top-level curses windows to a file.
     # NOTE: This is intended for test use only. This

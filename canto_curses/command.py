@@ -62,6 +62,7 @@ class CommandHandler(PluginHandler):
         self.key_translations =\
                 { '.' : "period",
                   '\t' : "tab",
+                  "C-i" : "tab",
                   ' ' : "space",
                   "\\" : "\\\\" }
 
@@ -143,12 +144,14 @@ class CommandHandler(PluginHandler):
             self.meta = True
             return None
         else:
+            keyname = ""
             # Add ctrl prefix.
             if curses.ascii.iscntrl(k):
-                optname += "C-"
+                keyname += "C-"
                 k += 96
 
-            optname += self.translate_key(chr(k))
+            keyname += chr(k)
+            optname += self.translate_key(keyname)
 
         log.debug("trying key: %s" % optname)
 

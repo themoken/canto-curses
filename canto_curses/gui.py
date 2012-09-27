@@ -437,7 +437,10 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
             "screen" :
             {
-                "key" : {}
+                "key" :
+                {
+                    "tab" : "focus-rel 1",
+                }
             },
 
             "color" :
@@ -1086,7 +1089,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
             self.vars[tweak] = value
 
-            call_hook("var_change", { tweak : value })
+            call_hook("var_change", [{ tweak : value }])
 
     def get_var(self, tweak):
         if tweak in self.vars:
