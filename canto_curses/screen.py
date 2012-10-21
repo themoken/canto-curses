@@ -756,7 +756,14 @@ class Screen(CommandHandler):
     def input_thread(self):
         self.input_lock.acquire()
         while True:
-            r = self.pseudo_input_box.getch()
+            try:
+                r = self.pseudo_input_box.get_wch()
+            except Exception as e:
+                r = -1
+                pass
+
+            if type(r) == str:
+                r = ord(r)
 
             if r == -1:
                 # Release the lock so that another thread can halt
