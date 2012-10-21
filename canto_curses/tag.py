@@ -319,6 +319,8 @@ class Tag(list):
                 if "canto-state" not in s.content or\
                 "read" not in s.content["canto-state"]])
 
+        extra_tags = self.callbacks["get_tag_conf"](self)['extra_tags']
+
         # These are escapes that are handled in the theme_print
         # lower in the function and should remain present after
         # evaluation.
@@ -348,6 +350,7 @@ class Tag(list):
                     'n' : unread,
                     'to' : self.tag_offset,
                     'vto' : self.visible_tag_offset,
+                    "extra_tags" : extra_tags,
                     'tag' : self,
                     'prep' : prep_for_display}
 
