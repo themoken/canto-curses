@@ -74,6 +74,7 @@ class Tag(list):
 
         on_hook("opt_change", self.on_opt_change)
         on_hook("tag_opt_change", self.on_tag_opt_change)
+        on_hook("attributes", self.on_attributes)
 
         # Upon creation, this Tag adds itself to the
         # list of all tags.
@@ -87,6 +88,7 @@ class Tag(list):
         self.reset()
         remove_hook("opt_change", self.on_opt_change)
         remove_hook("tag_opt_change", self.on_tag_opt_change)
+        remove_hook("attributes", self.on_attributes)
 
     def on_item_state_change(self, item):
         self.need_redraw()
@@ -108,6 +110,12 @@ class Tag(list):
                 self.need_refresh()
             else:
                 self.need_redraw()
+
+    def on_attributes(self, attributes):
+        for s in self:
+            if s.id in attributes:
+                self.need_redraw()
+                break
 
     # We override eq so that empty tags don't evaluate
     # as equal and screw up things like enumeration.
