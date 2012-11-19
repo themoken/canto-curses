@@ -759,8 +759,7 @@ class Screen(CommandHandler):
             try:
                 r = self.pseudo_input_box.get_wch()
             except Exception as e:
-                r = -1
-                pass
+                r = self.pseudo_input_box.getch()
 
             if type(r) == str:
                 r = ord(r)
