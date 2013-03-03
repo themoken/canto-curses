@@ -86,7 +86,7 @@ class GuiBase(CommandHandler):
 
         if fetch:
             # Get a path (sans query strings, etc.) for the URL
-            tmppath = urllib2.urlparse.urlparse(href).path
+            tmppath = urllib.parse.urlparse(href).path
 
             # Return just the basename of the path (no directories)
             fname = os.path.basename(tmppath)
