@@ -510,6 +510,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "border" : "remote one-config --eval CantoCurses.taglist.border",
                 "reader_align" : "remote one-config CantoCurses.reader.window.align",
                 "reader_float" : "remote one-config --eval CantoCurses.reader.window.float",
+                "keep_time" : "remote one-config --eval defaults.keep_time",
+                "keep_unread" : "remote one-config --eval defaults.keep_unread"
         }
 
         self.daemon_init()
