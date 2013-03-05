@@ -237,7 +237,9 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "5" : self.validate_color,
                 "6" : self.validate_color,
                 "7" : self.validate_color,
-            }
+            },
+
+            "kill_daemon_on_exit" : self.validate_bool
         }
 
         self.config = {
@@ -463,7 +465,9 @@ Until reconnected, it will be impossible to fetch any information, and any state
                     "bg" : curses.COLOR_RED,
                 },
                 "7" : curses.COLOR_WHITE,
-            }
+            },
+
+            "kill_daemon_on_exit" : False
         }
 
         self.tag_validators = {
@@ -515,7 +519,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 "reader_align" : "remote one-config CantoCurses.reader.window.align",
                 "reader_float" : "remote one-config --eval CantoCurses.reader.window.float",
                 "keep_time" : "remote one-config --eval defaults.keep_time",
-                "keep_unread" : "remote one-config --eval defaults.keep_unread"
+                "keep_unread" : "remote one-config --eval defaults.keep_unread",
+                "kill_daemon_on_exit" : "remote one-config --eval CantoCurses.kill_daemon_on_exit"
         }
 
         self.daemon_init()
@@ -1402,6 +1407,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
                     rootlog.removeHandler(self.glog_handler)
                     call_hook("exit", [])
                     self.screen.exit()
+                    if self.config["kill_daemon_on_exit"]:
+                        self.write("DIE", "")
                     self.backend.exit()
                     return
 
