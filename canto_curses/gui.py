@@ -71,6 +71,10 @@ class CantoCursesGui(CommandHandler):
 
         self.update_interval = 0
 
+        #Lines to be emitted after a graphical log is setup.
+        self.early_errors = []
+        self.glog_handler = None
+
         self.disconnect_message =\
 """ Disconnected!
 
@@ -560,6 +564,10 @@ Until reconnected, it will be impossible to fetch any information, and any state
         rootlog = logging.getLogger()
         rootlog.addHandler(self.glog_handler)
 
+        # Flush out any pre-graphical errors
+        for err in self.early_errors:
+            log.error(err)
+
         # We know we're going to want at least these attributes for
         # all stories, as they're part of the fallback format string.
 
@@ -853,6 +861,15 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
                 # Value is bad, revert
                 else:
+                    err = "config %s was bad (%s) reverting to default (%s)" %\
+                            (key, c[key], d[key])
+
+                    if not self.glog_handler:
+                        self.early_errors.append(err)
+                        log.error("Will display " + err)
+                    else:
+                        log.error(err)
+
                     changes[key] = d[key]
                     c[key] = d[key]
 
