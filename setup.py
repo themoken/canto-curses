@@ -1,7 +1,7 @@
 from distutils.command.install_data import install_data
 from distutils.core import setup, Extension
 
-numeric_version = [ 0, 8, 3 ]
+numeric_version = [ 0, 8, 4 ]
 string_version = ".".join([ str(i) for i in numeric_version])
 
 class canto_curses_install_data(install_data):
