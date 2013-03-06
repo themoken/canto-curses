@@ -62,7 +62,7 @@ class Reader(TextBox):
         # If we've been instantiated and unfocused, and selection changes,
         # we need to be redrawn.
 
-        if "selected" in variables:
+        if "selected" in variables and variables["selected"]:
             self.callbacks["set_var"]("reader_item", variables["selected"])
             self.refresh()
 
