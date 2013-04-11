@@ -123,7 +123,11 @@ def theme_print_one(pad, uni, width):
             if cwidth > width:
                 return "\\" + uni[i:]
 
-            pad.waddch(ec)
+            try:
+                pad.waddch(ec)
+            except:
+                log.debug("Can't print escaped ec: %s in: %s" % (ec, uni))
+
             width -= cwidth
             escaped = False
         elif code:
@@ -186,7 +190,11 @@ def theme_print_one(pad, uni, width):
             if cwidth > width:
                 return uni[i:]
 
-            pad.waddch(ec)
+            try:
+                pad.waddch(ec)
+            except:
+                log.debug("Can't print ec: %s in: %s" % (ec, uni))
+
             width -= cwidth
 
     return None
@@ -210,7 +218,7 @@ def theme_print(pad, uni, mwidth, pre = "", post = "", cursorbash=True):
         try:
             pad.move(y, (mwidth - postl))
         except:
-            log.error("move error: %d %d" % (y, mwidth - postl))
+            log.debug("move error: %d %d" % (y, mwidth - postl))
         theme_print_one(pad, post, postl)
 
     if cursorbash:
