@@ -1297,7 +1297,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
         return r.rstrip()
 
     def cmdsplit(self, cmd):
-        r = escsplit(cmd, "&")
+        r = escsplit(cmd, " &")
 
         # lstrip all commands because we
         # want to use .startswith instead of a regex.
