@@ -43,7 +43,7 @@ def command_format(types):
 
             # Plugin command signature.
             else:
-                return ([obj], realkwargs)
+                return ([self], realkwargs)
 
         add_arg_transform(fn, _command_args)
         return fn
