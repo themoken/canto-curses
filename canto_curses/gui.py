@@ -294,6 +294,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
                     "f" : "fetch",
                     "down" : "scroll-down",
                     "up" : "scroll-up",
+                    "j" : "scroll-down",
+                    "k" : "scroll-up",
                     "npage" : "page-down",
                     "ppage" : "page-up",
                 },
