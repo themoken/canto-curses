@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-COMPATIBLE_VERSION = 0.3
+COMPATIBLE_VERSION = 0.4
 
 from canto_next.hooks import call_hook, on_hook
 from canto_next.plugins import Plugin
@@ -74,6 +74,12 @@ class CantoCursesGui(CommandHandler):
         #Lines to be emitted after a graphical log is setup.
         self.early_errors = []
         self.glog_handler = None
+
+        # Buffers for items being received.
+        self.item_tag = None
+        self.item_buf = []
+        self.item_removes = []
+        self.item_adds = []
 
         self.disconnect_message =\
 """ Disconnected!
@@ -933,39 +939,69 @@ Until reconnected, it will be impossible to fetch any information, and any state
         call_hook("attributes", [ d ])
 
     def prot_items(self, updates):
+        # Daemon should now only return with one tag in an items response
+
+        tag = list(updates.keys())[0]
+
+        if self.item_tag == None or self.item_tag.tag != tag:
+            log.debug("alltags: %s" % ([t.tag for t in self.vars["alltags"]],))
+            log.debug("tag: %s" % tag)
+            self.item_tag = None
+            self.item_buf = []
+            self.item_removes = []
+            self.item_adds = []
+            for have_tag in self.vars["alltags"]:
+                if have_tag.tag == tag:
+                    self.item_tag = have_tag
+                    break
+
+            # Shouldn't happen
+            else:
+                return
+
+        self.item_buf.extend(updates[tag])
+
+        # Add new items.
+        for id in updates[tag]:
+            if id not in self.item_tag.get_ids():
+                self.item_adds.append(id)
+
+    def prot_itemsdone(self, empty):
         unprotect = {"auto":[]}
 
-        for tag in updates:
-            for have_tag in self.vars["alltags"]:
-                if have_tag.tag != tag:
-                    continue
+        if self.item_tag == None:
+            return
 
-                adds = []
-                removes = []
+        self.item_tag.add_items(self.item_adds)
 
-                # Eliminate discarded items.
-                for id in have_tag.get_ids():
-                    if id not in self.vars["protected_ids"] and \
-                            id not in updates[tag]:
-                        removes.append(id)
+        # Eliminate discarded items. This has to be done here, so we have
+        # access to all of the items given in the multiple ITEM responses.
 
-                # Add new items.
-                for id in updates[tag]:
-                    if id not in have_tag.get_ids():
-                        adds.append(id)
+        for id in self.item_tag.get_ids():
+            if id not in self.vars["protected_ids"] and \
+                    id not in self.item_buf:
+                self.item_removes.append(id)
 
-                have_tag.add_items(adds)
-                have_tag.remove_items(removes)
-                for id in removes:
-                    unprotect["auto"].append(id)
+        log.debug("item_buf: %s" % (self.item_buf,))
+        log.debug("removing: %s" % (self.item_removes,))
 
-                # If we're using the maintain update style, reorder the feed
-                # properly. Append style requires no extra work (add_items does
-                # it by default).
+        self.item_tag.remove_items(self.item_removes)
 
-                if self.config["update"]["style"] == "maintain":
-                    log.debug("Re-ording items (update style maintain)")
-                    have_tag.reorder(updates[tag])
+        for id in self.item_removes:
+            unprotect["auto"].append(id)
+
+        # If we're using the maintain update style, reorder the feed
+        # properly. Append style requires no extra work (add_items does
+        # it by default).
+
+        if self.config["update"]["style"] == "maintain":
+            log.debug("Re-ording items (update style maintain)")
+            self.item_tag.reorder(self.item_buf)
+
+        self.item_tag = None
+        self.item_buf = []
+        self.item_removes = []
+        self.item_adds = []
 
         if unprotect["auto"]:
             self.write("UNPROTECT", unprotect)
