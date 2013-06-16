@@ -111,7 +111,7 @@ class Story(PluginHandler):
     # Add / remove state. Return True if an actual change, False otherwise.
 
     def _handle_state(self, attr):
-        if self.content["canto-state"] == "":
+        if "canto-state" not in self.content or self.content["canto-state"] == "":
             self.content["canto-state"] = []
 
         # Negative attribute
