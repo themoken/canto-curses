@@ -944,8 +944,6 @@ Until reconnected, it will be impossible to fetch any information, and any state
         tag = list(updates.keys())[0]
 
         if self.item_tag == None or self.item_tag.tag != tag:
-            log.debug("alltags: %s" % ([t.tag for t in self.vars["alltags"]],))
-            log.debug("tag: %s" % tag)
             self.item_tag = None
             self.item_buf = []
             self.item_removes = []
@@ -982,9 +980,6 @@ Until reconnected, it will be impossible to fetch any information, and any state
                     id not in self.item_buf:
                 self.item_removes.append(id)
 
-        log.debug("item_buf: %s" % (self.item_buf,))
-        log.debug("removing: %s" % (self.item_removes,))
-
         self.item_tag.remove_items(self.item_removes)
 
         for id in self.item_removes:
@@ -995,7 +990,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
         # it by default).
 
         if self.config["update"]["style"] == "maintain":
-            log.debug("Re-ording items (update style maintain)")
+            log.debug("Re-ordering items (update style maintain)")
             self.item_tag.reorder(self.item_buf)
 
         self.item_tag = None
