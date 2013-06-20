@@ -17,7 +17,6 @@ from queue import Queue
 import logging
 
 logging.basicConfig(
-        filemode = "w",
         format = "%(asctime)s : %(name)s -> %(message)s",
         datefmt = "%H:%M:%S",
         level = logging.INFO
