@@ -304,6 +304,8 @@ Until reconnected, it will be impossible to fetch any information, and any state
                     "k" : "scroll-up",
                     "npage" : "page-down",
                     "ppage" : "page-up",
+                    'n' : 'destroy & rel-set-cursor 1 & item-state read & reader',
+                    'p' : 'destroy & rel-set-cursor -1 & item-state read & reader',
                 },
             },
 
