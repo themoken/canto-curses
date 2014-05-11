@@ -600,11 +600,13 @@ Until reconnected, it will be impossible to fetch any information, and any state
         self.write("AUTOATTR", needed_attrs)
 
         item_tags = [ t.tag for t in self.vars["curtags"]]
-        for tag in item_tags:
-            self.write("ITEMS", [ tag ])
 
         # Start watching all given tags.
         self.write("WATCHTAGS", item_tags)
+
+        # Get current items
+        for tag in item_tags:
+            self.write("ITEMS", [ tag ])
 
         # Holster for future updated tags.
         self.updates = []
