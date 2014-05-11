@@ -1030,9 +1030,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
             if tag not in [ t.tag for t in self.vars["alltags"] ]:
                 Tag(tag, self.callbacks)
 
-    # Process new tags, early flag tells us whether we should bother to
-    # propagate tagorder changes and eval tags or if we just want to create Tag
-    # objects.
+    # Process new tags.
 
     def prot_newtags(self, tags):
 
