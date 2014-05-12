@@ -72,9 +72,9 @@ class Tag(list):
         self.tag_offset = 0
         self.sel_offset = 0
 
-        on_hook("opt_change", self.on_opt_change)
-        on_hook("tag_opt_change", self.on_tag_opt_change)
-        on_hook("attributes", self.on_attributes)
+        on_hook("curses_opt_change", self.on_opt_change)
+        on_hook("curses_tag_opt_change", self.on_tag_opt_change)
+        on_hook("curses_attributes", self.on_attributes)
 
         # Upon creation, this Tag adds itself to the
         # list of all tags.
@@ -86,9 +86,9 @@ class Tag(list):
         # else is notified about items disappearing.
 
         self.reset()
-        remove_hook("opt_change", self.on_opt_change)
-        remove_hook("tag_opt_change", self.on_tag_opt_change)
-        remove_hook("attributes", self.on_attributes)
+        remove_hook("curses_opt_change", self.on_opt_change)
+        remove_hook("curses_tag_opt_change", self.on_tag_opt_change)
+        remove_hook("curses_attributes", self.on_attributes)
 
     def on_item_state_change(self, item):
         self.need_redraw()
@@ -142,7 +142,7 @@ class Tag(list):
         # Request redraw to update item counts.
         self.need_redraw()
 
-        call_hook("items_added", [ self, added ] )
+        call_hook("curses_items_added", [ self, added ] )
 
     # Take a list of ordered ids and reorder ourselves, without generating any
     # unnecessary add/remove hooks.
@@ -206,7 +206,7 @@ class Tag(list):
         # Request redraw to update item counts.
         self.need_redraw()
 
-        call_hook("items_removed", [ self, removed ] )
+        call_hook("curses_items_removed", [ self, removed ] )
 
     # Remove all stories from this tag.
 
@@ -214,7 +214,7 @@ class Tag(list):
         for item in self:
             item.die()
 
-        call_hook("items_removed", [ self, self[:] ])
+        call_hook("curses_items_removed", [ self, self[:] ])
         del self[:]
 
         # Request redraw to update item counts.

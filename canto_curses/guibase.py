@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto_next.hooks import call_hook, on_hook
+from canto_next.hooks import on_hook
 from canto_next.plugins import Plugin
 
 from .command import CommandHandler, command_format
@@ -98,8 +98,8 @@ class GuiBase(CommandHandler):
             tmpdir = tempfile.mkdtemp(prefix="canto-")
             tmpnam = tmpdir + '/' + fname
 
-            on_hook("exit", lambda : (os.unlink(tmpnam)))
-            on_hook("exit", lambda : (os.rmdir(tmpdir)))
+            on_hook("curses_exit", lambda : (os.unlink(tmpnam)))
+            on_hook("curses_exit", lambda : (os.rmdir(tmpdir)))
 
         pid = os.fork()
 

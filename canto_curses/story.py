@@ -57,14 +57,14 @@ class Story(PluginHandler):
         self.offset = 0
         self.rel_offset = 0
 
-        on_hook("opt_change", self.on_opt_change)
-        on_hook("tag_opt_change", self.on_tag_opt_change)
-        on_hook("attributes", self.on_attributes)
+        on_hook("curses_opt_change", self.on_opt_change)
+        on_hook("curses_tag_opt_change", self.on_tag_opt_change)
+        on_hook("curses_attributes", self.on_attributes)
 
     def die(self):
-        remove_hook("opt_change", self.on_opt_change)
-        remove_hook("tag_opt_change", self.on_tag_opt_change)
-        remove_hook("attributes", self.on_attributes)
+        remove_hook("curses_opt_change", self.on_opt_change)
+        remove_hook("curses_tag_opt_change", self.on_tag_opt_change)
+        remove_hook("curses_attributes", self.on_attributes)
 
     def __eq__(self, other):
         if not other:

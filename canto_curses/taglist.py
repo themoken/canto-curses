@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto_next.hooks import on_hook, remove_hook, call_hook
+from canto_next.hooks import on_hook, remove_hook
 from canto_next.plugins import Plugin
 
 from .command import command_format
@@ -54,18 +54,18 @@ class TagList(GuiBase):
         self.tags = []
 
         # Hooks
-        on_hook("eval_tags_changed", self.refresh)
-        on_hook("items_added", self.on_items_added)
-        on_hook("items_removed", self.on_items_removed)
-        on_hook("opt_change", self.on_opt_change)
+        on_hook("curses_eval_tags_changed", self.refresh)
+        on_hook("curses_items_added", self.on_items_added)
+        on_hook("curses_items_removed", self.on_items_removed)
+        on_hook("curses_opt_change", self.on_opt_change)
 
         self.update_tag_lists()
 
     def die(self):
         log.debug("Cleaning up hooks...")
-        remove_hook("eval_tags_changed", self.refresh)
-        remove_hook("items_added", self.on_items_added)
-        remove_hook("items_removed", self.on_items_removed)
+        remove_hook("curses_eval_tags_changed", self.refresh)
+        remove_hook("curses_items_added", self.on_items_added)
+        remove_hook("curses_items_removed", self.on_items_removed)
 
     def item_by_idx(self, idx):
         if idx < 0:

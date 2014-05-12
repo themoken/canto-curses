@@ -8,7 +8,7 @@
 
 COMPATIBLE_VERSION = 0.4
 
-from canto_next.hooks import call_hook, on_hook
+from canto_next.hooks import call_hook
 from canto_next.plugins import Plugin
 from canto_next.remote import assign_to_dict, access_dict
 from canto_next.format import escsplit
@@ -914,7 +914,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
                 if changes:
                     self.tag_config[tag] = ntc
-                    call_hook("tag_opt_change", [ { tag : changes } ])
+                    call_hook("curses_tag_opt_change", [ { tag : changes } ])
 
                     if write:
                         self.write("SETCONFIGS", { "tags" : { tag : changes }})
@@ -931,7 +931,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
             if changes:
                 self.config = new_config
-                call_hook("opt_change", [ changes ])
+                call_hook("curses_opt_change", [ changes ])
 
                 if write:
                     self.write("SETCONFIGS", { "CantoCurses" : changes })
@@ -940,7 +940,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 self.write("DELCONFIGS", { "CantoCurses" : deletions })
 
     def prot_attributes(self, d):
-        call_hook("attributes", [ d ])
+        call_hook("curses_attributes", [ d ])
 
     def prot_items(self, updates):
         # Daemon should now only return with one tag in an items response
@@ -1111,7 +1111,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
         if prevtags != self.vars["curtags"] and self.screen:
             log.debug("Evaluated Tags Changed: %s" % [ t.tag for t in self.vars["curtags"]])
-            call_hook("eval_tags_changed", [])
+            call_hook("curses_eval_tags_changed", [])
 
     def set_var(self, tweak, value):
         # We only care if the value is different, or it's a message
@@ -1150,7 +1150,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
 
             self.vars[tweak] = value
 
-            call_hook("var_change", [{ tweak : value }])
+            call_hook("curses_var_change", [{ tweak : value }])
 
     def get_var(self, tweak):
         if tweak in self.vars:
@@ -1440,7 +1440,7 @@ Until reconnected, it will be impossible to fetch any information, and any state
                 if fullcmd in ["quit", "exit"]:
                     rootlog = logging.getLogger()
                     rootlog.removeHandler(self.glog_handler)
-                    call_hook("exit", [])
+                    call_hook("curses_exit", [])
                     self.screen.exit()
                     if self.config["kill_daemon_on_exit"]:
                         self.write("DIE", "")
