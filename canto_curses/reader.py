@@ -33,12 +33,12 @@ class Reader(TextBox):
         TextBox.init(self, pad, callbacks)
 
         self.quote_rgx = re.compile("[\\\"](.*?)[\\\"]")
-        on_hook("opt_change", self.on_opt_change)
-        on_hook("var_change", self.on_var_change)
+        on_hook("curses_opt_change", self.on_opt_change)
+        on_hook("curses_var_change", self.on_var_change)
 
     def die(self):
-        remove_hook("opt_change", self.on_opt_change)
-        remove_hook("var_change", self.on_var_change)
+        remove_hook("curses_opt_change", self.on_opt_change)
+        remove_hook("curses_var_change", self.on_var_change)
 
     def on_opt_change(self, change):
         if "reader" not in change:
@@ -51,7 +51,7 @@ class Reader(TextBox):
     def on_attributes(self, attributes):
         sel = self.callbacks["get_var"]("reader_item")
         if sel and sel.id in attributes:
-            remove_hook("attributes", self.on_attributes)
+            remove_hook("curses_attributes", self.on_attributes)
 
             # Don't bother checking attributes. If we're still
             # lacking, refresh  will re-enable this hook
@@ -86,7 +86,7 @@ class Reader(TextBox):
                 self.callbacks["prio_write"]("ATTRIBUTES",\
                         { sel.id : ["description", "content"] })
                 s += "%BWaiting for content...%b\n"
-                on_hook("attributes", self.on_attributes)
+                on_hook("curses_attributes", self.on_attributes)
             else:
 
                 # Add enclosures before HTML parsing so that we can add a link

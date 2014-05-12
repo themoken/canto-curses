@@ -8,7 +8,7 @@
 
 from canto_next.plugins import Plugin
 from canto_next.encoding import locale_enc
-from canto_next.hooks import on_hook, remove_hook
+from canto_next.hooks import on_hook
 
 from .command import CommandHandler, command_format
 from .taglist import TagList
@@ -74,7 +74,7 @@ class Screen(CommandHandler):
         # Start grabbing user input
         self.start_input_thread()
 
-        on_hook("opt_change", self.screen_opt_change)
+        on_hook("curses_opt_change", self.screen_opt_change)
 
     # Wrap curses.curs_set in exception handler
     # because we don't really care if it's displayed
