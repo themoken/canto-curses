@@ -41,13 +41,12 @@ class ScreenPlugin(Plugin):
     pass
 
 class Screen(CommandHandler):
-    def __init__(self, user_queue, callbacks, types = [InputBox, TagList]):
+    def __init__(self, callbacks, types = [InputBox, TagList]):
         CommandHandler.__init__(self)
 
         self.plugin_class = ScreenPlugin
         self.update_plugin_lookups()
 
-        self.user_queue = user_queue
         self.callbacks = callbacks
         self.layout = "default"
 
@@ -60,10 +59,6 @@ class Screen(CommandHandler):
         self.pseudo_input_box = curses.newpad(1,1)
         self.pseudo_input_box.keypad(1)
         self.pseudo_input_box.nodelay(1)
-        self.input_lock = Lock()
-
-        self.input_box = None
-        self.sub_edit = False
 
         self.floats = []
         self.tiles = []
@@ -72,7 +67,7 @@ class Screen(CommandHandler):
         self.subwindows()
 
         # Start grabbing user input
-        self.start_input_thread()
+        #self.start_input_thread()
 
         on_hook("curses_opt_change", self.screen_opt_change)
 

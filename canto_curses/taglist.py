@@ -66,6 +66,7 @@ class TagList(GuiBase):
         remove_hook("curses_eval_tags_changed", self.refresh)
         remove_hook("curses_items_added", self.on_items_added)
         remove_hook("curses_items_removed", self.on_items_removed)
+        remove_hook("curses_opt_change", self.on_opt_change)
 
     def item_by_idx(self, idx):
         if idx < 0:
@@ -897,7 +898,10 @@ class TagList(GuiBase):
         if self.tags and sel and sel in self.tags:
             sel_is_tag = True
 
-        self.tags = self.callbacks["get_var"]("curtags")
+        # XXX : HACK HACK HACK
+        #self.tags = self.callbacks["get_var"]("curtags")
+        self.tags = self.callbacks["get_var"]("alltags")
+        log.debug("SELF.TAGS = %s" % (self.tags,))
         hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")
 
         cur_item_offset = 0
@@ -914,7 +918,7 @@ class TagList(GuiBase):
             tag.set_tag_offset(i)
             tag.set_visible_tag_offset(len(t))
 
-            if self.callbacks["get_tag_opt"](tag, "collapsed"):
+            if self.callbacks["get_tag_opt"](tag.tag, "collapsed"):
                 cur_sel_offset += 1
             else:
                 cur_sel_offset += len(tag)
@@ -982,13 +986,13 @@ class TagList(GuiBase):
             tag.prev_sel = prev_sel
             tag.next_sel = None
 
-            if prev_obj:
+            if prev_obj != None:
                 prev_obj.next_obj = tag
 
             prev_obj = tag
 
             # Collapsed tags (with items) skip stories.
-            if self.callbacks["get_tag_opt"](tag, "collapsed"):
+            if self.callbacks["get_tag_opt"](tag.tag, "collapsed"):
                 if prev_sel:
                     prev_sel.next_sel = tag
                 prev_sel = tag
@@ -1003,7 +1007,7 @@ class TagList(GuiBase):
                 prev_obj.next_obj = story
                 prev_obj = story
 
-                if prev_story:
+                if prev_story != None:
                     prev_story.next_story = story
                 story.prev_story = prev_story
                 story.next_story = None
@@ -1018,7 +1022,7 @@ class TagList(GuiBase):
                     cur.next_story = story
                     cur = cur.prev_obj
 
-                if prev_sel:
+                if prev_sel != None:
                     prev_sel.next_sel = story
                 story.prev_sel = prev_sel
                 story.next_sel = None
@@ -1071,7 +1075,7 @@ class TagList(GuiBase):
 
         # Bail if we have no item.
 
-        if not target_obj:
+        if target_obj == None:
             self.pad.addstr("All tags empty.")
             self.callbacks["refresh"]()
             return
@@ -1159,7 +1163,7 @@ class TagList(GuiBase):
         self.first_sel = obj
         while self.first_sel in self.tags:
 
-            if self.callbacks["get_tag_opt"](obj, "collapsed"):
+            if self.callbacks["get_tag_opt"](obj.tag, "collapsed"):
                 break
 
             # We use obj instead of sel here because next_sel will only be set
@@ -1176,7 +1180,7 @@ class TagList(GuiBase):
         rendered_header = False
         w_offset = 0
 
-        while obj:
+        while obj != None:
             # Refresh if necessary, update curpos for scrolling.
             obj.do_changes(self.width)
             obj.curpos = curpos

@@ -8,7 +8,10 @@
 
 from canto_next.client import CantoClient
 from canto_next.plugins import try_plugins
+from canto_next.rwlock import alllocks
 
+from .config import config
+from .tagcore import tag_updater, alltagcores
 from .gui import CantoCursesGui
 
 from threading import Thread
@@ -55,10 +58,6 @@ class CantoCurses(CantoClient):
         # Whether or not to append pid to logfile
         # (debug option)
         self.log_fname_pid = False
-
-        # Response queues.
-        self.responses = None
-        self.prio_responses = None
 
         self.short_args = 'vlV'
         optl = self.common_args(self.short_args)
@@ -110,77 +109,6 @@ class CantoCurses(CantoClient):
                 return 1
         return 0
 
-    # The response_thread takes anything received from the socket and puts it
-    # onto the responses queue. This queue is expected to be used by the Gui
-    # object as its main event queue.
-
-    def response_thread(self):
-        try:
-            while self.response_alive:
-                r = self.read()
-
-                # HUP
-                if r == 16:
-                    self.response_alive = False
-                    break
-                if r:
-                    self.responses.put(r)
-
-        except Exception as e:
-            log.error("Response thread exception: %s" % (e,))
-
-        log.debug("Response thread exiting.")
-
-    def prio_response_thread(self):
-        try:
-            while self.prio_response_alive:
-                r = self.read(None, 1)
-
-                # HUP
-                if r == 16:
-                    self.prio_response_alive = False
-                    break
-                if r:
-                    self.prio_responses.put(r)
-
-        except Exception as e:
-            log.error("Priority response thread exception: %s" % (e,))
-
-        log.debug("Priority response thread exiting.")
-
-    def start_rthread(self):
-        self.response_alive = True
-
-        # If we're reconnecting, don't recreate Queue
-        if not self.responses:
-            self.responses = Queue()
-
-        # Thead *must* be running before gui instantiated
-        # so the __init__ can ram some discovery requests through.
-
-        thread = Thread(target=self.response_thread)
-        thread.daemon = True
-        thread.start()
-
-    def start_prthread(self):
-        self.prio_response_alive = True
-
-        # If we're reconnecting, don't recreate Queue
-        if not self.prio_responses:
-            self.prio_responses = Queue()
-
-        # Thead *must* be running before gui instantiated
-        # so the __init__ can ram some discovery requests through.
-
-        thread = Thread(target=self.prio_response_thread)
-        thread.daemon = True
-        thread.start()
-
-    def start_gthread(self):
-        thread = Thread(target=self.gui.run)
-        thread.daemon = True
-        thread.start()
-
     def alarm(self, a = None, b = None):
         self.gui.tick()
         signal.alarm(1)
@@ -189,7 +117,27 @@ class CantoCurses(CantoClient):
         self.gui.winch()
 
     def sigusr1(self, a = None, b = None):
-        pass
+        code = []
+        for threadId, stack in sys._current_frames().items():
+            code.append("\n# ThreadID: %s" % threadId)
+            for filename, lineno, name, line in traceback.extract_stack(stack):
+                code.append('File: "%s", line %d, in %s' % (filename, lineno, name))
+                if line:
+                    code.append("  %s" % (line.strip()))
+        log.info("\n".join(code))
+
+        for lock in alllocks:
+            if lock.writer_stack:
+                log.info("Lock %s (%s readers)" % (lock.name, lock.readers))
+                log.info("Lock writer (thread %s):" % (lock.writer_id,))
+                log.info(''.join(lock.writer_stack))
+
+        for tagcore in alltagcores:
+            for id in tagcore:
+                log.info("tag %s - %s" % (tagcore.tag, id))
+
+        log.info("VARS: %s" % config.vars)
+        log.info("OPTS: %s" % config.config)
 
     def child(self, a = None, b = None):
         try:
@@ -219,15 +167,22 @@ class CantoCurses(CantoClient):
             self.gui.reconnected()
 
     def run(self):
-        # Initial response thread setup.
-        self.start_rthread()
+        signal.signal(signal.SIGUSR1, self.sigusr1)
 
-        # Prio response thread setup.
-        self.start_prthread()
+        # Get config from daemon
+        config.init(self)
 
-        # Initial Gui setup.
+        # Make TagCores for each tag
+        tag_updater.init(self)
+
+        # Create Tags for each TagCore
         self.gui = CantoCursesGui(self)
-        self.start_gthread()
+
+        # Generate initial traffic
+        tag_updater.update()
+
+        # Run interface
+        self.gui.run()
 
         # Initial signal setup.
         signal.signal(signal.SIGUSR1, self.sigusr1)

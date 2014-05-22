@@ -11,6 +11,8 @@ from canto_next.hooks import on_hook, remove_hook
 
 from .theme import FakePad, WrapPad, theme_print, theme_len, theme_process, theme_reset, theme_border
 from .parser import parse_conditionals, eval_theme_string, prep_for_display
+from .config import DEFAULT_FSTRING
+from .tagcore import tag_updater
 
 import traceback
 import logging
@@ -25,7 +27,6 @@ class StoryPlugin(Plugin):
 # its own state only because it affects its representation, it's up to a higher
 # class to actually communicate state changes to the backend.
 
-DEFAULT_FSTRING = "%1%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})%?{m}(%{marked}:%{unmarked})%t%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})%0"
 
 class Story(PluginHandler):
     def __init__(self, id, callbacks):
@@ -35,7 +36,7 @@ class Story(PluginHandler):
         self.update_plugin_lookups()
 
         self.callbacks = callbacks
-        self.content = {}
+
         self.id = id
         self.pad = None
 
@@ -61,6 +62,12 @@ class Story(PluginHandler):
         on_hook("curses_tag_opt_change", self.on_tag_opt_change)
         on_hook("curses_attributes", self.on_attributes)
 
+        # Grab initial content, if any, the rest will be handled by the
+        # attributes hook
+
+        self.content = tag_updater.get_attributes(self.id)
+        self.new_content = None
+
     def die(self):
         remove_hook("curses_opt_change", self.on_opt_change)
         remove_hook("curses_tag_opt_change", self.on_tag_opt_change)
@@ -73,14 +80,35 @@ class Story(PluginHandler):
             return False
         return self.id == other.id
 
+    def __str__(self):
+        return "story: %s" % self.id
+
+    # On_attributes updates new_content. We don't lock because we don't
+    # particularly care what version of new_content the next sync() call gets.
+
     def on_attributes(self, attributes):
         if self.id in attributes:
-            for attr in attributes[self.id]:
-                if attr not in self.content or\
-                        (attr != "canto-state" and self.content[attr] !=\
-                        attributes[self.id][attr]):
-                    self.content[attr] = attributes[self.id][attr]
-                    self.need_redraw()
+            new_content = attributes[self.id]
+
+            if not (new_content is self.content):
+                self.new_content = new_content
+
+    def sync(self):
+        if self.new_content == None:
+            return
+
+        old_content = self.content
+        self.content = self.new_content
+        self.new_content = None
+
+        # Setting canto-state generates a SETATTRIBUTES, which generates a
+        # TAGCHANGE which will cause ATTRIBUTES to be refetched. So there's
+        # a window of
+
+        if 'canto-state' in old_content and self.fresh_state:
+            self.content['canto-state'] = old_content['canto-state']
+
+        self.need_redraw()
 
     def on_opt_change(self, config):
         if "taglist" in config and "border" in config["taglist"]:
@@ -140,6 +168,7 @@ class Story(PluginHandler):
     def handle_state(self, attr):
         r = self._handle_state(attr)
         if r:
+            self.fresh_state = True
             self.callbacks["item_state_change"](self)
         return r
 
@@ -200,6 +229,7 @@ class Story(PluginHandler):
 
         for attr in story_conf["format_attrs"]:
             if attr not in self.content:
+                log.debug("%s still needs %s" % (self, attr))
                 self.pad = curses.newpad(1, width)
                 self.pad.addstr("Waiting on content...")
                 self.lines = 1
@@ -243,7 +273,6 @@ class Story(PluginHandler):
         self.changed = False
 
     def render(self, pad, state):
-
         try:
             parsed = parse_conditionals(state["fstring"])
         except Exception as e:

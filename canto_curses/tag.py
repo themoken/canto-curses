@@ -7,9 +7,11 @@
 #   published by the Free Software Foundation.
 
 from canto_next.hooks import call_hook, on_hook, remove_hook
+from canto_next.rwlock import RWLock
 
 from .parser import parse_conditionals, eval_theme_string, prep_for_display
 from .theme import FakePad, WrapPad, theme_print, theme_reset, theme_border
+from .config import DEFAULT_TAG_FSTRING
 from .story import Story
 
 import traceback
@@ -18,16 +20,18 @@ import curses
 
 log = logging.getLogger("TAG")
 
+# TagCore provides the core tag functionality of keeping track of a list of IDs.
+
 # The Tag class manages stories. Externally, it looks
 # like a Tag takes IDs from the backend and renders an ncurses pad. No class
 # other than Tag actually touches Story objects directly.
 
-DEFAULT_TAG_FSTRING = "%1%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%?{en}([%{to}]:)%?{aen}([%{vto}]:) %t [%B%2%n%1%b]%?{sel}(%{selected_end}:%{unselected_end})%0"
-
 class Tag(list):
-    def __init__(self, tag, callbacks):
+    def __init__(self, tagcore, callbacks):
         list.__init__(self)
-        self.tag = tag
+        self.tagcore = tagcore
+        self.tag = tagcore.tag
+
         self.pad = None
         self.footpad = None
 
@@ -41,9 +45,9 @@ class Tag(list):
         # the current tag.
 
         self.callbacks["get_tag_opt"] =\
-                lambda x : callbacks["get_tag_opt"](self, x)
+                lambda x : callbacks["get_tag_opt"](self.tag, x)
         self.callbacks["set_tag_opt"] =\
-                lambda x, y : callbacks["set_tag_opt"](self, x, y)
+                lambda x, y : callbacks["set_tag_opt"](self.tag, x, y)
         self.callbacks["get_tag_name"] = lambda : self.tag
 
         # This could be implemented as a generic, top-level hook but then N
@@ -79,7 +83,10 @@ class Tag(list):
         # Upon creation, this Tag adds itself to the
         # list of all tags.
 
+        # XXX: FUCKING LOCK IT
         callbacks["get_var"]("alltags").append(self)
+
+        self.sync(True)
 
     def die(self):
         # Reset so items get die() called and everything
@@ -125,24 +132,17 @@ class Tag(list):
             return False
         return list.__eq__(self, other)
 
-    # Create Story from ID before appending to list.
+    def __str__(self):
+        return "tag: %s" % self.tag
 
-    def add_items(self, ids):
-        added = []
-        for id in ids:
-            s = Story(id, self.callbacks)
-            self.append(s)
-            added.append(s)
+    def get_id(self, id):
+        for item in self:
+            if item.id == id:
+                return item
+        return None
 
-            rel = len(self) - 1
-            s.set_rel_offset(rel)
-            s.set_offset(self.item_offset + rel)
-            s.set_sel_offset(self.sel_offset + rel)
-
-        # Request redraw to update item counts.
-        self.need_redraw()
-
-        call_hook("curses_items_added", [ self, added ] )
+    def get_ids(self):
+        return [ s.id for s in self ]
 
     # Take a list of ordered ids and reorder ourselves, without generating any
     # unnecessary add/remove hooks.
@@ -180,54 +180,6 @@ class Tag(list):
 
         # Request redraw to update item counts.
         self.need_redraw()
-
-    # Remove Story based on ID
-
-    def remove_items(self, ids):
-        removed = []
-
-        # Copy self so we can remove from self
-        # without screwing up iteration.
-
-        for idx, item in enumerate(self[:]):
-            if item.id in ids:
-                log.debug("removing: %s" % (item.id,))
-
-                list.remove(self, item)
-                item.die()
-                removed.append(item)
-
-        # Update indices of items.
-        for i, story in enumerate(self):
-            story.set_rel_offset(i)
-            story.set_offset(self.item_offset + i)
-            story.set_sel_offset(self.sel_offset + i)
-
-        # Request redraw to update item counts.
-        self.need_redraw()
-
-        call_hook("curses_items_removed", [ self, removed ] )
-
-    # Remove all stories from this tag.
-
-    def reset(self):
-        for item in self:
-            item.die()
-
-        call_hook("curses_items_removed", [ self, self[:] ])
-        del self[:]
-
-        # Request redraw to update item counts.
-        self.need_redraw()
-
-    def get_id(self, id):
-        for item in self:
-            if item.id == id:
-                return item
-        return None
-
-    def get_ids(self):
-        return [ s.id for s in self ]
 
     # Inform the tag of global index of it's first item.
     def set_item_offset(self, offset):
@@ -319,7 +271,7 @@ class Tag(list):
                 if "canto-state" not in s.content or\
                 "read" not in s.content["canto-state"]])
 
-        extra_tags = self.callbacks["get_tag_conf"](self)['extra_tags']
+        extra_tags = self.callbacks["get_tag_conf"](self.tag)['extra_tags']
 
         # These are escapes that are handled in the theme_print
         # lower in the function and should remain present after
@@ -397,3 +349,17 @@ class Tag(list):
             theme_reset()
             return 1
         return 0
+
+    # Synchronize this Tag with its TagCore
+    # TODO: Don't recreate Story objects for no reason
+
+    def sync(self, force=False):
+        # If our underlying tagcore changed, update ourselves
+        if force or self.tagcore.changed:
+            del self[:]
+            for id in self.tagcore:
+                self.append(Story(id, self.callbacks))
+
+        # Pass the sync onto story objects
+        for s in self:
+            s.sync()
