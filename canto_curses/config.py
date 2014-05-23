@@ -797,6 +797,7 @@ class CantoCursesConfig(SubThread):
 
     @write_lock(config_lock)
     def prot_newtags(self, tags):
+        return
 
         c = self.get_conf()
 
@@ -823,6 +824,7 @@ class CantoCursesConfig(SubThread):
 
     @write_lock(config_lock)
     def prot_deltags(self, tags):
+        return
 
         c = self.get_conf()
 

@@ -6,23 +6,6 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-# XXX Code moved from old canto XXX
-
-# I am aware that Python's curses library comes with a TextBox class
-# and, indeed, the input() function was using it for awhile. The problems
-# with Textbox were numerous though:
-#   * Only ASCII characters could be printed/inputted (the *big* one)
-#   * Included a whole bunch of multi-line editing and validation stuff
-#       that was completely unnecessary, since we know the input line
-#       only needs to be one line long.
-#   * To make editing easier, it used a half-ass system of gathering
-#       the data from the window's written content with win.inch(),
-#       which apparently didn't play nice with multi-byte?
-#
-# All of these problems have been fixed in half as many lines with all
-# the same functionality on a single line basis, but the design is still
-# based on Textbox.
-
 from canto_next.plugins import Plugin
 from .guibase import GuiBase
 

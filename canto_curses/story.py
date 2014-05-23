@@ -58,6 +58,9 @@ class Story(PluginHandler):
         self.offset = 0
         self.rel_offset = 0
 
+        # This should exist before the hook is setup, or the hook will fail.
+        self.content = {}
+
         on_hook("curses_opt_change", self.on_opt_change)
         on_hook("curses_tag_opt_change", self.on_tag_opt_change)
         on_hook("curses_attributes", self.on_attributes)

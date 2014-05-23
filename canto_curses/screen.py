@@ -15,7 +15,7 @@ from .taglist import TagList
 from .input import InputBox
 from .widecurse import wsize
 
-from threading import Thread, Event, Lock
+from threading import Lock
 import logging
 import curses
 import time
@@ -58,7 +58,8 @@ class Screen(CommandHandler):
 
         self.pseudo_input_box = curses.newpad(1,1)
         self.pseudo_input_box.keypad(1)
-        self.pseudo_input_box.nodelay(1)
+        self.pseudo_input_box.nodelay(0)
+        self.input_lock = Lock()
 
         self.floats = []
         self.tiles = []
@@ -570,7 +571,7 @@ class Screen(CommandHandler):
             pass
 
         self.pseudo_input_box.keypad(1)
-        self.pseudo_input_box.nodelay(1)
+        self.pseudo_input_box.nodelay(0)
         self.stdscr.refresh()
 
         self.curses_setup()
@@ -727,72 +728,19 @@ class Screen(CommandHandler):
 
         self.callbacks["set_conf"](conf)
 
-    # Pass a command to focused window:
+    def get_focus_list(self):
+        return [ self, self.focused ]
 
-    def command(self, cmd):
-        if not CommandHandler.command(self, cmd) and self.focused:
-            return self.focused.command(cmd)
-        return None
-
-    def key(self, k):
-        r = CommandHandler.key(self, k)
-        if r:
-            return r
-        if self.focused:
-            return self.focused.key(k)
-        return None
-
-    def bind(self, key, cmd):
-        r = self.focused.bind(key, cmd)
-        if not r:
-            return CommandHandler.bind(self, key, cmd)
-        return r
-
-    def input_thread(self):
+    def get_key(self):
         self.input_lock.acquire()
-        while True:
-            try:
-                r = self.pseudo_input_box.get_wch()
-            except Exception as e:
-                r = self.pseudo_input_box.getch()
-
-            if type(r) == str:
-                r = ord(r)
-
-            if r == -1:
-                # Release the lock so that another thread can halt
-                # this thread by holding this lock. (pause/unpause)
-                self.input_lock.release()
-                time.sleep(0.01)
-                self.input_lock.acquire()
-                continue
-
-            log.debug("R = %s" % r)
-
-            # We're in an edit box
-            if self.sub_edit:
-                # Feed the key to the input_box
-                rc = self.input_box.addkey(r)
-
-                # If rc == 1, need more keys
-                # If rc == 0, all done (result could still be "" though)
-                if not rc:
-                    self.sub_edit = False
-                    self.input_done.set()
-                    self.callbacks["set_var"]("needs_redraw", True)
-                continue
-
-            # We're not in an edit box.
-
-            self.user_queue.put(("KEY", r))
-
-    def start_input_thread(self):
-        self.input_done = Event()
-        self.inthread =\
-                Thread(target = self.input_thread)
-
-        self.inthread.daemon = True
-        self.inthread.start()
+        try:
+            r = self.pseudo_input_box.get_wch()
+        except Exception as e:
+            r = self.pseudo_input_box.getch()
+        self.input_lock.release()
+        if type(r) == str:
+            r = ord(r)
+        return r
 
     def exit(self):
         curses.endwin()

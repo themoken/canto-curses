@@ -901,7 +901,6 @@ class TagList(GuiBase):
         # XXX : HACK HACK HACK
         #self.tags = self.callbacks["get_var"]("curtags")
         self.tags = self.callbacks["get_var"]("alltags")
-        log.debug("SELF.TAGS = %s" % (self.tags,))
         hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")
 
         cur_item_offset = 0
@@ -965,6 +964,7 @@ class TagList(GuiBase):
     # of the objects by setting obj.prev_obj and obj.next_obj.
 
     def refresh(self):
+
         log.debug("Taglist REFRESH!\n")
 
         self.update_tag_lists()
@@ -1030,8 +1030,6 @@ class TagList(GuiBase):
 
                 # Keep track of last story.
                 self.last_story = story
-
-        self.redraw()
 
     # curpos - position in visible windown, can be negative
     # main_offset - starting line from top of pad

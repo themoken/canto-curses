@@ -152,21 +152,8 @@ class CantoCurses(CantoClient):
             else:
                 raise
 
-    def disconnected(self, conn):
-        self.response_alive = False
-        self.gui.disconnected()
-
-    def reconnect(self):
-        try:
-            self.connect()
-        except Exception as e:
-            log.error("Error reconnecting: %s" % e)
-            self.gui.disconnected()
-        else:
-            self.start_rthread()
-            self.gui.reconnected()
-
     def run(self):
+        # We want this as early as possible
         signal.signal(signal.SIGUSR1, self.sigusr1)
 
         # Get config from daemon
@@ -181,11 +168,7 @@ class CantoCurses(CantoClient):
         # Generate initial traffic
         tag_updater.update()
 
-        # Run interface
-        self.gui.run()
-
         # Initial signal setup.
-        signal.signal(signal.SIGUSR1, self.sigusr1)
         signal.signal(signal.SIGWINCH, self.winch)
         signal.signal(signal.SIGALRM, self.alarm)
         signal.signal(signal.SIGCHLD, self.child)

@@ -7,8 +7,9 @@
 #   published by the Free Software Foundation.
 
 from canto_next.hooks import call_hook, on_hook, remove_hook
-from canto_next.rwlock import RWLock
+from canto_next.rwlock import read_lock
 
+from .locks import sync_lock
 from .parser import parse_conditionals, eval_theme_string, prep_for_display
 from .theme import FakePad, WrapPad, theme_print, theme_reset, theme_border
 from .config import DEFAULT_TAG_FSTRING
@@ -351,14 +352,32 @@ class Tag(list):
         return 0
 
     # Synchronize this Tag with its TagCore
-    # TODO: Don't recreate Story objects for no reason
 
+    @read_lock(sync_lock)
     def sync(self, force=False):
-        # If our underlying tagcore changed, update ourselves
         if force or self.tagcore.changed:
-            del self[:]
+            my_ids = [ s.id for s in self ]
+            new_stories = []
+
+            self.tagcore.lock.acquire_read()
+
             for id in self.tagcore:
-                self.append(Story(id, self.callbacks))
+                if id in my_ids:
+                    s = self[my_ids.index(id)]
+                    new_stories.append(s)
+                    self.remove(s)
+                    my_ids.remove(s.id)
+                else:
+                    new_stories.append(Story(id, self.callbacks))
+
+            self.tagcore.lock.release_read()
+
+            # Properly dispose of the remaining stories
+            for s in self:
+                s.die()
+            del self[:]
+
+            self.extend(new_stories)
 
         # Pass the sync onto story objects
         for s in self:
