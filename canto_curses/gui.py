@@ -15,6 +15,7 @@ from .tagcore import alltagcores
 from .tag import Tag
 
 from .locks import sync_lock
+from .command import CommandHandler
 from .text import ErrorBox, InfoBox
 from .config import config
 from .screen import Screen
@@ -46,12 +47,20 @@ class GraphicalLog(logging.Handler):
         elif record.levelno == logging.ERROR:
             self._emit("error_msg", ErrorBox, record)
 
-class CantoCursesGui():
+class GuiPlugin(Plugin):
+    pass
+
+class CantoCursesGui(CommandHandler):
     def __init__(self, backend):
+        CommandHandler.__init__(self)
+        self.plugin_class = GuiPlugin
+        self.update_plugin_lookups()
 
         self.backend = backend
 
         self.update_interval = 0
+
+        self.do_gui = Event()
 
         self.callbacks = {
             "set_var" : config.set_var,
@@ -81,7 +90,7 @@ class CantoCursesGui():
         rootlog = logging.getLogger()
         rootlog.addHandler(self.glog_handler)
 
-        self.do_refresh = Event()
+        self.alive = True
 
         self.graphical_thread = Thread(target = self.run_gui)
         self.graphical_thread.daemon = True
@@ -107,13 +116,25 @@ class CantoCursesGui():
         # want to use .startswith instead of a regex.
         return [ s.lstrip() for s in r ]
 
+    def issue_cmd(self, winlist, cmd):
+        sync_lock.acquire_write()
+        for win in winlist:
+            if win.command(cmd):
+                break
+        sync_lock.release_write()
+
+    def cmd_quit(self, obj, **kwargs):
+        self.alive = False
+
     def run(self):
-        while True:
+        while self.alive:
             r = self.screen.get_key()
             log.debug("KEY: %s" % r)
 
+            # Get a list of all command handlers
+            f = [self] + self.screen.get_focus_list()
+
             # We got a key, now resolve it to a command
-            f = self.screen.get_focus_list()
             for win in reversed(f):
                 cmd = win.key(r)
                 if cmd:
@@ -126,20 +147,29 @@ class CantoCursesGui():
 
             # Now actually issue the commands
 
-            sync_lock.acquire_write()
             for cmd in cmds:
-                for win in reversed(f):
-                    if win.command(cmd):
-                        break
-            sync_lock.release_write()
+                # Command is our one hardcoded command because it's special, and also shouldn't invoke itself.
+                if cmd == "command":
+                    subcmd = self.screen.input_callback(':')
+                    log.debug("Got %s from user command" % subcmd)
+                    subcmds = self.cmdsplit(subcmd)
+                    for subcmd in subcmds:
+                        self.issue_cmd(reversed(f), subcmd)
+                else:
+                    self.issue_cmd(reversed(f), cmd)
 
-            # Let the GUI thread process
-            self.do_refresh.set()
+            # Let the GUI thread process, or realize it's dead.
+            self.do_gui.set()
 
     def run_gui(self):
         while True:
-            self.do_refresh.wait()
-            self.do_refresh.clear()
+            self.do_gui.wait()
+            self.do_gui.clear()
+            log.debug("gui thread released")
+
+            if not self.alive:
+                self.screen.exit()
+                break
 
             sync_lock.acquire_write()
             if self.callbacks["get_var"]("needs_refresh"):
@@ -148,3 +178,5 @@ class CantoCursesGui():
                 self.screen.redraw()
             sync_lock.release_write()
 
+    def get_opt_name(self):
+        return "main"

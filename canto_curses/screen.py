@@ -13,9 +13,10 @@ from canto_next.hooks import on_hook
 from .command import CommandHandler, command_format
 from .taglist import TagList
 from .input import InputBox
-from .widecurse import wsize
+from .widecurse import wsize, set_input_win, set_redisplay_callback, readline
 
 from threading import Lock
+import readline as rl
 import logging
 import curses
 import time
@@ -23,9 +24,10 @@ import os
 
 log = logging.getLogger("SCREEN")
 
-# The Screen class handles the layout of multiple sub-windows on the 
-# main curses window. It's also the top-level gui object, so call to refresh the
-# screen and get input should come through it.
+# The Screen class handles the layout of multiple sub-windows on the main
+# curses window. It's also the top-level gui object, so it handles calls to
+# refresh the screen, get input, and curses related console commands, like
+# "color".
 
 # There are two types of windows that the Screen class handles. The first are
 # normal windows (in self.tiles). These windows are all tiled in a single
@@ -60,6 +62,18 @@ class Screen(CommandHandler):
         self.pseudo_input_box.keypad(1)
         self.pseudo_input_box.nodelay(0)
         self.input_lock = Lock()
+
+        set_input_win(self.pseudo_input_box)
+        set_redisplay_callback(self.readline_redisplay)
+
+        # Sett Python bug 2675, readline + curses
+        os.unsetenv('LINES')
+        os.unsetenv('COLUMNS')
+
+        for line in [ 'tab: complete', 'set editing-mode vi', 'set show-all-if-ambiguous on']:
+            rl.parse_and_bind(line)
+
+        rl.set_completer(self.readline_complete)
 
         self.floats = []
         self.tiles = []
@@ -460,16 +474,13 @@ class Screen(CommandHandler):
     def input_callback(self, prompt):
         # Setup subedit
         self.curs_set(1)
-        self.input_done.clear()
-        self.input_box.edit(prompt)
-        self.sub_edit = True
 
-        # Wait for finished input
-        self.input_done.wait()
+        self.input_box.reset(prompt)
+        self.input_box.refresh()
+        curses.doupdate()
 
-        # Grab the return and reset
-        r = self.input_box.result
-        self.input_box.reset()
+        r = readline()
+
         self.curs_set(0)
         return r
 
@@ -521,6 +532,16 @@ class Screen(CommandHandler):
         self._focus_abs(0)
 
         self.refresh()
+
+    def readline_redisplay(self, content):
+        log.debug("rredisplay: %s" % content)
+        self.input_box.content = content
+        self.input_box.refresh()
+        curses.doupdate()
+
+    def readline_complete(self, *args):
+        log.debug("rcomplete: %s" % args)
+        return []
 
     # Optional integer return, if no arg, returns 0. (For focus)
     def optint(self, args):

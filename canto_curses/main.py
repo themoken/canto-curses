@@ -175,15 +175,8 @@ class CantoCurses(CantoClient):
         signal.alarm(1)
 
         # Block on signals.
-        while not self.done:
+        while self.gui.alive:
             signal.pause()
-
-    # Exit signals ourselves with SIGUSR1 so that the above
-    # signal.pause() call will wake up and let run() return.
-
-    def exit(self):
-        self.done = True
-        os.kill(self.pid, signal.SIGUSR1)
 
     def ensure_paths(self):
         if os.path.exists(self.conf_dir):
