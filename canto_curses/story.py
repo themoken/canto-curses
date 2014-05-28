@@ -110,6 +110,7 @@ class Story(PluginHandler):
 
         if 'canto-state' in old_content and self.fresh_state:
             self.content['canto-state'] = old_content['canto-state']
+            self.fresh_state = False
 
         self.need_redraw()
 
@@ -127,8 +128,7 @@ class Story(PluginHandler):
                     needed_attrs.append(attr)
             if needed_attrs:
                 log.debug("%s needs: %s" % (self.id, needed_attrs))
-                self.callbacks["write"]("ATTRIBUTES",\
-                        { self.id : needed_attrs })
+                tag_updater.need_attributes(self.id, needed_attrs)
 
         # All other story options are formats / enumerations, redraw.
 

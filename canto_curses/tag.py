@@ -12,7 +12,7 @@ from canto_next.rwlock import read_lock
 from .locks import sync_lock
 from .parser import parse_conditionals, eval_theme_string, prep_for_display
 from .theme import FakePad, WrapPad, theme_print, theme_reset, theme_border
-from .config import DEFAULT_TAG_FSTRING
+from .config import config, DEFAULT_TAG_FSTRING
 from .story import Story
 
 import traceback
@@ -72,10 +72,10 @@ class Tag(list):
         self.width = 0
 
         # Global indices (for enumeration)
-        self.item_offset = 0
-        self.visible_tag_offset = 0
-        self.tag_offset = 0
-        self.sel_offset = 0
+        self.item_offset = None
+        self.visible_tag_offset = None
+        self.tag_offset = None
+        self.sel_offset = None
 
         on_hook("curses_opt_change", self.on_opt_change)
         on_hook("curses_tag_opt_change", self.on_tag_opt_change)
@@ -86,6 +86,7 @@ class Tag(list):
 
         # XXX: FUCKING LOCK IT
         callbacks["get_var"]("alltags").append(self)
+        config.eval_tags()
 
         self.sync(True)
 

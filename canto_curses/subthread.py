@@ -9,7 +9,7 @@
 # SubThread is just a basic wrapper for a sub connection from the backend that
 # dispatches to sub functions based on socket traffic
 
-from threading import Thread
+from threading import Thread, Lock
 import traceback
 import logging
 
@@ -18,6 +18,8 @@ log = logging.getLogger("SUBTHREAD")
 class SubThread(object):
     def init(self, backend):
         self.backend = backend
+
+        self.wlock = Lock()
 
         # Start up our own connection
         self.conn = backend.connect()
@@ -37,7 +39,9 @@ class SubThread(object):
         log.info("%s" % info)
 
     def write(self, cmd, args):
-        return self.backend.do_write(self.conn, cmd, args)
+        self.wlock.acquire()
+        r = self.backend.do_write(self.conn, cmd, args)
+        self.wlock.release()
 
     def read(self):
         return self.backend.do_read(self.conn)

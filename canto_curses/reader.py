@@ -13,6 +13,7 @@ from .parser import prep_for_display
 from .command import command_format
 from .html import htmlparser
 from .text import TextBox
+from .tagcore import tag_updater
 
 import logging
 import re
@@ -54,7 +55,7 @@ class Reader(TextBox):
             remove_hook("curses_attributes", self.on_attributes)
 
             # Don't bother checking attributes. If we're still
-            # lacking, refresh  will re-enable this hook
+            # lacking, refresh will re-enable this hook
 
             self.refresh()
 
@@ -77,14 +78,16 @@ class Reader(TextBox):
 
             s = "%1%B" + prep_for_display(sel.content["title"]) + "%b\n"
 
+            # Make sure the story has the most recent info before we check it.
+            sel.sync()
+
             # We use the description for most reader content, so if it hasn't
             # been fetched yet then grab that from the server now and setup
             # a hook to get notified when sel's attributes are changed.
 
             if "description" not in sel.content\
                     and "content" not in sel.content:
-                self.callbacks["prio_write"]("ATTRIBUTES",\
-                        { sel.id : ["description", "content"] })
+                tag_updater.request_attributes(sel.id, ["description", "content"])
                 s += "%BWaiting for content...%b\n"
                 on_hook("curses_attributes", self.on_attributes)
             else:

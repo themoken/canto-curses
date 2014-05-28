@@ -9,6 +9,7 @@
 from canto_next.hooks import on_hook, remove_hook
 from canto_next.plugins import Plugin
 
+from .tagcore import tag_updater
 from .command import command_format
 from .guibase import GuiBase
 from .reader import Reader
@@ -74,6 +75,7 @@ class TagList(GuiBase):
 
         cur = self.first_story
         while cur:
+            log.debug("cur.offset = %s" % cur.offset)
             if cur.offset == idx:
                 return cur
             cur = cur.next_story
@@ -156,17 +158,9 @@ class TagList(GuiBase):
         sa = self.callbacks["get_opt"]("taglist.search_attributes")
 
         # Make sure that we have all attributes needed for a search.
-        for attr in sa:
-            for tag in self.callbacks["get_var"]("alltags"):
-                for item in tag:
-                    if attr not in item.content:
-                        if item.id in need_attrs:
-                            need_attrs[item.id].append(attr)
-                        else:
-                            need_attrs[item.id] = [ attr ]
-
-        if need_attrs:
-            self.callbacks["write"]("ATTRIBUTES", need_attrs)
+        for tag in self.callbacks["get_var"]("alltags"):
+            for item in tag:
+                tag_updater.need_attributes(item.id, sa)
 
     # Prompt that ensures the items are enumerated first
     def eprompt(self, prompt):
@@ -345,11 +339,10 @@ class TagList(GuiBase):
         for tag in kwargs["tags"]:
             for item in tag:
                 if item.handle_state(kwargs["state"]):
-                    attributes[item.id] =\
-                            { "canto-state" : item.content["canto-state"]}
+                    attributes[item.id] = { "canto_state" : kwargs["state"] }
 
-        if attributes != {}:
-            self.callbacks["write"]("SETATTRIBUTES", attributes)
+        if attributes:
+            tag_updater.set_attributes(attributes)
 
     # item-state: Add/remove state for multiple items.
 
@@ -358,13 +351,10 @@ class TagList(GuiBase):
         attributes = {}
         for item in kwargs["items"]:
             if item.handle_state(kwargs["state"]):
-                attributes[item.id] =\
-                        { "canto-state" : item.content["canto-state"] }
-
-        # Propagate state changes to the backend.
+                attributes[item.id] = { "canto-state" : item.content["canto-state"] }
 
         if attributes:
-            self.callbacks["write"]("SETATTRIBUTES", attributes)
+            tag_updater.set_attributes(attributes)
 
     @command_format([])
     def cmd_unset_cursor(self, **kwargs):
@@ -898,9 +888,7 @@ class TagList(GuiBase):
         if self.tags and sel and sel in self.tags:
             sel_is_tag = True
 
-        # XXX : HACK HACK HACK
-        #self.tags = self.callbacks["get_var"]("curtags")
-        self.tags = self.callbacks["get_var"]("alltags")
+        self.tags = self.callbacks["get_var"]("curtags")
         hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")
 
         cur_item_offset = 0

@@ -96,7 +96,7 @@ class TagUpdater(SubThread):
         # We know we're going to want at least these attributes for
         # all stories, as they're part of the fallback format string.
 
-        needed_attrs = [ "title", "canto-state", "link", "enclosures" ]
+        self.needed_attrs = [ "title", "canto-state", "link", "enclosures" ]
 
         # Make sure we grab attributes needed for the story
         # format and story format.
@@ -106,10 +106,10 @@ class TagUpdater(SubThread):
 
         for attrlist in [ sfa, tsa ]:
             for sa in attrlist:
-                if sa not in needed_attrs:
-                    needed_attrs.append(sa)
+                if sa not in self.needed_attrs:
+                    self.needed_attrs.append(sa)
 
-        self.write("AUTOATTR", needed_attrs)
+        self.write("AUTOATTR", self.needed_attrs)
 
         # XXX: Hack, need to write accessor for strtags, or figure out a better
         # way.
@@ -133,7 +133,18 @@ class TagUpdater(SubThread):
     def prot_attributes(self, d):
         # Update attributes, and then notify everyone to grab new content.
         self.lock.acquire_write()
-        self.attributes.update(d)
+
+        for key in d.keys():
+            if key in self.attributes:
+
+                # If we're updating, we want to create a whole new dict object
+                # so that our stories dicts don't get updated without a sync
+
+                cp = self.attributes[key].copy()
+                cp.update(d[key])
+                self.attributes[key] = cp
+            else:
+                self.attributes[key] = d[key]
         self.lock.release_write()
 
         call_hook("curses_attributes", [ self.attributes ])
@@ -208,6 +219,13 @@ class TagUpdater(SubThread):
         if tag not in self.updates:
             self.updates.append(tag)
 
+    # The following is the external interface to tagupdater.
+
+    # So far, it only has to do with attribute management.
+
+    # Writes are already serialized, so in the meantime, we protect
+    # self.attributes and self.needed_attrs with our lock.
+
     def get_attributes(self, id):
         r = {}
         self.lock.acquire_read()
@@ -215,5 +233,39 @@ class TagUpdater(SubThread):
             r = self.attributes[id]
         self.lock.release_read()
         return r
+
+    # This takes a fat argument because callers need to be able to curry
+    # together multiple sets so stuff like 'item-state read *' don't generate
+    # thousands of SETATTRIBUTES calls and take forever
+
+    def set_attributes(self, arg):
+        self.lock.acquire_write()
+        self.write("SETATTRIBUTES", arg)
+        self.lock.release_write()
+
+    def request_attributes(self, id, attrs):
+        self.write("ATTRIBUTES", { id : attrs })
+
+    def need_attributes(self, id, attrs):
+        self.lock.acquire_write()
+
+        needed = self.needed_attrs[:]
+        updated = False
+
+        for attr in attrs:
+            if attr not in needed:
+                needed.append(attr)
+                updated = True
+
+        if updated:
+            self.needed_attrs = needed
+            self.write("AUTOATTR", self.needed_attrs)
+
+        self.lock.release_write()
+
+        # Even if we didn't update this time, make sure we attempt to get this
+        # id's new needed attributes.
+
+        self.write("ATTRIBUTES", { id : needed })
 
 tag_updater = TagUpdater()

@@ -850,9 +850,7 @@ class CantoCursesConfig(SubThread):
 
         self.eval_tags()
 
-    # Must be called with config write lock
-
-    def eval_tags(self):
+    def _eval_tags(self):
         prevtags = self.vars["curtags"]
 
         sorted_tags = []
@@ -873,13 +871,24 @@ class CantoCursesConfig(SubThread):
             log.debug("Evaluated Tags Changed: %s" % [ t.tag for t in self.vars["curtags"]])
             call_hook("curses_eval_tags_changed", [])
 
-    @write_lock(var_lock)
+    @write_lock(config_lock)
+    def eval_tags(self):
+        return self._eval_tags()
+
+    # This needs to hold var lock, but we also want to avoid calling the var
+    # hooks while holding locks, so we do it manually. Vars are a bit different
+    # from opts because a set var can result in another set var, where that
+    # should never be the case for opts.
+
     def set_var(self, tweak, value):
         # We only care if the value is different, or it's a message
         # value, which should always cause a fresh message display,
         # even if it's the same error as before.
 
+        var_lock.acquire_read()
         if self.vars[tweak] != value:
+            var_lock.release_read()
+            var_lock.acquire_write()
 
             # If we're selecting or unselecting a story, then
             # we need to make sure it doesn't disappear.
@@ -911,8 +920,11 @@ class CantoCursesConfig(SubThread):
                     self.write("PROTECT", { "filter-immune" : [ value.id ] })
 
             self.vars[tweak] = value
+            var_lock.release_write()
 
             call_hook("curses_var_change", [{ tweak : value }])
+        else:
+            var_lock.release_read()
 
     @read_lock(var_lock)
     def get_var(self, tweak):
