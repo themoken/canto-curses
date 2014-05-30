@@ -13,6 +13,9 @@ from .subthread import SubThread
 from .config import config
 
 import traceback
+import logging
+
+log = logging.getLogger("TAGCORE")
 
 alltagcores = []
 
@@ -58,7 +61,7 @@ class TagCore(list):
                 log.debug("removing: %s" % (id,))
 
                 list.remove(self, id)
-                removed.append(item)
+                removed.append(id)
 
         call_hook("curses_items_removed", [ self, removed ] )
 
@@ -84,7 +87,6 @@ class TagUpdater(SubThread):
         self.item_buf = []
         self.item_removes = []
         self.item_adds = []
-        self.updates = []
 
         self.attributes = {}
         self.lock = RWLock("tagupdater")
@@ -216,8 +218,7 @@ class TagUpdater(SubThread):
             self.write("UNPROTECT", unprotect)
 
     def prot_tagchange(self, tag):
-        if tag not in self.updates:
-            self.updates.append(tag)
+        self.write("ITEMS", [ tag ])
 
     # The following is the external interface to tagupdater.
 

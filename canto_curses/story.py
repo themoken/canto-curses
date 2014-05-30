@@ -46,6 +46,8 @@ class Story(PluginHandler):
         # Are there changes pending?
         self.changed = True
 
+        self.fresh_state = False
+
         # Information from last refresh
         self.width = 0
         self.lines = 0

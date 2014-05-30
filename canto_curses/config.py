@@ -749,8 +749,7 @@ class CantoCursesConfig(SubThread):
     # Note that changes are the only ones propagated through hooks because they
     # are a superset of deletions (i.e. a deletion counts as a change).
 
-    @write_lock(config_lock)
-    def prot_configs(self, given, write = False):
+    def _prot_configs(self, given, write = False):
         log.debug("prot_configs given: %s" % given)
 
         if "tags" in given:
@@ -791,15 +790,17 @@ class CantoCursesConfig(SubThread):
 
         self.initd = True
 
+    @write_lock(config_lock)
+    def prot_configs(self, given, write = False):
+        return self._prot_configs(given, write)
+
     # Process new tags.
 
     # XXX: This shit is broken, alltags, no Tag object, conf deadlock etc.
 
     @write_lock(config_lock)
     def prot_newtags(self, tags):
-        return
-
-        c = self.get_conf()
+        c = self._get_conf()
 
         for tag in tags:
             if tag not in self.strtags:
@@ -817,25 +818,20 @@ class CantoCursesConfig(SubThread):
             if tag not in c["tagorder"]:
                 c["tagorder"] = self.config["tagorder"] + [ tag ]
 
-        self.set_conf(c)
-        self.eval_tags()
-
-    # XXX: This shit is broken, alltags, no Tag object, conf deadlock etc.
+        self._set_conf(c)
+        self._eval_tags()
 
     @write_lock(config_lock)
     def prot_deltags(self, tags):
-        return
-
-        c = self.get_conf()
+        c = self._get_conf()
 
         for tag in tags:
             if tag in self.strtags:
                 new_alltags = self.vars["alltags"]
 
                 # Allow Tag obj to cleanup hooks.
-                # tagobj = new_alltags[strtags.index(tag)]
-                # tagobj.die()
-                # HOOKIFY
+                tagobj = new_alltags[strtags.index(tag)]
+                tagobj.die()
 
                 # Remove it from alltags.
                 del new_alltags[self.strtags.index(tag)]
@@ -846,9 +842,8 @@ class CantoCursesConfig(SubThread):
             if tag in c["tagorder"]:
                 c["tagorder"] = [ x for x in self.config["tagorder"] if x != tag ]
 
-        self.set_conf(c)
-
-        self.eval_tags()
+        self._set_conf(c)
+        self._eval_tags()
 
     def _eval_tags(self):
         prevtags = self.vars["curtags"]
@@ -936,6 +931,9 @@ class CantoCursesConfig(SubThread):
     # code can "get" the conf, which is a copy of the real conf, modify it,
     # then "set" the conf which will properly process the changes.
 
+    def _set_conf(self, conf):
+        self._prot_configs({"CantoCurses" : conf }, True)
+
     # prot_configs handles locking
 
     def set_conf(self, conf):
@@ -944,9 +942,12 @@ class CantoCursesConfig(SubThread):
     def set_tag_conf(self, tag, conf):
         self.prot_configs({ "tags" : { tag : conf } }, True)
 
+    def _get_conf(self):
+        return eval(repr(self.config), {}, {})
+
     @read_lock(config_lock)
     def get_conf(self):
-        return eval(repr(self.config), {}, {})
+        return self._get_conf()
 
     def _get_tag_conf(self, tag):
         if tag in self.tag_config:

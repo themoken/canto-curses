@@ -481,6 +481,10 @@ class Screen(CommandHandler):
 
         r = readline()
 
+        self.input_box.reset("")
+        self.input_box.refresh()
+        curses.doupdate()
+
         self.curs_set(0)
         return r
 

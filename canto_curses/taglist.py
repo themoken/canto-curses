@@ -1019,6 +1019,8 @@ class TagList(GuiBase):
                 # Keep track of last story.
                 self.last_story = story
 
+        self.callbacks["set_var"]("needs_redraw", True)
+
     # curpos - position in visible windown, can be negative
     # main_offset - starting line from top of pad
 

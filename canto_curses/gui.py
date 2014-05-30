@@ -73,6 +73,7 @@ class CantoCursesGui(CommandHandler):
             "set_opt" : config.set_opt,
             "get_tag_opt" : config.get_tag_opt,
             "set_tag_opt" : config.set_tag_opt,
+            "release_gui" : self.release_gui,
         }
 
         # Instantiate graphical Tag objects
@@ -102,12 +103,18 @@ class CantoCursesGui(CommandHandler):
 
         self.sync_timer = 1
 
+    def release_gui(self):
+        self.do_gui.set()
+
     def tick(self):
+        log.debug("...tick...")
         self.sync_timer -= 1
         if self.sync_timer <= 0:
+            log.debug("sync!")
             for tag in self.callbacks["get_var"]("alltags"):
                 tag.sync(True)
             self.sync_timer = 60
+            self.do_gui.set()
 
     def cmdsplit(self, cmd):
         r = escsplit(cmd, " &")
@@ -172,10 +179,15 @@ class CantoCursesGui(CommandHandler):
                 break
 
             sync_lock.acquire_write()
+
             if self.callbacks["get_var"]("needs_refresh"):
                 self.screen.refresh()
+                self.callbacks["set_var"]("needs_refresh", False)
+
             if self.callbacks["get_var"]("needs_redraw"):
                 self.screen.redraw()
+                self.callbacks["set_var"]("needs_redraw", False)
+
             sync_lock.release_write()
 
     def get_opt_name(self):
