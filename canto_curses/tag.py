@@ -380,6 +380,11 @@ class Tag(list):
 
             self.extend(new_stories)
 
+            # Trigger a refresh so that classes above (i.e. TagList) will remap
+            # items
+
+            self.need_refresh()
+
         # Pass the sync onto story objects
         for s in self:
             s.sync()
