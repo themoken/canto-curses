@@ -1056,6 +1056,7 @@ class TagList(GuiBase):
         return (main_offset, curpos + lines)
 
     def redraw(self):
+        log.debug("Taglist REDRAW (%s)!\n" % self.width)
         self.pad.erase()
 
         target_obj = self.callbacks["get_var"]("target_obj")

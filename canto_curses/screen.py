@@ -586,10 +586,10 @@ class Screen(CommandHandler):
 
     @command_format([])
     def cmd_resize(self, **kwargs):
-        self._resize()
+        self.resize()
 
     # Typical curses resize, endwin and re-setup.
-    def _resize(self):
+    def resize(self):
         try:
             curses.endwin()
         except:
@@ -602,9 +602,7 @@ class Screen(CommandHandler):
         self.curses_setup()
         self.subwindows()
         self.refresh()
-
-        # Force a curses doupdate because refresh doesn't.
-        curses.doupdate()
+        self.redraw()
 
     # Focus idx-th window.
     @command_format([("idx", "optint")])

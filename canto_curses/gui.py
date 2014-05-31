@@ -113,8 +113,13 @@ class CantoCursesGui(CommandHandler):
             log.debug("sync!")
             for tag in self.callbacks["get_var"]("alltags"):
                 tag.sync(True)
-            self.sync_timer = 60
-            self.do_gui.set()
+            self.sync_timer = 5
+
+            self.release_gui()
+
+    def winch(self):
+        self.callbacks["set_var"]("needs_resize",  True)
+        self.release_gui()
 
     def cmdsplit(self, cmd):
         r = escsplit(cmd, " &")
@@ -166,7 +171,7 @@ class CantoCursesGui(CommandHandler):
                     self.issue_cmd(reversed(f), cmd)
 
             # Let the GUI thread process, or realize it's dead.
-            self.do_gui.set()
+            self.release_gui()
 
     def run_gui(self):
         while True:
@@ -179,6 +184,13 @@ class CantoCursesGui(CommandHandler):
                 break
 
             sync_lock.acquire_write()
+
+            # Resize implies a refresh and redraw
+            if self.callbacks["get_var"]("needs_resize"):
+                self.screen.resize()
+                self.callbacks["set_var"]("needs_resize", False)
+                self.callbacks["set_var"]("needs_refresh", False)
+                self.callbacks["set_var"]("needs_redraw", False)
 
             if self.callbacks["get_var"]("needs_refresh"):
                 self.screen.refresh()

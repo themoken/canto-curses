@@ -94,7 +94,6 @@ class Tag(list):
         # Reset so items get die() called and everything
         # else is notified about items disappearing.
 
-        self.reset()
         remove_hook("curses_opt_change", self.on_opt_change)
         remove_hook("curses_tag_opt_change", self.on_tag_opt_change)
         remove_hook("curses_attributes", self.on_attributes)
