@@ -47,7 +47,8 @@ class Reader(TextBox):
 
         if "show_description" in change["reader"] or\
                 "enumerate_links" in change["reader"]:
-            self.refresh()
+            self.callbacks["set_var"]("needs_refresh", True)
+            self.callbacks["release_gui"]()
 
     def on_attributes(self, attributes):
         sel = self.callbacks["get_var"]("reader_item")
@@ -62,7 +63,8 @@ class Reader(TextBox):
 
         if "selected" in variables and variables["selected"]:
             self.callbacks["set_var"]("reader_item", variables["selected"])
-            self.refresh()
+            self.callbacks["set_var"]("needs_refresh", True)
+            self.callbacks["release_gui"]()
 
     def update_text(self):
         reader_conf = self.callbacks["get_opt"]("reader")

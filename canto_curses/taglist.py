@@ -55,18 +55,18 @@ class TagList(GuiBase):
         self.tags = []
 
         # Hooks
-        on_hook("curses_eval_tags_changed", self.refresh)
-        on_hook("curses_items_added", self.on_items_added)
-        on_hook("curses_items_removed", self.on_items_removed)
+        on_hook("curses_eval_tags_changed", self.on_eval_tags_changed)
+        on_hook("curses_stories_added", self.on_stories_added)
+        on_hook("curses_stories_removed", self.on_stories_removed)
         on_hook("curses_opt_change", self.on_opt_change)
 
         self.update_tag_lists()
 
     def die(self):
         log.debug("Cleaning up hooks...")
-        remove_hook("curses_eval_tags_changed", self.refresh)
-        remove_hook("curses_items_added", self.on_items_added)
-        remove_hook("curses_items_removed", self.on_items_removed)
+        remove_hook("curses_eval_tags_changed", self.on_eval_tags_changed)
+        remove_hook("curses_stories_added", self.on_stories_added)
+        remove_hook("curses_stories_removed", self.on_stories_removed)
         remove_hook("curses_opt_change", self.on_opt_change)
 
     def item_by_idx(self, idx):
@@ -93,7 +93,12 @@ class TagList(GuiBase):
             return obj
         return self.tag_by_item(obj)
 
-    def on_items_added(self, tag, items):
+    def on_eval_tags_changed(self):
+        self.callbacks["set_var"]("needs_refresh", True)
+
+    # Called with sync_lock, so we are unrestricted.
+
+    def on_stories_added(self, tag, items):
         # Items being added implies we need to remap them
         self.callbacks["set_var"]("needs_refresh", True)
 
@@ -127,7 +132,9 @@ class TagList(GuiBase):
 
         self.callbacks["set_var"]("old_selected", None)
 
-    def on_items_removed(self, tag, items):
+    # Called with sync_lock, so we are unrestricted.
+
+    def on_stories_removed(self, tag, items):
         # Items being removed implies we need to remap them.
         self.callbacks["set_var"]("needs_refresh", True)
 

@@ -119,6 +119,10 @@ class Tag(list):
             else:
                 self.need_redraw()
 
+    # Technically, we might want to hold sync_lock so that self[:] doesn't
+    # change, but if we're syncing, the setting of needs_redraw isn't important
+    # anymore, and if we're not, there's no issue.
+
     def on_attributes(self, attributes):
         for s in self:
             if s.id in attributes:
@@ -357,27 +361,35 @@ class Tag(list):
     def sync(self, force=False):
         if force or self.tagcore.changed:
             my_ids = [ s.id for s in self ]
-            new_stories = []
+            current_stories = []
+            added_stories = []
 
             self.tagcore.lock.acquire_read()
 
             for id in self.tagcore:
                 if id in my_ids:
                     s = self[my_ids.index(id)]
-                    new_stories.append(s)
+                    current_stories.append(s)
                     self.remove(s)
                     my_ids.remove(s.id)
                 else:
-                    new_stories.append(Story(id, self.callbacks))
+                    s = Story(id, self.callbacks)
+                    current_stories.append(s)
+                    added_stories.append(s)
 
             self.tagcore.lock.release_read()
 
+            call_hook("curses_stories_added", [ self, added_stories ])
+
             # Properly dispose of the remaining stories
+
+            call_hook("curses_stories_removed", [ self, self[:] ])
+
             for s in self:
                 s.die()
             del self[:]
 
-            self.extend(new_stories)
+            self.extend(current_stories)
 
             # Trigger a refresh so that classes above (i.e. TagList) will remap
             # items
