@@ -59,6 +59,7 @@ class CantoCursesConfig(SubThread):
             "old_toffset" : 0,
             "target_obj" : None,
             "target_offset" : 0,
+            "strtags" : [],
             "curtags" : [],
             "alltags" : [],
             "needs_refresh" : False,
@@ -512,11 +513,11 @@ class CantoCursesConfig(SubThread):
 
         # Strip items no longer relevant
         for item in val[:]:
-            if item not in self.strtags:
+            if item not in self.vars["strtags"]:
                 val.remove(item)
 
         # Ensure all tags are inluded
-        for tag in self.strtags:
+        for tag in self.vars["strtags"]:
             if tag not in val:
                 val.append(tag)
 
@@ -739,7 +740,7 @@ class CantoCursesConfig(SubThread):
     @write_lock(config_lock)
     def prot_listtags(self, tags):
         log.debug("listtags: %s" % tags)
-        self.strtags = tags
+        self.vars["strtags"] = tags
 
     # configs accepts any changes, calls the opt_change hooks and if write is
     # set, sends those changes to the daemon. It's called both when receving
@@ -803,7 +804,7 @@ class CantoCursesConfig(SubThread):
         c = self._get_conf()
 
         for tag in tags:
-            if tag not in self.strtags:
+            if tag not in self.vars["strtags"]:
                 log.info("New tag %s" % tag)
 
                 # If we don't have configuration for this
@@ -826,15 +827,15 @@ class CantoCursesConfig(SubThread):
         c = self._get_conf()
 
         for tag in tags:
-            if tag in self.strtags:
+            if tag in self.vars["strtags"]:
                 new_alltags = self.vars["alltags"]
 
                 # Allow Tag obj to cleanup hooks.
-                tagobj = new_alltags[strtags.index(tag)]
+                tagobj = new_alltags[self.vars["strtags"].index(tag)]
                 tagobj.die()
 
                 # Remove it from alltags.
-                del new_alltags[self.strtags.index(tag)]
+                del new_alltags[self.vars["strtags"].index(tag)]
                 call_hook("curses_del_tag", tag)
             else:
                 log.warn("Got DELTAG for non-existent tag!")

@@ -53,11 +53,8 @@ class Reader(TextBox):
         sel = self.callbacks["get_var"]("reader_item")
         if sel and sel.id in attributes:
             remove_hook("curses_attributes", self.on_attributes)
-
-            # Don't bother checking attributes. If we're still
-            # lacking, refresh will re-enable this hook
-
-            self.refresh()
+            self.callbacks["set_var"]("needs_refresh", True)
+            self.callbacks["release_gui"]()
 
     def on_var_change(self, variables):
         # If we've been instantiated and unfocused, and selection changes,

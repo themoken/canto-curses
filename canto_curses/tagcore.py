@@ -113,10 +113,7 @@ class TagUpdater(SubThread):
 
         self.write("AUTOATTR", self.needed_attrs)
 
-        # XXX: Hack, need to write accessor for strtags, or figure out a better
-        # way.
-
-        strtags = config.strtags
+        strtags = config.get_var("strtags")
 
         # Request initial information, instantiate TagCores()
 
@@ -125,10 +122,7 @@ class TagUpdater(SubThread):
             TagCore(tag)
 
     def update(self):
-        # XXX: Hack, need to write accessor for strtags, or figure out a better
-        # way.
-
-        strtags = config.strtags
+        strtags = config.get_var("strtags")
         for tag in strtags:
             self.write("ITEMS", [ tag ])
 
