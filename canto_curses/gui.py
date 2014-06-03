@@ -110,11 +110,6 @@ class CantoCursesGui(CommandHandler):
         log.debug("...tick...")
         self.sync_timer -= 1
         if self.sync_timer <= 0:
-            log.debug("sync!")
-            for tag in self.callbacks["get_var"]("alltags"):
-                tag.sync(True)
-            self.sync_timer = 5
-
             self.release_gui()
 
     def winch(self):
@@ -184,6 +179,12 @@ class CantoCursesGui(CommandHandler):
                 break
 
             sync_lock.acquire_write()
+
+            if self.sync_timer <= 0:
+                log.debug("sync!")
+                for tag in self.callbacks["get_var"]("alltags"):
+                    tag.sync(True)
+                self.sync_timer = 5
 
             # Resize implies a refresh and redraw
             if self.callbacks["get_var"]("needs_resize"):

@@ -357,7 +357,6 @@ class Tag(list):
 
     # Synchronize this Tag with its TagCore
 
-    @read_lock(sync_lock)
     def sync(self, force=False):
         if force or self.tagcore.changed:
             my_ids = [ s.id for s in self ]
