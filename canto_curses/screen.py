@@ -10,7 +10,7 @@ from canto_next.plugins import Plugin
 from canto_next.encoding import locale_enc
 from canto_next.hooks import on_hook
 
-from .command import CommandHandler, command_format
+from .command import CommandHandler
 from .taglist import TagList
 from .input import InputBox
 from .widecurse import wsize, set_input_win, set_redisplay_callback, readline
@@ -547,30 +547,6 @@ class Screen(CommandHandler):
         log.debug("rcomplete: %s" % args)
         return []
 
-    # Optional integer return, if no arg, returns 0. (For focus)
-    def optint(self, args):
-        if not args:
-            return (True, 0, "")
-        t, r = self._first_term(args, None)
-        if not t:
-            return (False, None, None)
-        try:
-            t = int(t)
-        except:
-            log.error("Can't parse %s as integer" % t)
-            return (False, None, None)
-        return (True, t, r)
-
-    def string(self, args, prompt):
-        if not args:
-            args = self.input_callback(prompt)
-        if not args:
-            return (False, None, None)
-        return (True, args, None)
-
-    def filename(self, args):
-        return self.string(args, "filename: ")
-
     # Refresh operates in order, which doesn't matter for top level tiled
     # windows, but this ensures that floats are ordered such that the last
     # floating window is rendered on top of all others.
@@ -584,7 +560,6 @@ class Screen(CommandHandler):
             c.redraw()
         curses.doupdate()
 
-    @command_format([])
     def cmd_resize(self, **kwargs):
         self.resize()
 
@@ -605,7 +580,6 @@ class Screen(CommandHandler):
         self.redraw()
 
     # Focus idx-th window.
-    @command_format([("idx", "optint")])
     def cmd_focus(self, **kwargs):
         self._focus_abs(kwargs["idx"])
 
@@ -621,7 +595,6 @@ class Screen(CommandHandler):
 
         self._focus(focus_order[idx])
 
-    @command_format([("idx", "optint")])
     def cmd_focus_rel(self, **kwargs):
         focus_order = [w for w in self.tiles + self.floats if not w.is_input()]
         log.debug("focus_order: %s" % focus_order)
@@ -645,7 +618,6 @@ class Screen(CommandHandler):
     # NOTE: This is intended for test use only. This
     # command does no error handling.
 
-    @command_format([("filename", "filename")])
     def cmd_dump_screen(self, **kwargs):
         f = open(kwargs["filename"], "wb")
 
@@ -661,71 +633,6 @@ class Screen(CommandHandler):
 
         f.close()
 
-    def pair_error(self):
-        log.error("Color index must be between 0 and %d or 'deffg' or 'defbg'" %
-                curses.COLOR_PAIRS)
-
-    def pair(self, args):
-        t, c, r = self.single_string(args,\
-                lambda : self.input_callback("color index: "))
-        if not t:
-            return (False, None, None)
-
-        # NOTE: We subtract 1 and have the theme_trans setup like
-        # this because the user and the themes should see pairs
-        # enumerated from 1, where curses enumerates from 0.
-
-        try:
-            c = int(c)
-            if 0 < c <= curses.COLOR_PAIRS:
-                return (True, str(c - 1), r)
-            else:
-                self.pair_error()
-        except:
-            if c in ["deffg","defbg"]:
-                return (True, c, r)
-            theme_trans = {
-                    "main" : "0",
-                    "unread" : "1",
-                    "read" : "2",
-                    "image" : "3",
-                    "link" : "4",
-                    "quote" : "5",
-            }
-            if c in theme_trans:
-                return (True, theme_trans[c], r)
-            self.pair_error()
-        return (False, None, None)
-
-    def color(self, c, r):
-        try:
-            c = int(c)
-            if -1 <= c <= curses.COLORS:
-                return (True, c, r)
-            else:
-                log.error("Color must be between 0 and %d" %
-                        curses.COLORS)
-                return (False, None, None)
-        except:
-            ok, c = color_translate(c)
-            if not ok:
-                log.error("Unknown color string: %s" % c)
-                return (False, None, None)
-        return (True, c, r)
-
-    def color_int(self, args):
-        t, c, r = self.single_string(args,\
-                lambda : self.input_callback("color: "))
-        if not t:
-            return (False, None, None)
-        return self.color(c, r)
-
-    def opt_color_int(self, args):
-        if not args:
-            return (True, None, "")
-        return self.color_int(args)
-
-    @command_format([("idx", "pair"),("fg","color_int"),("bg","opt_color_int")])
     def cmd_color(self, **kwargs):
         conf = self.callbacks["get_conf"]()
         idx = kwargs["idx"]
@@ -770,17 +677,3 @@ class Screen(CommandHandler):
 
     def get_opt_name(self):
         return "screen"
-
-def color_translate(val):
-    # Alias pink and magenta
-    if val == "pink":
-        val = "magenta"
-
-    # Lookup defined curses colors.
-    for color_attr in dir(curses):
-        if not color_attr.startswith("COLOR_"):
-            continue
-        if val.lower() == color_attr[6:].lower():
-            return (True, getattr(curses, color_attr))
-
-    return (False, t)

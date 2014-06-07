@@ -7,7 +7,6 @@
 #   published by the Free Software Foundation.
 
 from .theme import FakePad, WrapPad, theme_print, theme_lstrip, theme_border, theme_reset
-from .command import command_format
 from .guibase import GuiBase
 from .theme import theme_print
 
@@ -157,19 +156,15 @@ class TextBox(GuiBase):
 
         return lines + 1
 
-    @command_format([])
     def cmd_scroll_up(self, **kwargs):
         self._relscroll(-1)
 
-    @command_format([])
     def cmd_scroll_down(self, **kwargs):
         self._relscroll(1)
 
-    @command_format([])
     def cmd_page_up(self, **kwargs):
         self._relscroll(-1 * (self.height - 1))
 
-    @command_format([])
     def cmd_page_down(self, **kwargs):
         self._relscroll(self.height - 1)
 

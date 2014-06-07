@@ -9,7 +9,7 @@
 from canto_next.hooks import on_hook
 from canto_next.plugins import Plugin
 
-from .command import CommandHandler, command_format
+from .command import CommandHandler
 
 import logging
 
@@ -43,42 +43,11 @@ class GuiBase(CommandHandler):
             return (True, t, r)
         return (False, None, None)
 
-    @command_format([])
     def cmd_destroy(self, **kwargs):
         self.callbacks["die"](self)
 
     def die(self):
         pass
-
-    def _cfg_set_prompt(self, option, prompt):
-        t = self.callbacks["get_opt"](option)
-        self.callbacks["set_opt"](option, True)
-
-        # It's assumed that if we're wrapping a prompt in this
-        # change, that we want to update the pad.
-
-        if not t:
-            self.redraw()
-
-        r = self.input(prompt)
-
-        self.callbacks["set_opt"](option, t)
-        return r
-
-    def _tag_cfg_set_prompt(self, tag, option, prompt):
-        t = self.callbacks["get_tag_opt"](tag, option)
-        self.callbacks["set_tag_opt"](tag, option, True)
-
-        # Same as above, if we're wrapping a prompt, we want
-        # to update the screen.
-
-        if not t:
-            self.redraw()
-
-        r = self.input(prompt)
-
-        self.callbacks["set_tag_opt"](tag, option, t)
-        return r
 
     def _fork(self, path, href, text, fetch=False):
 
@@ -185,33 +154,6 @@ class GuiBase(CommandHandler):
 
         return r
 
-    # Pass-thru for arbitrary, unquoted strings.
-    def string(self, args, prompt):
-        if not args:
-            args = prompt()
-        return (True, args, None)
-
-    # Parse a string in shell fashion, returning components.
-
-    def split_string(self, args, prompt):
-        if not args:
-            args = prompt()
-
-        return (True, shlex.split(args), None)
-
-    def one_opt(self, args):
-        t, r = self._first_term(args,
-                lambda : self.input("opt: "))
-        if not t:
-            return (False, None, None)
-        try:
-            self.callbacks["get_opt"](t)
-        except:
-            log.error("Unknown option: %s" % t)
-            return (False, None, None)
-        return (True, t, None)
-
-    @command_format([("opt", "one_opt")])
     def cmd_edit(self, **kwargs):
         t = self.callbacks["get_opt"](kwargs["opt"])
         r = self._edit(t)
@@ -248,7 +190,6 @@ class GuiBase(CommandHandler):
     def remote_args(self, args):
         return self.string(args, "remote: ")
 
-    @command_format([("remote_args","remote_args")])
     def cmd_remote(self, **kwargs):
         self._remote(kwargs["remote_args"])
 
@@ -274,6 +215,3 @@ class GuiBase(CommandHandler):
 
     def _fetch(self, urls):
         self._goto(urls, True)
-
-    def named_key(self, args):
-        return self.input_key(args, lambda : self.callbacks["input"]("key: "))

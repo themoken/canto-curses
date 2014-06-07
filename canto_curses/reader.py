@@ -10,7 +10,6 @@ from canto_next.plugins import Plugin
 from canto_next.hooks import on_hook, remove_hook
 
 from .parser import prep_for_display
-from .command import command_format
 from .html import htmlparser
 from .text import TextBox
 from .tagcore import tag_updater
@@ -158,27 +157,16 @@ class Reader(TextBox):
 
         self.text = s.rstrip(" \t\v\n")
 
-    def eprompt(self, prompt):
-        return self._cfg_set_prompt("reader.enumerate_links", "links: ")
-
-    def listof_links(self, args):
-        ints = self._listof_int(args, 0, len(self.links),\
-                lambda : self.eprompt("links: "))
-        return (True, [ self.links[i] for i in ints ], "")
-
-    @command_format([("links", "listof_links")])
     def cmd_goto(self, **kwargs):
         # link = ( type, url, text )
         links = [ l[1] for l in kwargs["links"] ]
         self._goto(links)
 
-    @command_format([("links", "listof_links")])
     def cmd_fetch(self, **kwargs):
         # link = ( type, url, text )
         links = [ l[1] for l in kwargs["links"] ]
         self._fetch(links)
 
-    @command_format([])
     def cmd_destroy(self, **kwargs):
         self.callbacks["set_var"]("reader_item", None)
         self.callbacks["die"](self)

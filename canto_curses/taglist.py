@@ -10,7 +10,6 @@ from canto_next.hooks import on_hook, remove_hook
 from canto_next.plugins import Plugin
 
 from .tagcore import tag_updater
-from .command import command_format
 from .guibase import GuiBase
 from .reader import Reader
 
@@ -169,178 +168,9 @@ class TagList(GuiBase):
             for item in tag:
                 tag_updater.need_attributes(item.id, sa)
 
-    # Prompt that ensures the items are enumerated first
-    def eprompt(self, prompt):
-        return self._cfg_set_prompt("story.enumerated", prompt)
-
-    # Prompt that enumerates only items in a single tag.
-    def tag_eprompt(self, tag, prompt):
-        return self._tag_cfg_set_prompt(tag, "enumerated", prompt)
-
-    # Enumerates visible tags.
-    def teprompt(self, prompt):
-        return self._cfg_set_prompt("taglist.tags_enumerated", prompt)
-
-    # Enumerates all tags.
-    def teprompt_absolute(self, prompt):
-        return self._cfg_set_prompt("taglist.tags_enumerated_absolute", prompt)
-
-    # Following we have a number of command helpers. These allow
-    # commands to take lists of items, tags, or tag subranges of items in
-    # addition to singular items, and possible item states, etc.
-
-    def _single_tag(self, args, taglist, prompt):
-        s = self.callbacks["get_var"]("selected")
-
-        curint = 0
-        if s:
-            if s in taglist:
-                curint = taglist.index(s)
-            else:
-                curtag = self.tag_by_item(s)
-                if curtag in taglist:
-                    curint = taglist.index(curtag)
-
-        tag, args = self._int(args, curint, len(taglist), prompt)
-
-        # If we failed to get a valid integer, bail.
-        if tag == None or tag < 0 or tag >= len(taglist):
-            return (None, None, "")
-
-        return (True, taglist[tag], args)
-
-    def single_tag(self, args):
-        vistags = self.callbacks["get_var"]("taglist_visible_tags")
-        prompt = lambda : self.teprompt("tag: ")
-        return self._single_tag(args, vistags, prompt)
-
-    def single_tag_absolute(self, args):
-        prompt = lambda : self.teprompt_absolute("tag: ")
-        return self._single_tag(args, self.tags, prompt)
-
-    def listof_items(self, args):
-        s = self.callbacks["get_var"]("selected")
-
-        if not args:
-            if s:
-                # When a tag is selected, it's empty.
-                if s in self.tags:
-                    return (True, [], "")
-
-                # Otherwise return the single selected item.
-                else:
-                    return (True, [s], "")
-
-            if self.got_items != None:
-                log.debug("listof_items falling back on got_items")
-                return (True, self.got_items, "")
-
-        # Lookahead. If the first term is t: then we're going to grab
-        # items relative to a tag.
-
-        if args and args.startswith("t:") or args.startswith("T:"):
-            lookup_type, args = args[0], args[2:]
-
-            # Relative tag lookup.
-            if lookup_type == "t":
-                valid, tag, args = self.single_tag(args)
-            else:
-                valid, tag, args = self.single_tag_absolute(args)
-
-            if not valid:
-                log.error("listof_items t: found, but no valid tag!")
-                return (False, None, "")
-
-            if s and s in tag:
-                curint = tag.index(s)
-            else:
-                curint = 0
-
-            ints = self._listof_int(args, curint, len(tag),
-                    lambda : self.tag_eprompt(tag, "items: "))
-            return (True, [ tag[i] for i in ints ], "")
-        else:
-            if s and s not in self.tags:
-                curint = s.offset
-            else:
-                curint = 0
-
-            vistags = self.callbacks["get_var"]("taglist_visible_tags")
-            ints = self._listof_int(args, curint, vistags[-1][-1].offset + 1,
-                    lambda : self.eprompt("items: "))
-            return (True, [ self.item_by_idx(i) for i in ints ], "")
-
-    def listof_tags(self, args):
-        s = self.callbacks["get_var"]("selected")
-        visible_tags = self.callbacks["get_var"]("taglist_visible_tags")
-        got_tag = None
-
-        if s:
-            if s in self.tags:
-                got_tag = s
-            else:
-                got_tag = self.tag_by_item(s)
-
-        # If we have a selected tag and no args, return it automatically.
-        if not args and got_tag:
-            return (True, [got_tag], "")
-
-        if got_tag:
-            curint = visible_tags.index(got_tag)
-        else:
-            curint = 0
-
-        ints = self._listof_int(args, curint, len(visible_tags),\
-                lambda : self.teprompt("tags: "))
-
-        return(True, [ visible_tags[i] for i in ints ], "")
-
-    def state(self, args):
-        t, r = self._first_term(args, lambda : self.input("state: "))
-        if not t:
-            return (False, None, None)
-        return (True, t, r)
-
-    def item(self, args):
-        s = self.callbacks["get_var"]("selected")
-
-        if s and s not in self.tags:
-            curint = s.offset
-        else:
-            curint = 0
-
-        # Handle 0 items
-        if not self.last_story:
-            return (False, None, None)
-
-        t, r = self._int(args, curint, self.last_story.offset,
-                lambda : self.eprompt("item: "))
-
-        if t != None:
-            item = self.item_by_idx(t)
-            return (True, item, r)
-        return (False, None, None)
-
-    def sel_or_item(self, args):
-        if not args:
-            s = self.callbacks["get_var"]("selected")
-            if s:
-                # If tag selected, cut-out
-                if s in self.tags:
-                    return (False, None, None)
-                else:
-                    return (True, s, "")
-            if self.got_items:
-                if len(self.got_items) > 1:
-                    log.info("NOTE: Only using first of selected items.")
-                return (True, self.got_items[0], "")
-        return self.item(args)
-
-    @command_format([("items", "listof_items")])
     def cmd_goto(self, **kwargs):
         self._goto([item.content["link"] for item in kwargs["items"]])
 
-    @command_format([("state", "state"),("tags","listof_tags")])
     def cmd_tag_state(self, **kwargs):
         attributes = {}
         for tag in kwargs["tags"]:
@@ -353,7 +183,6 @@ class TagList(GuiBase):
 
     # item-state: Add/remove state for multiple items.
 
-    @command_format([("state", "state"),("items","listof_items")])
     def cmd_item_state(self, **kwargs):
         attributes = {}
         for item in kwargs["items"]:
@@ -363,7 +192,6 @@ class TagList(GuiBase):
         if attributes:
             tag_updater.set_attributes(attributes)
 
-    @command_format([])
     def cmd_unset_cursor(self, **kwargs):
         self._set_cursor(None, 0)
 
@@ -409,7 +237,6 @@ class TagList(GuiBase):
 
         return (ps, lines)
 
-    @command_format([("relidx", "int")])
     def cmd_rel_set_cursor(self, **kwargs):
         sel = self.callbacks["get_var"]("selected")
         if sel:
@@ -495,22 +322,18 @@ class TagList(GuiBase):
 
     # foritems gets a valid list of items by index.
 
-    @command_format([("items", "listof_items")])
     def cmd_foritems(self, **kwargs):
         self.got_items = kwargs["items"]
 
-    @command_format([("item", "sel_or_item")])
     def cmd_foritem(self, **kwargs):
         log.debug("setting got_items: %s" % [ kwargs["item"] ])
         self.got_items = [ kwargs["item"] ]
 
     # clearitems clears all the items set by foritems.
 
-    @command_format([])
     def cmd_clearitems(self, **kwargs):
         self.got_items = None
 
-    @command_format([])
     def cmd_page_up(self, **kwargs):
         target_offset = self.callbacks["get_var"]("target_offset")
         target_obj = self.callbacks["get_var"]("target_obj")
@@ -542,7 +365,6 @@ class TagList(GuiBase):
             self.callbacks["set_var"]("target_offset", target_offset)
             self.callbacks["set_var"]("needs_redraw", True)
 
-    @command_format([])
     def cmd_page_down(self, **kwargs):
         target_offset = self.callbacks["get_var"]("target_offset")
         target_obj = self.callbacks["get_var"]("target_obj")
@@ -579,7 +401,6 @@ class TagList(GuiBase):
             self.callbacks["set_var"]("target_offset", 0)
             self.callbacks["set_var"]("needs_redraw", True)
 
-    @command_format([])
     def cmd_next_tag(self, **kwargs):
         sel = self.callbacks["get_var"]("selected")
 
@@ -602,7 +423,6 @@ class TagList(GuiBase):
 
         self._set_cursor(sel, target_offset)
 
-    @command_format([])
     def cmd_prev_tag(self, **kwargs):
         sel = self.callbacks["get_var"]("selected")
 
@@ -635,13 +455,11 @@ class TagList(GuiBase):
 
         self._set_cursor(sel, target_offset)
 
-    @command_format([("item", "sel_or_item")])
     def cmd_reader(self, **kwargs):
         self.callbacks["set_var"]("reader_item", kwargs["item"])
         self.callbacks["set_var"]("reader_offset", 0)
         self.callbacks["add_window"](Reader)
 
-    @command_format([("tags", "listof_tags")])
     def cmd_promote(self, **kwargs):
         for tag in kwargs["tags"]:
 
@@ -661,7 +479,6 @@ class TagList(GuiBase):
             # Re-order tags and update internal list order.
             self.callbacks["switch_tags"](tag, visible_tags[curidx - 1])
 
-    @command_format([("tags", "listof_tags")])
     def cmd_demote(self, **kwargs):
         for tag in kwargs["tags"]:
 
@@ -688,7 +505,6 @@ class TagList(GuiBase):
 
         self.callbacks["set_tag_opt"](tag, "collapsed", True)
 
-    @command_format([("tags", "listof_tags")])
     def cmd_collapse(self, **kwargs):
         for tag in kwargs["tags"]:
             self._collapse_tag(tag)
@@ -706,24 +522,16 @@ class TagList(GuiBase):
 
         self.callbacks["set_tag_opt"](tag, "collapsed", False)
 
-    @command_format([("tags", "listof_tags")])
     def cmd_uncollapse(self, **kwargs):
         for tag in kwargs["tags"]:
             self._uncollapse_tag(tag)
 
-    @command_format([("tags", "listof_tags")])
     def cmd_toggle_collapse(self, **kwargs):
         for tag in kwargs["tags"]:
             if self.callbacks["get_tag_opt"](tag, "collapsed"):
                 self._uncollapse_tag(tag)
             else:
                 self._collapse_tag(tag)
-
-    def keyword(self, args):
-        return self.string(args, lambda : self.callbacks["input"]("keyword: "))
-
-    def regex(self, args):
-        return self.string(args, lambda : self.callbacks["input"]("regex: "))
 
     def search(self, regex):
         try:
@@ -754,20 +562,17 @@ class TagList(GuiBase):
 
         self.callbacks["set_var"]("needs_redraw", True)
 
-    @command_format([("search_term", "keyword")])
     def cmd_search(self, **kwargs):
         if not kwargs["search_term"]:
             return
         rgx = ".*" + re.escape(kwargs["search_term"]) + ".*"
         return self.search(rgx)
 
-    @command_format([("search_term", "regex")])
     def cmd_search_regex(self, **kwargs):
         if not kwargs["search_term"]:
             return
         return self.search(kwargs["search_term"])
 
-    @command_format([])
     def cmd_next_marked(self, **kwargs):
         start = self.callbacks["get_var"]("selected")
 
@@ -802,7 +607,6 @@ class TagList(GuiBase):
 
         self._set_cursor(cur, curpos)
 
-    @command_format([])
     def cmd_prev_marked(self, **kwargs):
         start = self.callbacks["get_var"]("selected")
 
@@ -835,10 +639,6 @@ class TagList(GuiBase):
 
         self._set_cursor(cur, curpos)
 
-    def configstring(self, args):
-        return self.string(args, lambda : self.callbacks["input"]("config: "))
-
-    @command_format([("tag","single_tag"),("config","configstring")])
     def cmd_tag_config(self, **kwargs):
         tag = kwargs["tag"].tag.replace(".","\\.")
         config = kwargs["config"]
@@ -846,10 +646,6 @@ class TagList(GuiBase):
         argv = ["canto-remote", "one-config", "tags." + tag + "." + config]
         self._remote_argv(argv)
 
-    def addtagstring(self, args):
-        return self.single_string(args, lambda : self.callbacks["input"]("add tag: "))
-
-    @command_format([("extratag","addtagstring"),("tags","listof_tags")])
     def cmd_add_tag(self, **kwargs):
         for tag in kwargs["tags"]:
             tc = self.callbacks["get_tag_conf"](tag)
@@ -860,10 +656,6 @@ class TagList(GuiBase):
 
             self.callbacks["set_tag_conf"](tag, tc)
 
-    def deltagstring(self, args):
-        return self.single_string(args, lambda : self.callbacks["input"]("del tag: "))
-
-    @command_format([("extratag","addtagstring"),("tags","listof_tags")])
     def cmd_del_tag(self, **kwargs):
         for tag in kwargs["tags"]:
             tc = self.callbacks["get_tag_conf"](tag)
