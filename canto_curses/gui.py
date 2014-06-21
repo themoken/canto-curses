@@ -15,7 +15,7 @@ from .tagcore import alltagcores
 from .tag import Tag
 
 from .locks import sync_lock
-from .command import CommandHandler
+from .command import CommandHandler, cmd_execute
 from .text import ErrorBox, InfoBox
 from .config import config
 from .screen import Screen
@@ -125,9 +125,7 @@ class CantoCursesGui(CommandHandler):
 
     def issue_cmd(self, winlist, cmd):
         sync_lock.acquire_write()
-        for win in winlist:
-            if win.command(cmd):
-                break
+        cmd_execute(cmd)
         sync_lock.release_write()
 
     def cmd_quit(self, obj, **kwargs):

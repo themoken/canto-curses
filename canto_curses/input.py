@@ -12,6 +12,7 @@ from .guibase import GuiBase
 import logging
 log = logging.getLogger("INPUT")
 
+import readline
 import curses
 from curses import ascii
 
@@ -30,21 +31,54 @@ class InputBox(GuiBase):
 
         self.reset()
 
-    def reset(self, prompt_str=None):
+    def reset(self):
         self.pad.erase()
-        if prompt_str:
-            self.pad.addstr(prompt_str)
+        self.pad.addstr(self.callbacks["get_var"]("input_prompt"))
         self.minx = self.pad.getyx()[1]
         self.x = self.minx
         self.content = ""
 
+        # Part that's not considered
+        self.completion_root = None
+        self.completions = None
+
+    def rotate_completions(self, sub, matches):
+        log.debug("rotate: %s %s" % (sub, matches))
+        if self.content != self.callbacks["get_var"]("input_completion_root"):
+            log.debug("setting root: %s" % self.content)
+            self.callbacks["set_var"]("input_completion_root", self.content)
+            self.callbacks["set_var"]("input_completions", [x[len(sub):] for x in matches])
+        else:
+            complist = self.callbacks["get_var"]("input_completions")
+            complist = [complist[-1]] + complist[:-1]
+            log.debug("complist: %s" % complist)
+            self.callbacks["set_var"]("input_completions", complist)
+
+    def break_completion(self):
+        comp = self.callbacks["get_var"]("input_completions")
+        self.callbacks["set_var"]("input_completions", [])
+        self.callbacks["set_var"]("input_completion_root", "")
+        if comp:
+            return comp[0]
+        return None
+
+    def set_content(self, s):
+        self.content = s
+
     def refresh(self):
         self.pad.move(0, self.minx)
         maxx = self.pad.getmaxyx()[1]
+
+        s = self.content
+        complist = self.callbacks["get_var"]("input_completions")
+        if complist:
+            s += complist[0]
+
         try:
-            self.pad.addstr(self.content[-1 * (maxx - self.minx):])
+            self.pad.addstr(s[-1 * (maxx - self.minx):])
         except:
             pass
+        self.x = self.pad.getyx()[1]
         self.pad.clrtoeol()
         self.pad.move(0, min(self.x, maxx - 1))
         self.callbacks["refresh"]()

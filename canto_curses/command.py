@@ -14,7 +14,94 @@ import curses
 import shlex
 import pipes
 
+import readline
+
 log = logging.getLogger("COMMAND")
+
+cmds = {}
+
+def register_command(obj, name, func, args, help_txt):
+    if name not in cmds:
+        cmds[name] = [(obj, func, args, help_txt)]
+    else:
+        cmds[name].append((obj, func, args, help_txt))
+
+arg_types = {}
+
+def register_arg_type(obj, name, help_txt, validator):
+    if name not in arg_types:
+        arg_types[name] = [(obj, help_txt, validator)]
+    else:
+        arg_types[name].append((obj, help_txt, validator))
+
+def unregister_all(obj):
+    for key in cmds.keys():
+        cmds[key] = [ x for x in cmds[key] if x[0] != obj ]
+    for key in arg_types.keys():
+        arg_types[key] = [ x for x in arg_types[key] if x[0] != obj ]
+
+def cmd_complete(prefix, index):
+    log.debug("COMPLETE: %s %s" % (prefix, index))
+    lookup = readline.get_line_buffer()[0:readline.get_begidx()]
+    lookup = shlex.split(lookup)
+
+    log.debug("LOOKUPS: %s" % lookup)
+
+    if len(lookup) == 0:
+        c = [ x for x in cmds.keys() if x.startswith(prefix)]
+        c.sort()
+        log.debug("CMDS: %s" % c)
+        if index < len(c):
+            return c[index]
+    else:
+        if lookup[0] not in cmds:
+            return None
+        c_obj, c_func, c_sig, c_hlp = cmds[lookup[0]][-1]
+
+        # No completing beyond end of arguments
+        if (len(lookup) - 1) > len(c_sig):
+            return None
+
+        # XXX these should check that type exists for plugins
+
+        # validate that the arguments we're not completing are okay
+        # so that we don't tab complete a broken command.
+
+        for i, typ in enumerate(c_sig[:len(lookup) - 1]):
+            obj, hlp, val = arg_types[typ]
+            completions, validator = val()
+            if not validator(lookup[i + 1]):
+                return None
+
+        # now get completions for the actual terminating command
+
+        obj, hlp, val = arg_types[c_sig[len(lookup) - 1]][-1]
+        log.debug("%s %s %s" % (obj, hlp, val))
+        completions, validator = val()
+        if completions:
+            possibles = [ x for x in completions if x.startswith(prefix)]
+            if index < len(possibles):
+                return possibles[index]
+    return None
+
+def cmd_execute(cmd):
+    lookup = shlex.split(cmd)
+    if not lookup or lookup[0] not in cmds:
+        return False
+
+    c_obj, c_func, c_sig, c_hlp = cmds[lookup[0]][-1]
+    args = []
+
+    for i, typ in enumerate(c_sig[:len(lookup) - 1]):
+        obj, hlp, val = arg_types[typ][-1]
+        completions, validator = val()
+        okay, r = validator(lookup[i + 1])
+        if not okay:
+            log.info("%s is not a valid %s" % (lookup[i + 1], typ))
+            return False
+        args.append(r)
+
+    c_func(*args)
 
 class CommandPlugin(Plugin):
     pass

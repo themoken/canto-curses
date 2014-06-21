@@ -9,6 +9,7 @@
 from canto_next.hooks import on_hook, remove_hook
 from canto_next.plugins import Plugin
 
+from .command import register_command, register_arg_type, unregister_all
 from .tagcore import tag_updater
 from .guibase import GuiBase
 from .reader import Reader
@@ -59,6 +60,9 @@ class TagList(GuiBase):
         on_hook("curses_stories_removed", self.on_stories_removed)
         on_hook("curses_opt_change", self.on_opt_change)
 
+        register_arg_type(self, "cursor-offset", "", self.type_cursor_offset)
+        register_command(self, "rel-set-cursor", self.cmd_rel_set_cursor, ["cursor-offset"], "Move the cursor by cursor-offset items")
+
         self.update_tag_lists()
 
     def die(self):
@@ -91,6 +95,21 @@ class TagList(GuiBase):
         if obj in self.tags:
             return obj
         return self.tag_by_item(obj)
+
+    # Types return (completion generator, validator)
+
+    # None completions indicates that the help text should be enough (which
+    # happens if it's a generic type without bounds)
+
+    def _int_check(self, x):
+        try:
+            r = int(x)
+            return (True, r)
+        except:
+            return (False, None)
+
+    def type_cursor_offset(self):
+        return (None, self._int_check)
 
     def on_eval_tags_changed(self):
         self.callbacks["set_var"]("needs_refresh", True)
@@ -237,10 +256,10 @@ class TagList(GuiBase):
 
         return (ps, lines)
 
-    def cmd_rel_set_cursor(self, **kwargs):
+    def cmd_rel_set_cursor(self, relidx):
         sel = self.callbacks["get_var"]("selected")
         if sel:
-            target_idx = sel.sel_offset + kwargs["relidx"]
+            target_idx = sel.sel_offset + relidx
             curpos = sel.curpos
 
             if target_idx < 0:

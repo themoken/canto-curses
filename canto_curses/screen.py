@@ -10,13 +10,16 @@ from canto_next.plugins import Plugin
 from canto_next.encoding import locale_enc
 from canto_next.hooks import on_hook
 
-from .command import CommandHandler
+from .command import CommandHandler, cmd_complete
 from .taglist import TagList
 from .input import InputBox
-from .widecurse import wsize, set_input_win, set_redisplay_callback, readline
+from .text import InfoBox
+from .widecurse import wsize, set_redisplay_callback, set_getc
+from .locks import sync_lock
 
 from threading import Lock
-import readline as rl
+import traceback
+import readline
 import logging
 import curses
 import time
@@ -59,21 +62,24 @@ class Screen(CommandHandler):
             return -1
 
         self.pseudo_input_box = curses.newpad(1,1)
+
         self.pseudo_input_box.keypad(1)
         self.pseudo_input_box.nodelay(0)
         self.input_lock = Lock()
 
-        set_input_win(self.pseudo_input_box)
+        readline.set_completion_display_matches_hook(self.readline_display_matches)
         set_redisplay_callback(self.readline_redisplay)
+        set_getc(self.readline_getc)
 
-        # Sett Python bug 2675, readline + curses
+        # See Python bug 2675, readline + curses
         os.unsetenv('LINES')
         os.unsetenv('COLUMNS')
 
-        for line in [ 'tab: complete', 'set editing-mode vi', 'set show-all-if-ambiguous on']:
-            rl.parse_and_bind(line)
+        for line in ['tab: complete',\
+                'set show-all-if-ambiguous on']:
+            readline.parse_and_bind(line)
 
-        rl.set_completer(self.readline_complete)
+        readline.set_completer(self.readline_complete)
 
         self.floats = []
         self.tiles = []
@@ -475,13 +481,16 @@ class Screen(CommandHandler):
         # Setup subedit
         self.curs_set(1)
 
-        self.input_box.reset(prompt)
+        self.callbacks["set_var"]("input_prompt", prompt)
+        self.input_box.reset()
         self.input_box.refresh()
         curses.doupdate()
 
-        r = readline()
+        r = input()
+        readline.add_history(r)
 
-        self.input_box.reset("")
+        self.callbacks["set_var"]("input_prompt", "")
+        self.input_box.reset()
         self.input_box.refresh()
         curses.doupdate()
 
@@ -536,16 +545,64 @@ class Screen(CommandHandler):
         self._focus_abs(0)
 
         self.refresh()
+        self.redraw()
 
-    def readline_redisplay(self, content):
-        log.debug("rredisplay: %s" % content)
-        self.input_box.content = content
+    def _readline_redisplay(self):
+        log.debug("rredisplay: %s" % readline.get_line_buffer())
+        self.input_box.set_content(readline.get_line_buffer())
         self.input_box.refresh()
         curses.doupdate()
 
+    def _readline_complete(self, prefix, index):
+        log.debug("rcomplete: %s %s" % (prefix, index))
+        r = cmd_complete(prefix, index)
+        log.debug("rcomp ret: %s" % (r,))
+        return r
+
+    def _readline_display_matches(self, sub, matches, maxlen):
+        log.debug("rdispmatch: %s - %s - %s" % (sub, matches, maxlen))
+        self.callbacks["set_var"]("info_msg", "Matches: %s\n" % '\n'.join(matches))
+
+        #sync_lock.acquire_write()
+        #if InfoBox not in self.window_types:
+        #self.add_window_callback(InfoBox)
+        #else:
+        self.input_box.rotate_completions(sub, matches)
+        self.refresh()
+        self.redraw()
+        #sync_lock.release_write()
+
+    def _readline_getc(self):
+        r = self.get_key()
+
+        # Reject current completion
+        if chr(r) == "\b":
+            self.input_box.break_completion()
+
+        # Accept current completion
+        elif chr(r) == " ":
+            comp = self.input_box.break_completion()
+            if comp:
+                readline.insert_text(comp)
+
+        return r
+
+    def _exception_wrap(self, fn, *args):
+        r = None
+        try:
+            r = fn(*args)
+        except:
+            log.error("".join(traceback.format_exc()))
+        return r
+
+    def readline_redisplay(self, *args):
+        return self._exception_wrap(self._readline_redisplay, *args)
     def readline_complete(self, *args):
-        log.debug("rcomplete: %s" % args)
-        return []
+        return self._exception_wrap(self._readline_complete, *args)
+    def readline_display_matches(self, *args):
+        return self._exception_wrap(self._readline_display_matches, *args)
+    def readline_getc(self, *args):
+        return self._exception_wrap(self._readline_getc, *args)
 
     # Refresh operates in order, which doesn't matter for top level tiled
     # windows, but this ensures that floats are ordered such that the last
