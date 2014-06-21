@@ -175,6 +175,12 @@ class CantoCursesGui(CommandHandler):
             log.debug("gui thread released")
 
             if not self.alive:
+
+                # Remove graphical log handler so log.infos don't screw up the
+                # screen after it's dead.
+
+                rootlog = logging.getLogger()
+                rootlog.removeHandler(self.glog_handler)
                 self.screen.exit()
                 break
 

@@ -797,8 +797,6 @@ class CantoCursesConfig(SubThread):
 
     # Process new tags.
 
-    # XXX: This shit is broken, alltags, no Tag object, conf deadlock etc.
-
     @write_lock(config_lock)
     def prot_newtags(self, tags):
         c = self._get_conf()

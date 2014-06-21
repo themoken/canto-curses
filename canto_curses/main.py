@@ -110,11 +110,13 @@ class CantoCurses(CantoClient):
         return 0
 
     def alarm(self, a = None, b = None):
-        self.gui.tick()
+        if self.gui.alive:
+            self.gui.tick()
         signal.alarm(1)
 
     def winch(self, a = None, b = None):
-        self.gui.winch()
+        if self.gui.alive:
+            self.gui.winch()
 
     def sigusr1(self, a = None, b = None):
         code = []
@@ -172,7 +174,7 @@ class CantoCurses(CantoClient):
         signal.signal(signal.SIGWINCH, self.winch)
         signal.signal(signal.SIGALRM, self.alarm)
         signal.signal(signal.SIGCHLD, self.child)
-        signal.alarm(1)
+        self.alarm()
 
         # Block on signals.
         while self.gui.alive:
@@ -232,8 +234,6 @@ class CantoCurses(CantoClient):
             tb = traceback.format_exc()
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
-
-        self.response_alive = False
 
         log.info("Exiting.")
         sys.exit(0)
