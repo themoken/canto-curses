@@ -9,7 +9,7 @@
 from canto_next.hooks import on_hook, remove_hook
 from canto_next.plugins import Plugin
 
-from .command import register_command, register_arg_type, unregister_all
+from .command import register_command, register_arg_type, unregister_all, _int_range
 from .tagcore import tag_updater
 from .guibase import GuiBase
 from .reader import Reader
@@ -45,7 +45,7 @@ class TagList(GuiBase):
         self.callbacks = callbacks
 
         # Holster for a list of items for batch operations.
-        self.got_items = None
+        self.got_items = []
 
         self.first_sel = None
 
@@ -63,6 +63,15 @@ class TagList(GuiBase):
         register_arg_type(self, "cursor-offset", "", self.type_cursor_offset)
         register_command(self, "rel-set-cursor", self.cmd_rel_set_cursor, ["cursor-offset"], "Move the cursor by cursor-offset items")
 
+        register_arg_type(self, "item-list", "", self.type_item_list)
+        register_command(self, "foritems", self.cmd_foritems, ["item-list"], "Collect items for future commands")
+        register_command(self, "foritem", self.cmd_foritem, ["item-list"], "Collect one item for future commands")
+        register_command(self, "clearitems", self.cmd_clearitems, [], "Clear collected items (foritem / foritems)")
+        register_command(self, "goto", self.cmd_goto, ["item-list"], "Open story links in browser")
+
+        register_arg_type(self, "item-state", "", self.type_item_state)
+        register_command(self, "item-state", self.cmd_item_state, ["item-state", "item-list"], "Set item state (i.e. 'item-state read .')")
+
         self.update_tag_lists()
 
     def die(self):
@@ -71,6 +80,7 @@ class TagList(GuiBase):
         remove_hook("curses_stories_added", self.on_stories_added)
         remove_hook("curses_stories_removed", self.on_stories_removed)
         remove_hook("curses_opt_change", self.on_opt_change)
+        unregister_all(self)
 
     def item_by_idx(self, idx):
         if idx < 0:
@@ -110,6 +120,34 @@ class TagList(GuiBase):
 
     def type_cursor_offset(self):
         return (None, self._int_check)
+
+    def type_item_list(self):
+        all_items = []
+        for tag in self.tags:
+            for s in tag:
+                all_items.append(s)
+
+        syms = {}
+        sel = self.callbacks["get_var"]("selected")
+        if sel:
+            syms['.'] = [ all_items.index(sel) ]
+        else:
+            syms['.'] = [ ]
+
+        syms['*'] = range(0, len(all_items))
+
+        # if we have items, pass them in, otherwise pass in selected which is the implied context
+
+        fallback = self.got_items[:]
+        if fallback == [] and sel:
+            fallback = [ sel ]
+
+        return (None, lambda x: _int_range("item", all_items, syms, fallback, x))
+
+    # This will accept any state, but should offer some completions for sensible ones
+
+    def type_item_state(self):
+        return (["read","marked","-read","-marked"], lambda x : (True, x))
 
     def on_eval_tags_changed(self):
         self.callbacks["set_var"]("needs_refresh", True)
@@ -187,8 +225,9 @@ class TagList(GuiBase):
             for item in tag:
                 tag_updater.need_attributes(item.id, sa)
 
-    def cmd_goto(self, **kwargs):
-        self._goto([item.content["link"] for item in kwargs["items"]])
+    def cmd_goto(self, items):
+        log.debug("GOTO: %s" % items)
+        self._goto([item.content["link"] for item in items])
 
     def cmd_tag_state(self, **kwargs):
         attributes = {}
@@ -202,10 +241,10 @@ class TagList(GuiBase):
 
     # item-state: Add/remove state for multiple items.
 
-    def cmd_item_state(self, **kwargs):
+    def cmd_item_state(self, state, items):
         attributes = {}
-        for item in kwargs["items"]:
-            if item.handle_state(kwargs["state"]):
+        for item in items:
+            if item.handle_state(state):
                 attributes[item.id] = { "canto-state" : item.content["canto-state"] }
 
         if attributes:
@@ -341,17 +380,20 @@ class TagList(GuiBase):
 
     # foritems gets a valid list of items by index.
 
-    def cmd_foritems(self, **kwargs):
-        self.got_items = kwargs["items"]
+    def cmd_foritems(self, items):
+        self.got_items = items
 
-    def cmd_foritem(self, **kwargs):
-        log.debug("setting got_items: %s" % [ kwargs["item"] ])
-        self.got_items = [ kwargs["item"] ]
+    def cmd_foritem(self, items):
+        if len(items) > 0:
+            self.got_items = [ items[0] ]
+        else:
+            self.got_items = []
 
     # clearitems clears all the items set by foritems.
 
-    def cmd_clearitems(self, **kwargs):
-        self.got_items = None
+    def cmd_clearitems(self):
+        log.debug("Clearing ITEMS!")
+        self.got_items = []
 
     def cmd_page_up(self, **kwargs):
         target_offset = self.callbacks["get_var"]("target_offset")

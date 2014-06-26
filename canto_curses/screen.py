@@ -563,14 +563,15 @@ class Screen(CommandHandler):
         log.debug("rdispmatch: %s - %s - %s" % (sub, matches, maxlen))
         self.callbacks["set_var"]("info_msg", "Matches: %s\n" % '\n'.join(matches))
 
-        #sync_lock.acquire_write()
-        #if InfoBox not in self.window_types:
-        #self.add_window_callback(InfoBox)
-        #else:
         self.input_box.rotate_completions(sub, matches)
+
+        # We're called from readline, so we have to take sync_lock before we
+        # cause anything other than the input box to refresh/redraw
+
+        sync_lock.acquire_write()
         self.refresh()
         self.redraw()
-        #sync_lock.release_write()
+        sync_lock.release_write()
 
     def _readline_getc(self):
         r = self.get_key()

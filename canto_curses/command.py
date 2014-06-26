@@ -92,16 +92,79 @@ def cmd_execute(cmd):
     c_obj, c_func, c_sig, c_hlp = cmds[lookup[0]][-1]
     args = []
 
-    for i, typ in enumerate(c_sig[:len(lookup) - 1]):
+    for i, typ in enumerate(c_sig):
         obj, hlp, val = arg_types[typ][-1]
         completions, validator = val()
-        okay, r = validator(lookup[i + 1])
+
+        if i < len(lookup) - 1:
+            okay, r = validator(lookup[i + 1])
+        else:
+            okay, r = validator("")
+
         if not okay:
             log.info("%s is not a valid %s" % (lookup[i + 1], typ))
             return False
         args.append(r)
 
     c_func(*args)
+
+# Return a function taking a string definition of a list, with possible special
+# characters, and return an explicit list. Each item in the returned list will be unique, so
+# doing something like 1,2,* won't repeat items 1 and 2.
+
+# name - type name (for decent error output)
+# itr - the iterable that is being indexed (i.e. a list of items)
+# syms - symbolics (i.e. { '*' : all_items, '.' : [ current_item ]})
+# fallback - list of items to return if no indices
+# s - input string to parse
+
+# This is likely used lambda x: _int_range("mytype", [], {}, x) to encapsulate the rest
+# of the state from the command infrastructure
+
+def _int_range(name, itr, syms, fallback, s):
+    slist = s.split(',')
+
+    idxlist = []
+
+    # Convert slist into a list of numeric indices
+
+    for item in slist:
+        item.strip()
+
+        # Convert
+        if item in syms:
+            idxlist.extend(syms[item])
+        else:
+            try:
+                r = int(item)
+                idxlist.append(r)
+            except:
+                log.warn("Invalid %s : %s" % (name, item))
+
+    # Strip down to unique indices
+
+    uidxlist = []
+    for idx in idxlist:
+        if idx not in uidxlist:
+            uidxlist.append(idx)
+
+    # Convert into list of items in itr
+
+    rlist = []
+    for idx in uidxlist:
+        if 0 <= idx < len(itr):
+            if itr[idx] not in rlist:
+                rlist.append(itr[idx])
+        else:
+            log.warn("%s out of range: %s with len %s" % (name, idx, len(itr)))
+
+    if not rlist:
+        rlist = fallback
+        log.debug("%s falling back to %s" % (rlist, fallback))
+
+    # XXX should we return (False, []) on rlist empty, or...?
+
+    return (True, rlist)
 
 class CommandPlugin(Plugin):
     pass
