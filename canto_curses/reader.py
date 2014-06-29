@@ -7,7 +7,7 @@
 #   published by the Free Software Foundation.
 
 from canto_next.plugins import Plugin
-from canto_next.hooks import on_hook, remove_hook
+from canto_next.hooks import call_hook, on_hook, remove_hook
 
 from .parser import prep_for_display
 from .command import command_format
@@ -169,12 +169,14 @@ class Reader(TextBox):
         # link = ( type, url, text )
         links = [ l[1] for l in kwargs["links"] ]
         self._goto(links)
+        call_hook("reader_goto_trigger", [self, links])
 
     @command_format([("links", "listof_links")])
     def cmd_fetch(self, **kwargs):
         # link = ( type, url, text )
         links = [ l[1] for l in kwargs["links"] ]
         self._fetch(links)
+        call_hook("reader_fetch_trigger", [self, links])
 
     @command_format([])
     def cmd_destroy(self, **kwargs):

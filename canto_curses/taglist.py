@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto_next.hooks import on_hook, remove_hook
+from canto_next.hooks import call_hook, on_hook, remove_hook
 from canto_next.plugins import Plugin
 
 from .command import command_format
@@ -337,6 +337,7 @@ class TagList(GuiBase):
     @command_format([("items", "listof_items")])
     def cmd_goto(self, **kwargs):
         self._goto([item.content["link"] for item in kwargs["items"]])
+        call_hook("taglist_goto_trigger", [self, kwargs["items"]])
 
     @command_format([("state", "state"),("tags","listof_tags")])
     def cmd_tag_state(self, **kwargs):

@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto_next.hooks import on_hook
+from canto_next.hooks import call_hook, on_hook
 from canto_next.plugins import Plugin
 
 from .command import CommandHandler, command_format
@@ -270,10 +270,13 @@ class GuiBase(CommandHandler):
         if browser["text"]:
             self.callbacks["unpause_interface"]()
 
+        call_hook("goto_trigger", [self, urls])
+
     # Like goto, except download the file to /tmp before executing browser.
 
     def _fetch(self, urls):
         self._goto(urls, True)
+        call_hook("fetch_trigger", [self,urls])
 
     def named_key(self, args):
         return self.input_key(args, lambda : self.callbacks["input"]("key: "))
