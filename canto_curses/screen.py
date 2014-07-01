@@ -577,8 +577,11 @@ class Screen(CommandHandler):
         r = self.get_key()
 
         # Reject current completion
-        if chr(r) == "\b":
+        if r == curses.KEY_BACKSPACE or chr(r) == "\b":
             self.input_box.break_completion()
+
+            # Convert KEY_BACKSPACE into \b, not sure why they're different.
+            return ord("\b")
 
         # Accept current completion
         elif chr(r) == " ":
