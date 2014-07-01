@@ -60,6 +60,9 @@ class TagList(GuiBase):
         on_hook("curses_stories_removed", self.on_stories_removed)
         on_hook("curses_opt_change", self.on_opt_change)
 
+        register_command(self, "page-down", self.cmd_page_down, [], "Move down a page of items")
+        register_command(self, "page-up", self.cmd_page_up, [], "Move up a page of items")
+
         register_arg_type(self, "cursor-offset", "", self.type_cursor_offset)
         register_command(self, "rel-set-cursor", self.cmd_rel_set_cursor, ["cursor-offset"], "Move the cursor by cursor-offset items")
 
@@ -71,6 +74,9 @@ class TagList(GuiBase):
 
         register_arg_type(self, "item-state", "", self.type_item_state)
         register_command(self, "item-state", self.cmd_item_state, ["item-state", "item-list"], "Set item state (i.e. 'item-state read .')")
+
+        register_arg_type(self, "tag-list", "", self.type_tag_list)
+        register_command(self, "tag-state", self.cmd_tag_state, ["item-state", "tag-list"], "Set tag state (i.e. 'tag-state read .')")
 
         self.update_tag_lists()
 
@@ -127,14 +133,33 @@ class TagList(GuiBase):
             for s in tag:
                 all_items.append(s)
 
-        syms = {}
+        domains = { 'all' : all_items }
+
+        syms = { 'all' : {} }
         sel = self.callbacks["get_var"]("selected")
         if sel:
-            syms['.'] = [ all_items.index(sel) ]
-        else:
-            syms['.'] = [ ]
 
-        syms['*'] = range(0, len(all_items))
+            # If we have a selection, we have a sensible tag domain
+
+            tag = self.tag_by_item(sel)
+            domains['tag']  = [ x for x in self.tag_by_item(sel) ]
+            syms['tag'] = {}
+
+            if sel not in self.tags:
+                syms['tag']['.'] = [ domains['tag'].index(sel) ]
+                syms['tag']['*'] = range(0, len(domains['tag']))
+            elif len(sel) > 0:
+                syms['tag']['.'] = [ 0 ]
+                syms['tag']['*'] = range(0, len(sel))
+            else:
+                syms['tag']['.'] = []
+                syms['tag']['*'] = []
+
+            syms['all']['.'] = [ all_items.index(sel) ]
+        else:
+            syms['all']['.'] = [ ]
+
+        syms['all']['*'] = range(0, len(all_items))
 
         # if we have items, pass them in, otherwise pass in selected which is the implied context
 
@@ -142,7 +167,27 @@ class TagList(GuiBase):
         if fallback == [] and sel:
             fallback = [ sel ]
 
-        return (None, lambda x: _int_range("item", all_items, syms, fallback, x))
+        return (None, lambda x: _int_range("item", domains, syms, fallback, x))
+
+    def type_tag_list(self):
+        domains = { 'all' : self.tags }
+        syms = { 'all' : {} }
+
+        sel = self.callbacks["get_var"]("selected")
+
+        deftag = None
+        if sel in self.tags:
+            deftags = [ sel ]
+            syms['all']['.'] = [ self.tags.index(sel) ]
+        elif sel:
+            deftags = [ self.tag_by_item(sel) ]
+            syms['all']['.'] = [ self.tags.index(deftags[0]) ]
+        else:
+            syms['all']['.'] = [ ]
+
+        syms['all']['*'] = range(0, len(self.tags))
+
+        return (None, lambda x: _int_range("tag", domains, syms, deftags, x))
 
     # This will accept any state, but should offer some completions for sensible ones
 
@@ -229,12 +274,12 @@ class TagList(GuiBase):
         log.debug("GOTO: %s" % items)
         self._goto([item.content["link"] for item in items])
 
-    def cmd_tag_state(self, **kwargs):
+    def cmd_tag_state(self, state, tags):
         attributes = {}
-        for tag in kwargs["tags"]:
+        for tag in tags:
             for item in tag:
-                if item.handle_state(kwargs["state"]):
-                    attributes[item.id] = { "canto-state" : kwargs["state"] }
+                if item.handle_state(state):
+                    attributes[item.id] = { "canto-state" : state }
 
         if attributes:
             tag_updater.set_attributes(attributes)
@@ -395,7 +440,7 @@ class TagList(GuiBase):
         log.debug("Clearing ITEMS!")
         self.got_items = []
 
-    def cmd_page_up(self, **kwargs):
+    def cmd_page_up(self):
         target_offset = self.callbacks["get_var"]("target_offset")
         target_obj = self.callbacks["get_var"]("target_obj")
         sel = self.callbacks["get_var"]("selected")
@@ -426,7 +471,7 @@ class TagList(GuiBase):
             self.callbacks["set_var"]("target_offset", target_offset)
             self.callbacks["set_var"]("needs_redraw", True)
 
-    def cmd_page_down(self, **kwargs):
+    def cmd_page_down(self):
         target_offset = self.callbacks["get_var"]("target_offset")
         target_obj = self.callbacks["get_var"]("target_obj")
         sel = self.callbacks["get_var"]("selected")

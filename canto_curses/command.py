@@ -113,16 +113,37 @@ def cmd_execute(cmd):
 # doing something like 1,2,* won't repeat items 1 and 2.
 
 # name - type name (for decent error output)
-# itr - the iterable that is being indexed (i.e. a list of items)
-# syms - symbolics (i.e. { '*' : all_items, '.' : [ current_item ]})
+# itrs - a dict of iterables being indexed (i.e. a lists of items), each key is a domain
+# syms - symbolics (i.e. { 'domain' : { '*' : all_items, '.' : [ current_item ]}})
 # fallback - list of items to return if no indices
 # s - input string to parse
 
-# This is likely used lambda x: _int_range("mytype", [], {}, x) to encapsulate the rest
+# This is likely used lambda x: _int_range("mytype", {}, {}, x) to encapsulate the rest
 # of the state from the command infrastructure
 
-def _int_range(name, itr, syms, fallback, s):
+def _range(cur_iter, syms, item):
+    cur_syms = syms[cur_iter]
+
+    # Convert into indices
+    if item in cur_syms:
+
+        # This will default to the first item if passed a sym with more
+        # items (*)
+
+        return cur_syms[item][0]
+    else:
+        try:
+            item = int(item)
+            return item
+        except:
+            pass
+    return None
+
+def _int_range(name, itrs, syms, fallback, s):
     slist = s.split(',')
+
+    # Default domain is 'all'
+    cur_iter = 'all'
 
     idxlist = []
 
@@ -131,32 +152,58 @@ def _int_range(name, itr, syms, fallback, s):
     for item in slist:
         item.strip()
 
-        # Convert
-        if item in syms:
-            idxlist.extend(syms[item])
+        # Deal with ranges
+        if "-" in item:
+            start, stop = item.split('-')
+
+            start_idx = _range(cur_iter, syms, start)
+            stop_idx = _range(cur_iter, syms, stop)
+
+            if start_idx == None:
+                log.warn("Couldn't convert range start: %s" % start)
+                continue
+            if start_idx < 0 or start_idx >= len(itrs[cur_iter]):
+                log.warn("Range start out of bounds: %s (%s)" % (start_idx, len(itrs[cur_iter])))
+                continue
+            if stop_idx == None:
+                log.warn("Couldn't convert range stop: %s" % stop)
+                continue
+            if stop_idx < 0 or stop_idx >= len(itrs[cur_iter]):
+                log.warn("Range stop out of bounds: %s (%s)" % (stop_idx, len(itrs[cur_iter])))
+                continue
+
+            idxlist.extend([ (cur_iter, x) for x in range(start_idx,stop_idx + 1) ])
+
+        # Convert specials... note that domains come before syms, but it would
+        # be a bad idea to have conflicts anyway.
+
+        elif item in itrs:
+            cur_iter = item
+        elif item in syms[cur_iter]:
+            idxlist.extend([ (cur_iter, x) for x in syms[cur_iter][item] ])
         else:
             try:
                 r = int(item)
-                idxlist.append(r)
+                idxlist.append((cur_iter, r))
             except:
                 log.warn("Invalid %s : %s" % (name, item))
 
     # Strip down to unique indices
 
     uidxlist = []
-    for idx in idxlist:
-        if idx not in uidxlist:
-            uidxlist.append(idx)
+    for tup in idxlist:
+        if tup not in uidxlist:
+            uidxlist.append(tup)
 
     # Convert into list of items in itr
 
     rlist = []
-    for idx in uidxlist:
-        if 0 <= idx < len(itr):
-            if itr[idx] not in rlist:
-                rlist.append(itr[idx])
+    for domain, idx in uidxlist:
+        if 0 <= idx < len(itrs[domain]):
+            if itrs[domain][idx] not in rlist:
+                rlist.append(itrs[domain][idx])
         else:
-            log.warn("%s out of range: %s with len %s" % (name, idx, len(itr)))
+            log.warn("%s out of range of %s domain: %s idx with len %s" % (name, domain, idx, len(itrs[domain])))
 
     if not rlist:
         rlist = fallback

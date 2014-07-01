@@ -285,7 +285,7 @@ class CantoCursesConfig(SubThread):
                     "c" : "toggle-collapse",
                     "C" : "collapse *",
                     "V" : "uncollapse *",
-                    "$" : "item-state read t:. 0-.",
+                    "$" : "item-state read tag,0-.",
                     "/" : "search",
                     "?" : "search-regex",
                     "n" : "next-marked",
