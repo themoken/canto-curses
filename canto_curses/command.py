@@ -26,6 +26,11 @@ def register_command(obj, name, func, args, help_txt):
     else:
         cmds[name].append((obj, func, args, help_txt))
 
+def register_commands(obj, cmds):
+    for name in cmds:
+        func, args, help_text = cmds[name]
+        register_command(obj, name, func, args, help_text)
+
 arg_types = {}
 
 def register_arg_type(obj, name, help_txt, validator):
@@ -33,6 +38,11 @@ def register_arg_type(obj, name, help_txt, validator):
         arg_types[name] = [(obj, help_txt, validator)]
     else:
         arg_types[name].append((obj, help_txt, validator))
+
+def register_arg_types(obj, types):
+    for name in types:
+        help_txt, validator = types[name]
+        register_arg_type(obj, name, help_txt, validator)
 
 def unregister_all(obj):
     for key in cmds.keys():

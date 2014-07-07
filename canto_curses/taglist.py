@@ -9,7 +9,7 @@
 from canto_next.hooks import on_hook, remove_hook
 from canto_next.plugins import Plugin
 
-from .command import register_command, register_arg_type, unregister_all, _int_range
+from .command import register_commands, register_arg_types, unregister_all, _int_range
 from .tagcore import tag_updater
 from .guibase import GuiBase
 from .reader import Reader
@@ -60,23 +60,28 @@ class TagList(GuiBase):
         on_hook("curses_stories_removed", self.on_stories_removed)
         on_hook("curses_opt_change", self.on_opt_change)
 
-        register_command(self, "page-down", self.cmd_page_down, [], "Move down a page of items")
-        register_command(self, "page-up", self.cmd_page_up, [], "Move up a page of items")
+        args = {
+            "cursor-offset": ("", self.type_cursor_offset),
+            "item-list": ("", self.type_item_list),
+            "item-state": ("", self.type_item_state),
+            "tag-list": ("", self.type_tag_list),
+        }
 
-        register_arg_type(self, "cursor-offset", "", self.type_cursor_offset)
-        register_command(self, "rel-set-cursor", self.cmd_rel_set_cursor, ["cursor-offset"], "Move the cursor by cursor-offset items")
+        cmds = {
+            "page-down": (self.cmd_page_down, [], "Move down a page of items"),
+            "page-up": (self.cmd_page_up, [], "Move up a page of items"),
+            "rel-set-cursor": (self.cmd_rel_set_cursor, ["cursor-offset"], "Move the cursor by cursor-offset items"),
+            "foritems": (self.cmd_foritems, ["item-list"], "Collect items for future commands"),
+            "foritem": (self.cmd_foritem, ["item-list"], "Collect one item for future commands"),
+            "clearitems": (self.cmd_clearitems, [], "Clear collected items (foritem / foritems)"),
+            "goto": (self.cmd_goto, ["item-list"], "Open story links in browser"),
+            "reader": (self.cmd_reader, ["item-list"], "Open the built-in reader"),
+            "item-state": (self.cmd_item_state, ["item-state", "item-list"], "Set item state (i.e. 'item-state read .')"),
+            "tag-state": (self.cmd_tag_state, ["item-state", "tag-list"], "Set tag state (i.e. 'tag-state read .')"),
+        }
 
-        register_arg_type(self, "item-list", "", self.type_item_list)
-        register_command(self, "foritems", self.cmd_foritems, ["item-list"], "Collect items for future commands")
-        register_command(self, "foritem", self.cmd_foritem, ["item-list"], "Collect one item for future commands")
-        register_command(self, "clearitems", self.cmd_clearitems, [], "Clear collected items (foritem / foritems)")
-        register_command(self, "goto", self.cmd_goto, ["item-list"], "Open story links in browser")
-
-        register_arg_type(self, "item-state", "", self.type_item_state)
-        register_command(self, "item-state", self.cmd_item_state, ["item-state", "item-list"], "Set item state (i.e. 'item-state read .')")
-
-        register_arg_type(self, "tag-list", "", self.type_tag_list)
-        register_command(self, "tag-state", self.cmd_tag_state, ["item-state", "tag-list"], "Set tag state (i.e. 'tag-state read .')")
+        register_arg_types(self, args)
+        register_commands(self, cmds)
 
         self.update_tag_lists()
 
@@ -561,8 +566,8 @@ class TagList(GuiBase):
 
         self._set_cursor(sel, target_offset)
 
-    def cmd_reader(self, **kwargs):
-        self.callbacks["set_var"]("reader_item", kwargs["item"])
+    def cmd_reader(self, items):
+        self.callbacks["set_var"]("reader_item", items[0])
         self.callbacks["set_var"]("reader_offset", 0)
         self.callbacks["add_window"](Reader)
 
