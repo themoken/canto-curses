@@ -9,6 +9,7 @@
 from canto_next.plugins import Plugin
 from canto_next.hooks import on_hook, remove_hook
 
+from .command import register_commands, register_arg_types, unregister_all, _int_range
 from .parser import prep_for_display
 from .html import htmlparser
 from .text import TextBox
@@ -36,9 +37,24 @@ class Reader(TextBox):
         on_hook("curses_opt_change", self.on_opt_change)
         on_hook("curses_var_change", self.on_var_change)
 
+        args = {
+            "link-list" : ("", self.type_link_list),
+        }
+
+        cmds = {
+            "goto" : (self.cmd_goto, ["link-list"], "Goto a specific link"),
+            "fetch" : (self.cmd_fetch, ["link-list"], "Fetch a specific link"),
+            "destroy" : (self.cmd_destroy, [], "Destroy this window"),
+        }
+
+        register_arg_types(self, args)
+        register_commands(self, cmds)
+
+
     def die(self):
         remove_hook("curses_opt_change", self.on_opt_change)
         remove_hook("curses_var_change", self.on_var_change)
+        unregister_all(self)
 
     def on_opt_change(self, change):
         if "reader" not in change:
@@ -64,6 +80,16 @@ class Reader(TextBox):
             self.callbacks["set_var"]("reader_item", variables["selected"])
             self.callbacks["set_var"]("needs_refresh", True)
             self.callbacks["release_gui"]()
+
+    def type_link_list(self):
+        domains = { 'all' : self.links }
+        syms = { 'all' : { '*' : range(0, len(self.links)) } }
+
+        fallback = []
+        if len(self.links):
+            fallback = [ self.links[0] ]
+
+        return (None, lambda x:_int_range("link", domains, syms, fallback, x))
 
     def update_text(self):
         reader_conf = self.callbacks["get_opt"]("reader")
@@ -157,17 +183,17 @@ class Reader(TextBox):
 
         self.text = s.rstrip(" \t\v\n")
 
-    def cmd_goto(self, **kwargs):
+    def cmd_goto(self, links):
         # link = ( type, url, text )
-        links = [ l[1] for l in kwargs["links"] ]
-        self._goto(links)
+        hrefs = [ l[1] for l in links ]
+        self._goto(hrefs)
 
-    def cmd_fetch(self, **kwargs):
+    def cmd_fetch(self, links):
         # link = ( type, url, text )
-        links = [ l[1] for l in kwargs["links"] ]
-        self._fetch(links)
+        hrefs = [ l[1] for l in links ]
+        self._fetch(hrefs)
 
-    def cmd_destroy(self, **kwargs):
+    def cmd_destroy(self):
         self.callbacks["set_var"]("reader_item", None)
         self.callbacks["die"](self)
 

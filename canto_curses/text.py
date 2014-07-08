@@ -7,6 +7,7 @@
 #   published by the Free Software Foundation.
 
 from .theme import FakePad, WrapPad, theme_print, theme_lstrip, theme_border, theme_reset
+from .command import register_commands
 from .guibase import GuiBase
 from .theme import theme_print
 
@@ -24,6 +25,16 @@ class TextBox(GuiBase):
         self.callbacks = callbacks
 
         self.text = ""
+
+        # This relies on the actual subclasses (i.e. Reader) to cleanup.
+
+        cmds = { "page-down" : (self.cmd_page_down, [], "Next page of text"),
+                "page-up" : (self.cmd_page_up, [], "Previous page of text"),
+                "scroll-up" : (self.cmd_scroll_up, [], "Scroll up"),
+                "scroll-down" : (self.cmd_scroll_down, [], "Scroll down"),
+        }
+
+        register_commands(self, cmds)
 
     def get_offset(self):
         return self.callbacks["get_var"](self.get_opt_name() + "_offset")
@@ -156,16 +167,16 @@ class TextBox(GuiBase):
 
         return lines + 1
 
-    def cmd_scroll_up(self, **kwargs):
+    def cmd_scroll_up(self):
         self._relscroll(-1)
 
-    def cmd_scroll_down(self, **kwargs):
+    def cmd_scroll_down(self):
         self._relscroll(1)
 
-    def cmd_page_up(self, **kwargs):
+    def cmd_page_up(self):
         self._relscroll(-1 * (self.height - 1))
 
-    def cmd_page_down(self, **kwargs):
+    def cmd_page_down(self):
         self._relscroll(self.height - 1)
 
     def _relscroll(self, factor):
