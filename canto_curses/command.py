@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto_next.plugins import PluginHandler, Plugin, add_arg_transform
+from canto_next.plugins import PluginHandler, Plugin
 
 import traceback
 import logging
