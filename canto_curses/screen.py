@@ -67,6 +67,11 @@ class Screen(CommandHandler):
         self.pseudo_input_box.nodelay(0)
         self.input_lock = Lock()
 
+        # We don't want - or * in our delims because they're valid inside a
+        # line with a range or a wildcard.
+
+        readline.set_completer_delims(' \t&')
+
         readline.set_completion_display_matches_hook(self.readline_display_matches)
         set_redisplay_callback(self.readline_redisplay)
         set_getc(self.readline_getc)
@@ -587,6 +592,7 @@ class Screen(CommandHandler):
         elif chr(r) == " ":
             comp = self.input_box.break_completion()
             if comp:
+                log.debug("inserting: %s" % comp)
                 readline.insert_text(comp)
 
         return r

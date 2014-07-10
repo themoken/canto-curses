@@ -46,6 +46,7 @@ class InputBox(GuiBase):
         log.debug("rotate: %s %s" % (sub, matches))
         if self.content != self.callbacks["get_var"]("input_completion_root"):
             log.debug("setting root: %s" % self.content)
+            log.debug("setting comps: %s" % [x[len(sub):] for x in matches])
             self.callbacks["set_var"]("input_completion_root", self.content)
             self.callbacks["set_var"]("input_completions", [x[len(sub):] for x in matches])
         else:

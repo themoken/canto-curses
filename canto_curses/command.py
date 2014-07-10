@@ -52,24 +52,43 @@ def unregister_all(obj):
 
 def cmd_complete(prefix, index):
     log.debug("COMPLETE: %s %s" % (prefix, index))
-    lookup = readline.get_line_buffer()[0:readline.get_begidx()]
-    lookup = shlex.split(lookup)
+    buf = readline.get_line_buffer()
+
+    lookup = shlex.split(buf)
+
+    # If there's a space, we've moved on to a new argument, so stub in an empty
+    # partial argument.
+
+    if not buf or buf[-1] == ' ':
+        lookup.append('')
+        prefix = ''
+    else:
+        prefix = lookup[-1]
 
     log.debug("LOOKUPS: %s" % lookup)
+    log.debug("PREFIX: %s" % prefix)
 
-    if len(lookup) == 0:
+    if len(lookup) == 1:
         c = [ x for x in cmds.keys() if x.startswith(prefix)]
         c.sort()
         log.debug("CMDS: %s" % c)
         if index < len(c):
             return c[index]
     else:
+        # Don't complete non-existent commands
         if lookup[0] not in cmds:
             return None
+
         c_obj, c_func, c_sig, c_hlp = cmds[lookup[0]][-1]
 
+        # Trim the command out of the lookups
+
+        lookup = lookup[1:]
+
         # No completing beyond end of arguments
-        if (len(lookup) - 1) > len(c_sig):
+
+        if len(lookup) > len(c_sig):
+            log.debug("completing too many args")
             return None
 
         # XXX these should check that type exists for plugins
@@ -78,9 +97,10 @@ def cmd_complete(prefix, index):
         # so that we don't tab complete a broken command.
 
         for i, typ in enumerate(c_sig[:len(lookup) - 1]):
-            obj, hlp, val = arg_types[typ]
+            log.debug("COMPLETION TYPE: %s" % (typ,))
+            obj, hlp, val = arg_types[typ][-1]
             completions, validator = val()
-            if not validator(lookup[i + 1]):
+            if not validator(lookup[i]):
                 return None
 
         # now get completions for the actual terminating command
