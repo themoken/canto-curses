@@ -580,7 +580,9 @@ class Screen(CommandHandler):
         sync_lock.release_write()
 
     def _readline_getc(self):
-        r = self.get_key()
+
+        # Don't flush, because readline loses keys.
+        r = self.get_key(False)
 
         # Reject current completion
         if r == curses.KEY_BACKSPACE or chr(r) == "\b":
@@ -729,9 +731,10 @@ class Screen(CommandHandler):
     def get_focus_list(self):
         return [ self, self.focused ]
 
-    def get_key(self):
+    def get_key(self, flush=True):
         self.input_lock.acquire()
-        curses.flushinp()
+        if flush:
+            curses.flushinp()
         try:
             r = self.pseudo_input_box.get_wch()
         except Exception as e:
