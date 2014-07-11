@@ -118,6 +118,7 @@ class Screen(CommandHandler):
             curses.noecho()
             curses.start_color()
             curses.use_default_colors()
+            curses.typeahead(-1)
         except Exception as e:
             log.error("Curses setup failed: %s" % e.msg)
             return -1
@@ -730,6 +731,7 @@ class Screen(CommandHandler):
 
     def get_key(self):
         self.input_lock.acquire()
+        curses.flushinp()
         try:
             r = self.pseudo_input_box.get_wch()
         except Exception as e:
