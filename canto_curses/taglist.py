@@ -93,19 +93,6 @@ class TagList(GuiBase):
         remove_hook("curses_opt_change", self.on_opt_change)
         unregister_all(self)
 
-    def item_by_idx(self, idx):
-        if idx < 0:
-            raise Exception("Negative indices not allowed!")
-
-        cur = self.first_story
-        while cur:
-            log.debug("cur.offset = %s" % cur.offset)
-            if cur.offset == idx:
-                return cur
-            cur = cur.next_story
-
-        raise Exception("Couldn't find item with idx: %d" % idx)
-
     def tag_by_item(self, item):
         return item.parent_tag
 
