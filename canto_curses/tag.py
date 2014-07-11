@@ -372,7 +372,7 @@ class Tag(list):
                     self.remove(s)
                     my_ids.remove(s.id)
                 else:
-                    s = Story(id, self.callbacks)
+                    s = Story(self, id, self.callbacks)
                     current_stories.append(s)
                     added_stories.append(s)
 

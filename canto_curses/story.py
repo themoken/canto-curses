@@ -29,7 +29,7 @@ class StoryPlugin(Plugin):
 
 
 class Story(PluginHandler):
-    def __init__(self, id, callbacks):
+    def __init__(self, tag, id, callbacks):
         PluginHandler.__init__(self)
 
         self.plugin_class = StoryPlugin
@@ -37,6 +37,7 @@ class Story(PluginHandler):
 
         self.callbacks = callbacks
 
+        self.parent_tag = tag
         self.id = id
         self.pad = None
 
@@ -74,6 +75,7 @@ class Story(PluginHandler):
         self.new_content = None
 
     def die(self):
+        self.parent_tag = None
         remove_hook("curses_opt_change", self.on_opt_change)
         remove_hook("curses_tag_opt_change", self.on_tag_opt_change)
         remove_hook("curses_attributes", self.on_attributes)

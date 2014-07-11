@@ -107,10 +107,7 @@ class TagList(GuiBase):
         raise Exception("Couldn't find item with idx: %d" % idx)
 
     def tag_by_item(self, item):
-        for tag in self.tags:
-            if item in tag:
-                return tag
-        raise Exception("Couldn't find tag of item: %s" % item)
+        return item.parent_tag
 
     def tag_by_obj(self, obj):
         if obj in self.tags:
