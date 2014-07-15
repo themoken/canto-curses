@@ -50,8 +50,7 @@ def unregister_all(obj):
     for key in arg_types.keys():
         arg_types[key] = [ x for x in arg_types[key] if x[0] != obj ]
 
-def cmd_complete(prefix, index):
-    log.debug("COMPLETE: %s %s" % (prefix, index))
+def cmd_complete_info():
     buf = readline.get_line_buffer()
 
     lookup = shlex.split(buf)
@@ -69,11 +68,10 @@ def cmd_complete(prefix, index):
     log.debug("PREFIX: %s" % prefix)
 
     if len(lookup) == 1:
-        c = [ x for x in cmds.keys() if x.startswith(prefix)]
+        c = list(cmds.keys())
         c.sort()
         log.debug("CMDS: %s" % c)
-        if index < len(c):
-            return c[index]
+        return ("", "", c)
     else:
         # Don't complete non-existent commands
         if lookup[0] not in cmds:
@@ -108,11 +106,19 @@ def cmd_complete(prefix, index):
         obj, hlp, val = arg_types[c_sig[len(lookup) - 1]][-1]
         log.debug("%s %s %s" % (obj, hlp, val))
         completions, validator = val()
-        if completions:
-            possibles = [ x for x in completions if x.startswith(prefix)]
-            if index < len(possibles):
-                return possibles[index]
+        return (c_hlp, hlp, completions)
     return None
+
+def cmd_complete(prefix, index):
+    log.debug("COMPLETE: %s %s" % (prefix, index))
+    r = cmd_complete_info()
+    if r:
+        c_hlp, a_hlp, possibles = r
+        if not possibles:
+            return None
+        possibles = [ x for x in possibles if x.startswith(prefix) ]
+        if index < len(possibles):
+            return possibles[index]
 
 def cmd_execute(cmd):
     lookup = shlex.split(cmd)

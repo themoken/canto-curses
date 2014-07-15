@@ -109,7 +109,7 @@ class CantoCursesGui(CommandHandler):
         self.do_gui.set()
 
     def tick(self):
-        log.debug("...tick...")
+        #log.debug("...tick...")
         self.sync_timer -= 1
         if self.sync_timer <= 0:
             self.release_gui()

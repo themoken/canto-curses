@@ -36,7 +36,7 @@ class InputBox(GuiBase):
         self.pad.addstr(self.callbacks["get_var"]("input_prompt"))
         self.minx = self.pad.getyx()[1]
         self.x = self.minx
-        self.content = ""
+        self.content = readline.get_line_buffer()
 
         # Part that's not considered
         self.completion_root = None
@@ -44,18 +44,23 @@ class InputBox(GuiBase):
 
     def rotate_completions(self, sub, matches):
         log.debug("rotate: %s %s" % (sub, matches))
-        if self.content != self.callbacks["get_var"]("input_completion_root"):
+        log.debug("rotate_content: %s" % self.content)
+
+        comproot = self.callbacks["get_var"]("input_completion_root")
+        complist = self.callbacks["get_var"]("input_completions")
+
+        if self.content != comproot or not complist:
             log.debug("setting root: %s" % self.content)
             log.debug("setting comps: %s" % [x[len(sub):] for x in matches])
             self.callbacks["set_var"]("input_completion_root", self.content)
             self.callbacks["set_var"]("input_completions", [x[len(sub):] for x in matches])
         else:
-            complist = self.callbacks["get_var"]("input_completions")
             complist = [complist[-1]] + complist[:-1]
             log.debug("complist: %s" % complist)
             self.callbacks["set_var"]("input_completions", complist)
 
     def break_completion(self):
+        log.debug("COMPLETION BROKEN")
         comp = self.callbacks["get_var"]("input_completions")
         self.callbacks["set_var"]("input_completions", [])
         self.callbacks["set_var"]("input_completion_root", "")
@@ -75,6 +80,7 @@ class InputBox(GuiBase):
         if complist:
             s += complist[0]
 
+        log.debug("printing: '%s'" % s[-1 * (maxx - self.minx):])
         try:
             self.pad.addstr(s[-1 * (maxx - self.minx):])
         except:
@@ -85,7 +91,7 @@ class InputBox(GuiBase):
         self.callbacks["refresh"]()
 
     def redraw(self):
-        self.refresh()
+        pass
 
     def is_input(self):
         return True

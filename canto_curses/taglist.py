@@ -62,8 +62,8 @@ class TagList(GuiBase):
 
         args = {
             "cursor-offset": ("", self.type_cursor_offset),
-            "item-list": ("", self.type_item_list),
-            "item-state": ("", self.type_item_state),
+            "item-list": ("[item-list]", self.type_item_list),
+            "item-state": ("[item-state]: Any string", self.type_item_state),
             "tag-list": ("", self.type_tag_list),
         }
 

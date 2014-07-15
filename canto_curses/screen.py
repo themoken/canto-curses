@@ -10,7 +10,7 @@ from canto_next.plugins import Plugin
 from canto_next.encoding import locale_enc
 from canto_next.hooks import on_hook
 
-from .command import CommandHandler, cmd_complete
+from .command import CommandHandler, cmd_complete, cmd_complete_info
 from .taglist import TagList
 from .input import InputBox
 from .text import InfoBox
@@ -81,7 +81,8 @@ class Screen(CommandHandler):
         os.unsetenv('COLUMNS')
 
         for line in ['tab: complete',\
-                'set show-all-if-ambiguous on']:
+                'set show-all-if-ambiguous on',
+                'set echo-control-characters off']:
             readline.parse_and_bind(line)
 
         readline.set_completer(self.readline_complete)
@@ -567,7 +568,16 @@ class Screen(CommandHandler):
 
     def _readline_display_matches(self, sub, matches, maxlen):
         log.debug("rdispmatch: %s - %s - %s" % (sub, matches, maxlen))
-        self.callbacks["set_var"]("info_msg", "Matches: %s\n" % '\n'.join(matches))
+
+        r = cmd_complete_info()
+        if r and (r[0] or r[1]):
+            c_hlp, a_hlp, completions = r
+            msg = "%s\n%s" % (c_hlp, a_hlp)
+
+            if InfoBox in self.window_types:
+                self.callbacks["set_var"]("info_msg", msg)
+            else:
+                log.info(msg)
 
         self.input_box.rotate_completions(sub, matches)
 
