@@ -91,6 +91,8 @@ class TagUpdater(SubThread):
         self.attributes = {}
         self.lock = RWLock("tagupdater")
 
+        self.discard = False
+
         self.start_pthread()
 
         # Setup automatic attributes.
@@ -121,12 +123,10 @@ class TagUpdater(SubThread):
         for tag in strtags:
             TagCore(tag)
 
-    def update(self):
-        strtags = config.get_var("strtags")
-        for tag in strtags:
-            self.write("ITEMS", [ tag ])
-
     def prot_attributes(self, d):
+        if self.discard:
+            return
+
         # Update attributes, and then notify everyone to grab new content.
         self.lock.acquire_write()
 
@@ -146,6 +146,9 @@ class TagUpdater(SubThread):
         call_hook("curses_attributes", [ self.attributes ])
 
     def prot_items(self, updates):
+        if self.discard:
+            return
+
         # Daemon should now only return with one tag in an items response
 
         tag = list(updates.keys())[0]
@@ -175,6 +178,13 @@ class TagUpdater(SubThread):
         unprotect = {"auto":[]}
 
         if self.item_tag == None:
+            return
+
+        if self.discard:
+            self.item_tag = None
+            self.item_buf = []
+            self.item_removes = []
+            self.item_adds = []
             return
 
         self.item_tag.add_items(self.item_adds)
@@ -214,9 +224,25 @@ class TagUpdater(SubThread):
     def prot_tagchange(self, tag):
         self.write("ITEMS", [ tag ])
 
+    def prot_pong(self, args):
+        self.discard=False
+
     # The following is the external interface to tagupdater.
 
-    # So far, it only has to do with attribute management.
+    def update(self):
+        strtags = config.get_var("strtags")
+        for tag in strtags:
+            self.write("ITEMS", [ tag ])
+
+    def reset(self):
+        self.lock.acquire_write()
+        self.attributes = {}
+        self.lock.release_write()
+
+        for tag in alltagcores:
+            tag.reset()
+        self.write("PING", [])
+        self.discard = True
 
     # Writes are already serialized, so in the meantime, we protect
     # self.attributes and self.needed_attrs with our lock.

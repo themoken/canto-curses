@@ -11,7 +11,7 @@ COMPATIBLE_VERSION = 0.4
 from canto_next.plugins import Plugin
 from canto_next.format import escsplit
 
-from .tagcore import alltagcores
+from .tagcore import alltagcores, tag_updater
 from .tag import Tag
 
 from .locks import sync_lock
@@ -103,6 +103,7 @@ class CantoCursesGui(CommandHandler):
 
         self.sync_timer = 1
 
+        register_command(self, "refresh", self.cmd_refresh, [], "Refetch everything from the daemon")
         register_command(self, "quit", self.cmd_quit, [], "Quit canto-curses")
 
     def release_gui(self):
@@ -118,6 +119,14 @@ class CantoCursesGui(CommandHandler):
         self.callbacks["set_var"]("needs_resize",  True)
         self.release_gui()
 
+    def cmd_refresh(self):
+        tag_updater.reset()
+        tag_updater.update()
+        self.sync_timer = 0
+
+    def cmd_quit(self):
+        self.alive = False
+
     def cmdsplit(self, cmd):
         r = escsplit(cmd, " &")
 
@@ -129,9 +138,6 @@ class CantoCursesGui(CommandHandler):
         sync_lock.acquire_write()
         cmd_execute(cmd)
         sync_lock.release_write()
-
-    def cmd_quit(self):
-        self.alive = False
 
     def run(self):
         while self.alive:
