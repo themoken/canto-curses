@@ -115,6 +115,9 @@ def theme_print_one(pad, uni, width):
     escaped = False
     code = False
 
+    long_code = False
+    lc = ""
+
     for i, c in enumerate(uni):
         ec = encoder(c)
         if escaped:
@@ -167,8 +170,28 @@ def theme_print_one(pad, uni, width):
                 for attr in attr_map:
                     if attr_count[attr]:
                         pad.attron(attr_map[attr])
-
+            elif c == "[":
+                long_code = True
             code = False
+        elif long_code:
+            if c == "]":
+                try:
+                    long_color = int(lc)
+                except:
+                    log.error("Unknown long code: %s! Ignoring..." % lc)
+                else:
+                    if long_color < 1 or long_color > 256:
+                        log.error("long color code must be >= 1 and <= 256")
+                    else:
+                        try:
+                            pad.attron(curses.color_pair(long_color))
+                            color_stack.append(long_color)
+                        except:
+                            log.error("Could not set pair. Perhaps need to set TERM='xterm-256color'?")
+                long_code = False
+                lc = ""
+            else:
+                lc += c
         elif c == "\\":
             escaped = True
         elif c == "%":

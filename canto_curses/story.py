@@ -293,7 +293,7 @@ class Story(PluginHandler):
         # evaluation.
 
         passthru = {}
-        for c in "RrDdUuBbSs012345678":
+        for c in "RrDdUuBbSs012345678[":
             passthru[c] = "%" + c
 
         # Add refactored themability variables:

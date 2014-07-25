@@ -21,7 +21,7 @@ from canto_next.hooks import call_hook
 from canto_next.rwlock import RWLock, write_lock, read_lock
 from canto_next.remote import assign_to_dict, access_dict
 
-DEFAULT_FSTRING = "%1%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})%?{m}(%{marked}:%{unmarked})%t%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})%0"
+DEFAULT_FSTRING = "%[1]%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})%?{m}(%{marked}:%{unmarked})%t%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})%0"
 
 DEFAULT_TAG_FSTRING = "%1%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%?{en}([%{to}]:)%?{aen}([%{vto}]:) %t [%B%2%n%1%b]%?{sel}(%{selected_end}:%{unselected_end})%0"
 
@@ -170,18 +170,14 @@ class CantoCursesConfig(SubThread):
             {
                 "defbg" : self.validate_color,
                 "deffg" : self.validate_color,
-                "0" : self.validate_color,
-                "1" : self.validate_color,
-                "2" : self.validate_color,
-                "3" : self.validate_color,
-                "4" : self.validate_color,
-                "5" : self.validate_color,
-                "6" : self.validate_color,
-                "7" : self.validate_color,
+                # See also setup for numeric settings below
             },
 
             "kill_daemon_on_exit" : self.validate_bool
         }
+
+        for i in range(1, 256):
+            self.validators["color"][str(i)] = self.validate_color
 
         self.config = {
             "browser" :

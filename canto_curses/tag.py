@@ -283,7 +283,7 @@ class Tag(list):
         # evaluation.
 
         passthru = {}
-        for c in "RrDdUuBbSs012345678":
+        for c in "RrDdUuBbSs012345678[":
             passthru[c] = "%" + c
 
         for attr in [ "selected", "unselected", "selected_end", "unselected_end" ]:
