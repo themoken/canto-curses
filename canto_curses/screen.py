@@ -694,25 +694,6 @@ class Screen(CommandHandler):
         self.focused = win
         log.debug("Focusing window (%s)" % (self.focused,))
 
-    # Dump all top-level curses windows to a file.
-    # NOTE: This is intended for test use only. This
-    # command does no error handling.
-
-    def cmd_dump_screen(self, **kwargs):
-        f = open(kwargs["filename"], "wb")
-
-        for w in self.windows:
-            startpos = f.tell()
-            w.pad.putwin(f)
-            endpos = f.tell()
-
-            # Overwrite struct output.
-            f.seek(startpos, 0)
-            f.write("\0" * wsize())
-            f.seek(endpos, 0)
-
-        f.close()
-
     def cmd_color(self, **kwargs):
         conf = self.callbacks["get_conf"]()
         idx = kwargs["idx"]
