@@ -411,6 +411,9 @@ class CantoCursesConfig(SubThread):
             "kill_daemon_on_exit" : False
         }
 
+        for i in range(8, 256):
+            self.config["color"][str(i)] = i
+
         self.tag_validators = {
             "enumerated" : self.validate_bool,
             "collapsed" : self.validate_bool,
@@ -688,7 +691,7 @@ class CantoCursesConfig(SubThread):
         # Validate existing values.
 
         for key in list(c.keys()):
-
+            log.debug("validating %s" % key)
             # Unknown values, don't validate
             if key not in v:
                 continue
