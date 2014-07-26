@@ -10,7 +10,7 @@ from canto_next.plugins import Plugin
 from canto_next.encoding import locale_enc
 from canto_next.hooks import on_hook
 
-from .command import CommandHandler, cmd_complete, cmd_complete_info
+from .command import CommandHandler, cmd_complete, cmd_complete_info, register_commands, register_arg_types
 from .taglist import TagList
 from .input import InputBox
 from .text import InfoBox
@@ -93,8 +93,17 @@ class Screen(CommandHandler):
 
         self.subwindows()
 
-        # Start grabbing user input
-        #self.start_input_thread()
+        args = {
+            "color_idx" : ("[color idx] between 1 and 256", self.type_color_idx),
+            "color" : ("[color]", self.type_color),
+        }
+
+        cmds = {
+            "color": (self.cmd_color, ["color_idx", "color", "color"], "Change colors"),
+        }
+
+        register_arg_types(self, args)
+        register_commands(self, cmds)
 
         on_hook("curses_opt_change", self.screen_opt_change)
 
@@ -130,11 +139,11 @@ class Screen(CommandHandler):
 
         color_conf = self.callbacks["get_opt"]("color")
 
-        for i in range(curses.COLOR_PAIRS):
-            if ("%s" % i) not in color_conf:
+        for i in range(0, curses.COLOR_PAIRS):
+            if str(i) not in color_conf:
                 continue
 
-            color = color_conf["%s" % i]
+            color = color_conf[str(i)]
 
             if type(color) == int:
                 fg = color
@@ -152,6 +161,7 @@ class Screen(CommandHandler):
 
             try:
                 curses.init_pair(i + 1, fg, bg)
+                log.debug("color pair %s : %s %s" % (i + 1, fg, bg))
             except:
                 log.debug("color pair failed!: %d fg: %d bg: %d" %
                         (i + 1, fg, bg))
@@ -541,7 +551,7 @@ class Screen(CommandHandler):
         self.input_lock.release()
 
         # All of our window information could be stale.
-        self._resize()
+        self.resize()
 
     def add_window_callback(self, cls):
         self.window_types.append(cls)
@@ -694,30 +704,59 @@ class Screen(CommandHandler):
         self.focused = win
         log.debug("Focusing window (%s)" % (self.focused,))
 
-    def cmd_color(self, **kwargs):
+    def type_color_idx(self):
+        def ci(x):
+            if x in ["deffg","defbg"] + [ str(x) for x in range(0, 256) ]:
+                return (True, x)
+            return (False, None)
+        return (None, ci)
+
+    def type_color(self):
+        def c(x):
+            if x == '':
+                return (True, -1)
+
+            colors = {
+                'white' : curses.COLOR_WHITE,
+                'black' : curses.COLOR_BLACK,
+                'red' : curses.COLOR_RED,
+                'blue' : curses.COLOR_BLUE,
+                'green' : curses.COLOR_GREEN,
+                'yellow' : curses.COLOR_YELLOW,
+                'cyan' : curses.COLOR_CYAN,
+                'magenta' : curses.COLOR_MAGENTA,
+                'pink' : curses.COLOR_MAGENTA,
+            }
+            if x in colors:
+                return (True, colors[x])
+            try:
+                x = int(x)
+                if x in list(range(-1, 256)):
+                    return (True, x)
+                return (False, None)
+            except:
+                return (False, None)
+        return (None, c)
+
+    def cmd_color(self, idx, fg, bg):
         conf = self.callbacks["get_conf"]()
-        idx = kwargs["idx"]
 
-        if type(conf["color"][idx]) == dict:
-            fg = conf["color"][idx]["fg"]
-            bg = conf["color"][idx]["bg"]
+        if idx in ['deffg', 'defbg']:
+            conf["color"][idx] = fg  # Ignore second color pair
         else:
-            fg = conf["color"][idx]
-            bg = None
+            color = {}
+            if fg != -1:
+                color['fg'] = fg
+            if bg != -1:
+                color['bg'] = bg
+            conf["color"][idx] = color
 
-        fg = kwargs["fg"]
-        if kwargs["bg"] != None:
-            bg = kwargs["bg"]
-
-        # Deffg and defbg obviously only have one color.
-        if idx in [ "deffg", "deffg" ] or bg == None:
-            conf["color"][idx] = fg
-        else:
-            conf["color"][idx] = { "fg" : fg, "bg" : bg }
-
-        log.debug("color set: %s" % conf["color"][idx])
+        log.debug("color %s set: %s" % (idx, conf["color"][idx]))
 
         self.callbacks["set_conf"](conf)
+
+        # Cause curses to be re-init'd
+        self.resize()
 
     def get_focus_list(self):
         return [ self, self.focused ]

@@ -34,15 +34,6 @@ class GuiBase(CommandHandler):
 
         self.editor = None
 
-    def input(self, prompt):
-        return self.callbacks["input"](prompt)
-
-    def int(self, args):
-        t, r = self._int(args, None, None, lambda : self.input("int: "))
-        if t:
-            return (True, t, r)
-        return (False, None, None)
-
     def cmd_destroy(self, **kwargs):
         self.callbacks["die"](self)
 

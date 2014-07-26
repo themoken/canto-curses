@@ -268,6 +268,13 @@ class CommandHandler(PluginHandler):
 
         self.meta = False
 
+    def _int_check(self, x):
+        try:
+            r = int(x)
+            return (True, r)
+        except:
+            return (False, None)
+
     def command(self, command):
         if " " in command:
             command, args = command.split(" ", 1)

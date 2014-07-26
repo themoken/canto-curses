@@ -106,13 +106,6 @@ class TagList(GuiBase):
     # None completions indicates that the help text should be enough (which
     # happens if it's a generic type without bounds)
 
-    def _int_check(self, x):
-        try:
-            r = int(x)
-            return (True, r)
-        except:
-            return (False, None)
-
     def type_cursor_offset(self):
         return (None, self._int_check)
 
