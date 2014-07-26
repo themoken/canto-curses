@@ -23,7 +23,7 @@ from canto_next.remote import assign_to_dict, access_dict
 
 DEFAULT_FSTRING = "%[1]%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})%?{m}(%{marked}:%{unmarked})%t%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})%0"
 
-DEFAULT_TAG_FSTRING = "%1%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%?{en}([%{to}]:)%?{aen}([%{vto}]:) %t [%B%2%n%1%b]%?{sel}(%{selected_end}:%{unselected_end})%0"
+DEFAULT_TAG_FSTRING = "%[1]%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%?{en}([%{to}]:)%?{aen}([%{vto}]:) %t [%B%2%n%1%b]%?{sel}(%{selected_end}:%{unselected_end})%0"
 
 from .locks import config_lock, var_lock
 from .subthread import SubThread
@@ -176,7 +176,7 @@ class CantoCursesConfig(SubThread):
             "kill_daemon_on_exit" : self.validate_bool
         }
 
-        for i in range(1, 256):
+        for i in range(0, 256):
             self.validators["color"][str(i)] = self.validate_color
 
         self.config = {
@@ -589,7 +589,7 @@ class CantoCursesConfig(SubThread):
 
     def validate_color(self, val, d, dict_ok=True):
         # Integer, and in the valid color range
-        if type(val) == int and val >= -1 and val < 255:
+        if type(val) == int and val >= -1 and val <= 255:
             return (True, val)
 
         if type(val) == dict and dict_ok:
