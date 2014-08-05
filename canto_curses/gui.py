@@ -74,6 +74,7 @@ class CantoCursesGui(CommandHandler):
             "get_tag_opt" : config.get_tag_opt,
             "set_tag_opt" : config.set_tag_opt,
             "release_gui" : self.release_gui,
+            "switch_tags" : config.switch_tags,
         }
 
         # Instantiate graphical Tag objects

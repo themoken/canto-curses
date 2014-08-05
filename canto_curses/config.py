@@ -990,5 +990,18 @@ class CantoCursesConfig(SubThread):
         tc = self.get_tag_conf(tag)
         return self._get_opt(option, tc)
 
+    @write_lock(config_lock)
+    def switch_tags(self, tag1, tag2):
+        c = self._get_conf()
+
+        t1_idx = c["tagorder"].index(tag1.tag)
+        t2_idx = c["tagorder"].index(tag2.tag)
+
+        c["tagorder"][t1_idx] = tag2.tag
+        c["tagorder"][t2_idx] = tag1.tag
+
+        self._set_conf(c)
+
+        self._eval_tags()
 
 config = CantoCursesConfig()
