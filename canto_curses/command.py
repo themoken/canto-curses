@@ -133,12 +133,14 @@ def cmd_execute(cmd):
         completions, validator = val()
 
         if i < len(lookup) - 1:
-            okay, r = validator(lookup[i + 1])
+            token = lookup[i + 1]
         else:
-            okay, r = validator("")
+            token = ""
+
+        okay, r = validator(token)
 
         if not okay:
-            log.info("%s is not a valid %s" % (lookup[i + 1], typ))
+            log.info("'%s' is not a valid %s" % (token, typ))
             return False
         args.append(r)
 
