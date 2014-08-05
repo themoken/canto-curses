@@ -44,6 +44,12 @@ def register_arg_types(obj, types):
         help_txt, validator = types[name]
         register_arg_type(obj, name, help_txt, validator)
 
+# Passthru for any string, including empty
+def _string():
+    return (None, lambda x : (True, x))
+
+register_arg_type(_string, "string", "Any String", _string)
+
 def unregister_all(obj):
     for key in cmds.keys():
         cmds[key] = [ x for x in cmds[key] if x[0] != obj ]
