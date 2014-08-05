@@ -78,6 +78,21 @@ class TagList(GuiBase):
             "reader": (self.cmd_reader, ["item-list"], "Open the built-in reader"),
             "item-state": (self.cmd_item_state, ["item-state", "item-list"], "Set item state (i.e. 'item-state read .')"),
             "tag-state": (self.cmd_tag_state, ["item-state", "tag-list"], "Set tag state (i.e. 'tag-state read .')"),
+            "next-tag" : (self.cmd_next_tag, [], "Scroll to next tag"),
+            "prev-tag" : (self.cmd_prev_tag, [], "Scroll to previous tag"),
+
+            "collapse" : (self.cmd_collapse, ["tag-list"], "Collapse tags"),
+            "uncollapse" : (self.cmd_uncollapse, ["tag-list"], "Uncollapse tags"),
+            "toggle-collapse" : (self.cmd_toggle_collapse, ["tag-list"], "Toggle collapsed state of tags"),
+
+            "next-marked" : (self.cmd_next_marked, [], "Scroll to next marked item"),
+            "prev-marked" : (self.cmd_prev_marked, [], "Scroll to previous marked item"),
+
+            "search" : (self.cmd_search, ["string"], "Search items for string"),
+            "search-regex" : (self.cmd_search_regex, ["string"], "Search items for regex"),
+
+            "promote" : (self.cmd_promote, ["tag-list"], "Move tags up in the order"),
+            "demote" : (self.cmd_demote, ["tag-list"], "Move tags down in the order"),
         }
 
         register_arg_types(self, args)
@@ -489,7 +504,7 @@ class TagList(GuiBase):
             self.callbacks["set_var"]("target_offset", 0)
             self.callbacks["set_var"]("needs_redraw", True)
 
-    def cmd_next_tag(self, **kwargs):
+    def cmd_next_tag(self):
         sel = self.callbacks["get_var"]("selected")
 
         if not sel:
@@ -511,7 +526,7 @@ class TagList(GuiBase):
 
         self._set_cursor(sel, target_offset)
 
-    def cmd_prev_tag(self, **kwargs):
+    def cmd_prev_tag(self):
         sel = self.callbacks["get_var"]("selected")
 
         if not sel:
@@ -548,8 +563,8 @@ class TagList(GuiBase):
         self.callbacks["set_var"]("reader_offset", 0)
         self.callbacks["add_window"](Reader)
 
-    def cmd_promote(self, **kwargs):
-        for tag in kwargs["tags"]:
+    def cmd_promote(self, tags):
+        for tag in tags:
 
             log.debug("Promoting %s\n" % tag.tag)
 
@@ -567,8 +582,8 @@ class TagList(GuiBase):
             # Re-order tags and update internal list order.
             self.callbacks["switch_tags"](tag, visible_tags[curidx - 1])
 
-    def cmd_demote(self, **kwargs):
-        for tag in kwargs["tags"]:
+    def cmd_demote(self, tags):
+        for tag in tags:
 
             log.debug("Demoting %s\n", tag.tag)
 
@@ -593,8 +608,8 @@ class TagList(GuiBase):
 
         self.callbacks["set_tag_opt"](tag, "collapsed", True)
 
-    def cmd_collapse(self, **kwargs):
-        for tag in kwargs["tags"]:
+    def cmd_collapse(self, tags):
+        for tag in tags:
             self._collapse_tag(tag)
 
     def _uncollapse_tag(self, tag):
@@ -610,12 +625,12 @@ class TagList(GuiBase):
 
         self.callbacks["set_tag_opt"](tag, "collapsed", False)
 
-    def cmd_uncollapse(self, **kwargs):
-        for tag in kwargs["tags"]:
+    def cmd_uncollapse(self, tags):
+        for tag in tags:
             self._uncollapse_tag(tag)
 
-    def cmd_toggle_collapse(self, **kwargs):
-        for tag in kwargs["tags"]:
+    def cmd_toggle_collapse(self, tags):
+        for tag in tags:
             if self.callbacks["get_tag_opt"](tag, "collapsed"):
                 self._uncollapse_tag(tag)
             else:
@@ -650,18 +665,18 @@ class TagList(GuiBase):
 
         self.callbacks["set_var"]("needs_redraw", True)
 
-    def cmd_search(self, **kwargs):
-        if not kwargs["search_term"]:
+    def cmd_search(self, term):
+        if not term:
             return
-        rgx = ".*" + re.escape(kwargs["search_term"]) + ".*"
+        rgx = ".*" + re.escape(term) + ".*"
         return self.search(rgx)
 
-    def cmd_search_regex(self, **kwargs):
-        if not kwargs["search_term"]:
+    def cmd_search_regex(self, term):
+        if not term:
             return
-        return self.search(kwargs["search_term"])
+        return self.search(term)
 
-    def cmd_next_marked(self, **kwargs):
+    def cmd_next_marked(self):
         start = self.callbacks["get_var"]("selected")
 
         # This works for tags and stories alike.
@@ -695,7 +710,7 @@ class TagList(GuiBase):
 
         self._set_cursor(cur, curpos)
 
-    def cmd_prev_marked(self, **kwargs):
+    def cmd_prev_marked(self):
         start = self.callbacks["get_var"]("selected")
 
         # This works for tags and stories alike.
