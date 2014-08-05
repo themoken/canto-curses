@@ -9,7 +9,7 @@
 from canto_next.hooks import on_hook
 from canto_next.plugins import Plugin
 
-from .command import CommandHandler
+from .command import CommandHandler, register_commands, register_arg_types, unregister_all
 
 import logging
 
@@ -32,13 +32,25 @@ class GuiBase(CommandHandler):
         self.plugin_class = BasePlugin
         self.update_plugin_lookups()
 
+        args = {
+            "remote-cmd": ("[remote cmd]", self.type_remote_cmd),
+        }
+
+        cmds = {
+            "remote": (self.cmd_remote, ["remote-cmd", "string"], "Give a command to canto-remote"),
+            "destroy": (self.cmd_destroy, [], "Destroy this window"),
+        }
+
+        register_arg_types(self, args)
+        register_commands(self, cmds)
+
         self.editor = None
 
-    def cmd_destroy(self, **kwargs):
+    def cmd_destroy(self):
         self.callbacks["die"](self)
 
     def die(self):
-        pass
+        unregister_all(self)
 
     def _fork(self, path, href, text, fetch=False):
 
@@ -151,6 +163,12 @@ class GuiBase(CommandHandler):
         log.info("Edited %s to %s" % (kwargs["opt"], r))
         self.callbacks["set_opt"](kwargs["opt"], r)
 
+    def type_remote_cmd(self):
+        remote_cmds = [ "help", "addfeed", "listfeeds", "delfeed",
+                "force-update", "config", "one-config", "export",
+                "import", "kill" ]
+        return (remote_cmds, lambda x : (x in remote_cmds, x))
+
     def _remote_argv(self, argv):
         loc_args = self.callbacks["get_var"]("location")
         argv = [argv[0]] + loc_args + argv[1:]
@@ -181,8 +199,8 @@ class GuiBase(CommandHandler):
     def remote_args(self, args):
         return self.string(args, "remote: ")
 
-    def cmd_remote(self, **kwargs):
-        self._remote(kwargs["remote_args"])
+    def cmd_remote(self, remote_cmd, args):
+        self._remote("%s %s" % (remote_cmd, args))
 
     def _goto(self, urls, fetch=False):
         browser = self.callbacks["get_conf"]()["browser"]
