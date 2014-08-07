@@ -56,6 +56,63 @@ def unregister_all(obj):
     for key in arg_types.keys():
         arg_types[key] = [ x for x in arg_types[key] if x[0] != obj ]
 
+# TODO : Make aliases registerable, for plugins.
+
+aliases = {
+    "browser" : "remote one-config CantoCurses.browser.path",
+    "txt_browser" : "remote one-config --eval CantoCurses.browser.text",
+    "add" : "remote addfeed",
+    "del" : "remote delfeed",
+    "list" : "remote listfeeds",
+    "q" : "quit",
+    "filter" : "transform",
+    "sort" : "transform",
+    "cursor_type" : "remote one-config CantoCurses.taglist.cursor.type",
+    "cursor_scroll" : "remote one-config CantoCurses.taglist.cursor.scroll",
+    "cursor_edge" : "remote one-config --eval CantoCurses.taglist.cursor.edge",
+    "story_unselected" : "remote one-config CantoCurses.story.unselected",
+    "story_selected" : "remote one-config CantoCurses.story.selected",
+    "story_selected_end" : "remote one-config CantoCurses.story.selected_end",
+    "story_unselected_end" : "remote one-config CantoCurses.story.unselected_end",
+    "story_unread" : "remote one-config CantoCurses.story.unread",
+    "story_read" : "remote one-config CantoCurses.story.read",
+    "story_read_end" : "remote one-config CantoCurses.story.read_end",
+    "story_unread_end" : "remote one-config CantoCurses.story.unread_end",
+    "story_unmarked" : "remote one-config CantoCurses.story.unmarked",
+    "story_marked" : "remote one-config CantoCurses.story.marked",
+    "story_marked_end" : "remote one-config CantoCurses.story.marked_end",
+    "story_unmarked_end" : "remote one-config CantoCurses.story.unmarked_end",
+    "tag_unselected" : "remote one-config CantoCurses.tag.unselected",
+    "tag_selected" : "remote one-config CantoCurses.tag.selected",
+    "tag_selected_end" : "remote one-config CantoCurses.tag.selected_end",
+    "tag_unselected_end" : "remote one-config CantoCurses.tag.unselected_end",
+    "update_interval" : "remote one-config --eval CantoCurses.update.auto.interval",
+    "update_style" : "remote one-config CantoCurses.update.style",
+    "update_auto" : "remote one-config --eval CantoCurses.update.auto.enabled",
+    "border" : "remote one-config --eval CantoCurses.taglist.border",
+    "reader_align" : "remote one-config CantoCurses.reader.window.align",
+    "reader_float" : "remote one-config --eval CantoCurses.reader.window.float",
+    "keep_time" : "remote one-config --eval defaults.keep_time",
+    "keep_unread" : "remote one-config --eval defaults.keep_unread",
+    "kill_daemon_on_exit" : "remote one-config --eval CantoCurses.kill_daemon_on_exit"
+}
+
+# Take a split lookup and unalias the first argument
+
+def _unalias(lookup):
+
+    # Expand an alias into the lookup
+    for alias in aliases:
+        if not lookup[0].startswith(alias):
+            continue
+        log.debug("De-alias: %s" % alias)
+        base = shlex.split(aliases[alias])
+        if len(lookup[0]) > len(alias):
+            base += [ lookup[0][len(alias):] ]
+        return base + lookup[1:]
+    else:
+        return lookup
+
 def cmd_complete_info():
     buf = readline.get_line_buffer()
 
@@ -75,10 +132,13 @@ def cmd_complete_info():
 
     if len(lookup) == 1:
         c = list(cmds.keys())
+        c.extend(list(aliases.keys()))
         c.sort()
         log.debug("CMDS: %s" % c)
         return ("", "", c)
     else:
+        lookup = _unalias(lookup)
+
         # Don't complete non-existent commands
         if lookup[0] not in cmds:
             return None
@@ -128,7 +188,13 @@ def cmd_complete(prefix, index):
 
 def cmd_execute(cmd):
     lookup = shlex.split(cmd)
-    if not lookup or lookup[0] not in cmds:
+
+    if not lookup:
+        return False
+
+    lookup = _unalias(lookup)
+
+    if lookup[0] not in cmds:
         return False
 
     c_obj, c_func, c_sig, c_hlp = cmds[lookup[0]][-1]
@@ -138,7 +204,12 @@ def cmd_execute(cmd):
         obj, hlp, val = arg_types[typ][-1]
         completions, validator = val()
 
-        if i < len(lookup) - 1:
+        # If we're on the last part of the sig, all remaining tokens are fed to
+        # the validator.
+
+        if i == len(c_sig) - 1:
+            token = " ".join([ shlex.quote(x) for x in lookup[i + 1:]])
+        elif i < len(lookup) - 1:
             token = lookup[i + 1]
         else:
             token = ""

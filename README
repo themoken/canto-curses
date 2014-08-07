@@ -21,7 +21,7 @@ http://github.com/themoken/canto-next
     - ncurses
     - gcc (or base-devel)
 
-    Others, just ensure you have Python 3.x, ncurses, their headers and GCC
+    Others, just ensure you have Python 3.3+, ncurses, their headers and GCC
 
 === Install ===
     $ sudo python3 setup.py install
