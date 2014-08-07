@@ -606,7 +606,7 @@ class TagList(GuiBase):
             toffset = self.callbacks["get_var"]("target_offset")
             self._set_cursor(tag, toffset) 
 
-        self.callbacks["set_tag_opt"](tag, "collapsed", True)
+        self.callbacks["set_tag_opt"](tag.tag, "collapsed", True)
 
     def cmd_collapse(self, tags):
         for tag in tags:
@@ -623,7 +623,7 @@ class TagList(GuiBase):
             toffset = self.callbacks["get_var"]("target_offset") + tag.lines
             self._set_cursor(tag[0], toffset)
 
-        self.callbacks["set_tag_opt"](tag, "collapsed", False)
+        self.callbacks["set_tag_opt"](tag.tag, "collapsed", False)
 
     def cmd_uncollapse(self, tags):
         for tag in tags:
@@ -631,7 +631,7 @@ class TagList(GuiBase):
 
     def cmd_toggle_collapse(self, tags):
         for tag in tags:
-            if self.callbacks["get_tag_opt"](tag, "collapsed"):
+            if self.callbacks["get_tag_opt"](tag.tag, "collapsed"):
                 self._uncollapse_tag(tag)
             else:
                 self._collapse_tag(tag)

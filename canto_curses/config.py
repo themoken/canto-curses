@@ -896,6 +896,9 @@ class CantoCursesConfig(SubThread):
     def _set_conf(self, conf):
         self._prot_configs({"CantoCurses" : conf }, True)
 
+    def _set_tag_conf(self, tag, conf):
+        self._prot_configs({ "tags" : { tag : conf } }, True)
+
     # prot_configs handles locking
 
     def set_conf(self, conf):
@@ -942,13 +945,13 @@ class CantoCursesConfig(SubThread):
 
     @write_lock(config_lock)
     def set_tag_opt(self, tag, option, value):
-        tc = self.get_tag_conf(tag)
+        tc = self._get_tag_conf(tag)
         self._set_opt(option, value, tc)
-        self.set_tag_conf(tag, tc)
+        self._set_tag_conf(tag, tc)
 
     @read_lock(config_lock)
     def get_tag_opt(self, tag, option):
-        tc = self.get_tag_conf(tag)
+        tc = self._get_tag_conf(tag)
         return self._get_opt(option, tc)
 
     @write_lock(config_lock)
