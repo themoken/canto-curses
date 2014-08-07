@@ -109,11 +109,6 @@ class CantoCurses(CantoClient):
                 return 1
         return 0
 
-    def alarm(self, a = None, b = None):
-        if self.gui.alive:
-            self.gui.tick()
-        signal.alarm(1)
-
     def winch(self, a = None, b = None):
         if self.gui.alive:
             self.gui.winch()
@@ -172,13 +167,12 @@ class CantoCurses(CantoClient):
 
         # Initial signal setup.
         signal.signal(signal.SIGWINCH, self.winch)
-        signal.signal(signal.SIGALRM, self.alarm)
         signal.signal(signal.SIGCHLD, self.child)
-        self.alarm()
 
         # Block on signals.
         while self.gui.alive:
-            signal.pause()
+            self.gui.tick()
+            time.sleep(1)
 
     def ensure_paths(self):
         if os.path.exists(self.conf_dir):
