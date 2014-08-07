@@ -174,12 +174,52 @@ static PyObject *py_set_getc(PyObject *self, PyObject *args)
     return r;
 }
 
+static PyObject *py_raw_readline(PyObject *self, PyObject *args)
+{
+	FILE *old_out = rl_outstream;
+        char *s = NULL;
+        int len = 0;
+
+	rl_outstream = fopen("/dev/null", "w");
+
+        s = readline(NULL);
+
+	fclose(rl_outstream);
+	rl_outstream = old_out;
+
+        if (s == NULL) {
+	    PyErr_CheckSignals();
+            if (!PyErr_Occurred())
+		PyErr_SetNone(PyExc_KeyboardInterrupt);
+            Py_RETURN_NONE;
+        }
+
+        len = strlen(s);
+        if (len == 0) {
+            Py_RETURN_NONE;
+        }
+        else {
+            if (len > PY_SSIZE_T_MAX) {
+                    PyErr_SetString(PyExc_OverflowError,
+                            "input: input too long");
+                    Py_RETURN_NONE;
+            }
+            else {
+                    len--;   /* strip trailing '\n' */
+                    if (len != 0 && s[len-1] == '\r')
+                        len--;   /* strip trailing '\r' */
+                    return PyUnicode_Decode(s, len, "UTF-8", "ignore");
+            }
+        }
+}
+
 static PyMethodDef WCMethods[] = {
     {"waddch", (PyCFunction)py_waddch, METH_VARARGS, "waddch() wrapper."},
     {"wcwidth", (PyCFunction)py_wcwidth, METH_VARARGS, "wcwidth() wrapper."},
     {"wsize", (PyCFunction)py_wsize, METH_VARARGS, "Returns sizeof(WINDOW)"},
     {"set_redisplay_callback", (PyCFunction)py_set_redisplay_callback, METH_VARARGS, "Sets redisplay callback"},
     {"set_getc", (PyCFunction)py_set_getc, METH_VARARGS, "Set readline to use func for getting characters"},
+    {"raw_readline", (PyCFunction)py_raw_readline, METH_VARARGS, "Raw readline()"},
     {NULL, NULL},
 };
 

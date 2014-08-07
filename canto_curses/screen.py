@@ -14,7 +14,7 @@ from .command import CommandHandler, cmd_complete, cmd_complete_info, register_c
 from .taglist import TagList
 from .input import InputBox
 from .text import InfoBox
-from .widecurse import wsize, set_redisplay_callback, set_getc
+from .widecurse import wsize, set_redisplay_callback, set_getc, raw_readline
 from .locks import sync_lock
 
 from threading import Lock
@@ -503,7 +503,7 @@ class Screen(CommandHandler):
         self.input_box.refresh()
         curses.doupdate()
 
-        r = input()
+        r = raw_readline()
         readline.add_history(r)
 
         self.callbacks["set_var"]("input_prompt", "")
