@@ -504,6 +504,9 @@ class Screen(CommandHandler):
         curses.doupdate()
 
         r = raw_readline()
+        if not r:
+            r = ""
+
         readline.add_history(r)
 
         self.callbacks["set_var"]("input_prompt", "")
