@@ -7,7 +7,7 @@
 #   published by the Free Software Foundation.
 
 from .theme import FakePad, WrapPad, theme_print, theme_lstrip, theme_border, theme_reset
-from .command import register_commands
+from .command import register_commands, unregister_command
 from .guibase import GuiBase
 from .theme import theme_print
 
@@ -201,6 +201,10 @@ class TextBox(GuiBase):
         return mwidth
 
 class ErrorBox(TextBox):
+    def __init__(self):
+        TextBox.__init__(self)
+        unregister_command(self, "bind")
+
     def update_text(self):
         self.text = "%7" + self.callbacks["get_var"]("error_msg") + "%0"
 
@@ -208,6 +212,10 @@ class ErrorBox(TextBox):
         return "errorbox"
 
 class InfoBox(TextBox):
+    def __init__(self):
+        TextBox.__init__(self)
+        unregister_command(self, "bind")
+
     def update_text(self):
         self.text = "%1" + self.callbacks["get_var"]("info_msg") + "%0"
 

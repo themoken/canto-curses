@@ -49,6 +49,9 @@ def _string():
 
 register_arg_type(_string, "string", "Any String", _string)
 
+def unregister_command(obj, name):
+    cmds[name] = [ x for x in cmds[name] if x[0] != obj ]
+
 def unregister_all(obj):
     for key in cmds.keys():
         cmds[key] = [ x for x in cmds[key] if x[0] != obj ]
@@ -344,6 +347,19 @@ class CommandHandler(PluginHandler):
                   ' ' : "space",
                   "\\" : "\\\\" }
 
+        args = {
+                "key": ("[key]:\nSimple keys (a), basic chords (C-r, M-a), or named whitespace like space or tab", _string),
+                "command": ("[command]:\nAny canto-curses command. Can be chained with &, other uses of & should be quoted or escaped.", _string),
+        }
+
+        cmds = {
+            "bind" : (self.cmd_bind, [ "key", "command" ], "Add bind to %s" % self),
+
+        }
+
+        register_arg_types(self, args)
+        register_commands(self, cmds)
+
         self.meta = False
 
     def _int_check(self, x):
@@ -430,6 +446,9 @@ class CommandHandler(PluginHandler):
             return r
 
         return None
+
+    def cmd_bind(self, key, cmd):
+        self.bind(key, cmd, True)
 
     def bind(self, key, cmd, overwrite=False):
         opt = self.get_opt_name()
