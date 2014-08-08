@@ -181,6 +181,7 @@ static PyObject *py_raw_readline(PyObject * self, PyObject * args)
 	rl_outstream = fopen("/dev/null", "w");
 
 	s = readline(NULL);
+	rl_line_buffer[0] = 0;
 
 	fclose(rl_outstream);
 	rl_outstream = old_out;
