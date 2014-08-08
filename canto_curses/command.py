@@ -33,16 +33,15 @@ def register_commands(obj, cmds):
 
 arg_types = {}
 
-def register_arg_type(obj, name, help_txt, validator):
+def register_arg_type(obj, name, help_txt, validator, hook=None):
     if name not in arg_types:
-        arg_types[name] = [(obj, help_txt, validator)]
+        arg_types[name] = [(obj, help_txt, validator, hook)]
     else:
-        arg_types[name].append((obj, help_txt, validator))
+        arg_types[name].append((obj, help_txt, validator, hook))
 
 def register_arg_types(obj, types):
     for name in types:
-        help_txt, validator = types[name]
-        register_arg_type(obj, name, help_txt, validator)
+        register_arg_type(obj, name, *types[name])
 
 # Passthru for any string, including empty
 def _string():
@@ -161,16 +160,16 @@ def cmd_complete_info():
         # so that we don't tab complete a broken command.
 
         for i, typ in enumerate(c_sig[:len(lookup) - 1]):
-            log.debug("COMPLETION TYPE: %s" % (typ,))
-            obj, hlp, val = arg_types[typ][-1]
+            obj, hlp, val, hook = arg_types[typ][-1]
             completions, validator = val()
             if not validator(lookup[i]):
                 return None
 
         # now get completions for the actual terminating command
 
-        obj, hlp, val = arg_types[c_sig[len(lookup) - 1]][-1]
-        log.debug("%s %s %s" % (obj, hlp, val))
+        obj, hlp, val, hook = arg_types[c_sig[len(lookup) - 1]][-1]
+        if hook:
+            hook()
         completions, validator = val()
         return (c_hlp, hlp, completions)
     return None
@@ -201,7 +200,7 @@ def cmd_execute(cmd):
     args = []
 
     for i, typ in enumerate(c_sig):
-        obj, hlp, val = arg_types[typ][-1]
+        obj, hlp, val, hook = arg_types[typ][-1]
         completions, validator = val()
 
         # If we're on the last part of the sig, all remaining tokens are fed to

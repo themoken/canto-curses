@@ -62,7 +62,7 @@ class TagList(GuiBase):
 
         args = {
             "cursor-offset": ("", self.type_cursor_offset),
-            "item-list": ("[item-list]", self.type_item_list),
+            "item-list": ("[item-list]", self.type_item_list, self.hook_item_list),
             "item-state": ("[item-state]: Any string", self.type_item_state),
             "tag-list": ("", self.type_tag_list),
         }
@@ -125,6 +125,19 @@ class TagList(GuiBase):
 
     def type_cursor_offset(self):
         return (None, self._int_check)
+
+    def unhook_item_list(self, vars):
+        # Perhaps this should be a separate hook for command completion?
+        if "input_prompt" in vars:
+            self.callbacks["set_opt"]("story.enumerated", False)
+            self.callbacks["release_gui"]()
+            remove_hook("curses_var_change", self.unhook_item_list)
+
+    def hook_item_list(self):
+        if not self.callbacks["get_opt"]("story.enumerated"):
+            self.callbacks["set_opt"]("story.enumerated", True)
+            self.callbacks["release_gui"]()
+            on_hook("curses_var_change", self.unhook_item_list)
 
     def type_item_list(self):
         all_items = []
