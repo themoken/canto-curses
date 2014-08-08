@@ -204,12 +204,8 @@ static PyObject *py_raw_readline(PyObject *self, PyObject *args)
                             "input: input too long");
                     Py_RETURN_NONE;
             }
-            else {
-                    len--;   /* strip trailing '\n' */
-                    if (len != 0 && s[len-1] == '\r')
-                        len--;   /* strip trailing '\r' */
-                    return PyUnicode_Decode(s, len, "UTF-8", "ignore");
-            }
+            else
+                return PyUnicode_Decode(s, len, "UTF-8", "ignore");
         }
 }
 
