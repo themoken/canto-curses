@@ -1,12 +1,12 @@
 # Yank Plugin
 # by Jack Miller
-# v1.0
+# v1.1
 
 # Requires xclip to be somewhere in $PATH
 
 from canto_curses.taglist import TagListPlugin
 from canto_curses.reader import ReaderPlugin
-from canto_curses.command import command_format
+from canto_curses.command import register_commands
 
 from os import system
 import logging
@@ -18,33 +18,17 @@ def yank(content):
     system('echo -n %s | xclip' % (content,))
 
 class TagListYank(TagListPlugin):
-    def __init__(self):
-        self.plugin_attrs = {
-            "cmd_yank_link" : self.cmd_yank_link,
-            "cmd_yank_title" : self.cmd_yank_title,
-        }
+    def __init__(self, taglist):
+        self.plugin_attrs = {}
 
-    @command_format([("item","sel_or_item")])
-    def cmd_yank_link(self, taglist, **kwargs):
-        yank(kwargs["item"].content["link"])
-        
-    @command_format([("item","sel_or_item")])
-    def cmd_yank_title(self, taglist, **kwargs):
-        yank(kwargs["item"].content["title"])
-        
-class ReaderYank(ReaderPlugin):
-    def __init__(self):
-        self.plugin_attrs = {
-            "cmd_yank_link" : self.cmd_yank_link,
-            "cmd_yank_title" : self.cmd_yank_title,
+        cmds = {
+            "yank-link" : (self.cmd_yank_link, ["item-list"], "Yank link"),
+            "yank-title" : (self.cmd_yank_title, ["item-list"], "Yank title"),
         }
+        register_commands(self, cmds)
 
-    @command_format([("links","listof_links")])
-    def cmd_yank_link(self, reader, **kwargs):
-        for link in kwargs["links"]:
-            yank(link[1])
+    def cmd_yank_link(self, items):
+        yank(items[0].content["link"])
         
-    @command_format([])
-    def cmd_yank_title(self, reader, **kwargs):
-        item = reader.callbacks["get_var"]("reader_item")
-        yank(item.content["title"])
+    def cmd_yank_title(self, items):
+        yank(items[0].content["title"])
