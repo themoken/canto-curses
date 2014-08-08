@@ -27,6 +27,9 @@ class TagListYank(TagListPlugin):
         }
         register_commands(self, cmds)
 
+        taglist.bind('y', 'yank-link')
+        taglist.bind('Y', 'yank-title')
+
     def cmd_yank_link(self, items):
         yank(items[0].content["link"])
         

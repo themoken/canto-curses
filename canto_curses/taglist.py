@@ -33,9 +33,6 @@ class TagList(GuiBase):
     def __init__(self):
         GuiBase.__init__(self)
 
-        self.plugin_class = TagListPlugin
-        self.update_plugin_lookups()
-
     def init(self, pad, callbacks):
         # Drawing information
         self.pad = pad
@@ -101,6 +98,9 @@ class TagList(GuiBase):
         register_commands(self, cmds)
 
         self.update_tag_lists()
+
+        self.plugin_class = TagListPlugin
+        self.update_plugin_lookups()
 
     def die(self):
         log.debug("Cleaning up hooks...")

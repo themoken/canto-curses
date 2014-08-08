@@ -431,7 +431,7 @@ class CommandHandler(PluginHandler):
 
         return None
 
-    def bind(self, key, cmd):
+    def bind(self, key, cmd, overwrite=False):
         opt = self.get_opt_name()
         key = self.translate_key(key)
         c = self.callbacks["get_conf"]()
@@ -442,7 +442,11 @@ class CommandHandler(PluginHandler):
             else:
                 return False
         else:
-            log.info("Binding %s.%s to %s" % (opt, key, cmd))
+            if key in c[opt]["key"] and c[opt]["key"][key] and not overwrite:
+                log.debug("%s already bound to %s" % (key, c[opt]["key"][key]))
+                return False
+
+            log.debug("Binding %s.%s to %s" % (opt, key, cmd))
 
             c[opt]["key"][key] = cmd
             self.callbacks["set_conf"](c)
