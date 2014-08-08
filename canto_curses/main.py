@@ -114,24 +114,46 @@ class CantoCurses(CantoClient):
             self.gui.winch()
 
     def sigusr1(self, a = None, b = None):
-        code = []
-        for threadId, stack in sys._current_frames().items():
-            code.append("\n# ThreadID: %s" % threadId)
-            for filename, lineno, name, line in traceback.extract_stack(stack):
-                code.append('File: "%s", line %d, in %s' % (filename, lineno, name))
-                if line:
-                    code.append("  %s" % (line.strip()))
-        log.info("\n".join(code))
+        import threading
+        held_locks = {}
+        code = {}
+        curthreads = threading.enumerate()
 
+        for threadId, stack in sys._current_frames().items():
+            name = str(threadId)
+            for ct in curthreads:
+                if ct.ident == threadId:
+                    name = ct.name
+
+            code[name] = ["NAME: %s" % name]
+            for filename, lineno, fname, line in traceback.extract_stack(stack):
+                code[name].append('FILE: "%s", line %d, in %s' % (filename, lineno, fname))
+                if line:
+                    code[name].append("  %s" % (line.strip()))
+
+            held_locks[name] = ""
+            for lock in alllocks:
+                if lock.writer_id == threadId:
+                    held_locks[name] += ("%s(w)" % lock.name)
+                    continue
+                for reader_id, reader_stack in lock.reader_stacks:
+                    if reader_id == threadId:
+                        held_locks[name] += ("%s(r)" % lock.name)
+
+        for k in code:
+            log.info('\n\nLOCKS: %s \n%s' % (held_locks[k], '\n'.join(code[k])))
+
+        log.info("\n\nSTACKS:")
         for lock in alllocks:
-            if lock.writer_stack:
+            for (reader_id, reader_stack) in lock.reader_stacks:
+                log.info("Lock %s (%s readers)" % (lock.name, lock.readers))
+                log.info("Lock reader (thread %s):" % (reader_id,))
+                log.info(''.join(reader_stack))
+
+            for writer_stack in lock.writer_stacks:
                 log.info("Lock %s (%s readers)" % (lock.name, lock.readers))
                 log.info("Lock writer (thread %s):" % (lock.writer_id,))
-                log.info(''.join(lock.writer_stack))
-
-        for tagcore in alltagcores:
-            for id in tagcore:
-                log.info("tag %s - %s" % (tagcore.tag, id))
+                log.info(''.join(writer_stack))
 
         log.info("VARS: %s" % config.vars)
         log.info("OPTS: %s" % config.config)
