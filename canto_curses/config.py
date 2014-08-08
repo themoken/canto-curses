@@ -21,7 +21,7 @@ from canto_next.hooks import call_hook
 from canto_next.rwlock import RWLock, write_lock, read_lock
 from canto_next.remote import assign_to_dict, access_dict
 
-DEFAULT_FSTRING = "%[1]%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})%?{m}(%{marked}:%{unmarked})%t%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})%0"
+DEFAULT_FSTRING = "%[1]%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})%?{m}(%{marked}:%{unmarked})%?{'user:favorite' in ut}(#:)%t%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})%0"
 
 DEFAULT_TAG_FSTRING = "%[1]%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%?{en}([%{to}]:)%?{aen}([%{vto}]:) %t [%B%2%n%1%b]%?{sel}(%{selected_end}:%{unselected_end})%0"
 
@@ -713,14 +713,15 @@ class CantoCursesConfig(SubThread):
     # Note that changes are the only ones propagated through hooks because they
     # are a superset of deletions (i.e. a deletion counts as a change).
 
-    def _prot_configs(self, given, write = False):
+    @write_lock(config_lock)
+    def prot_configs(self, given, write = False):
         log.debug("prot_configs given: %s" % given)
 
         if "tags" in given:
             for tag in list(given["tags"].keys()):
                 ntc = given["tags"][tag]
 
-                tc = self._get_tag_conf(tag)
+                tc = self.get_tag_conf(tag)
 
                 changes, deletions =\
                         self.validate_config(ntc, tc, self.tag_validators)
@@ -754,15 +755,11 @@ class CantoCursesConfig(SubThread):
 
         self.initd = True
 
-    @write_lock(config_lock)
-    def prot_configs(self, given, write = False):
-        return self._prot_configs(given, write)
-
     # Process new tags.
 
     @write_lock(config_lock)
     def prot_newtags(self, tags):
-        c = self._get_conf()
+        c = self.get_conf()
 
         for tag in tags:
             if tag not in self.vars["strtags"]:
@@ -780,12 +777,12 @@ class CantoCursesConfig(SubThread):
             if tag not in c["tagorder"]:
                 c["tagorder"] = self.config["tagorder"] + [ tag ]
 
-        self._set_conf(c)
-        self._eval_tags()
+        self.set_conf(c)
+        self.eval_tags()
 
     @write_lock(config_lock)
     def prot_deltags(self, tags):
-        c = self._get_conf()
+        c = self.get_conf()
 
         for tag in tags:
             if tag in self.vars["strtags"]:
@@ -804,10 +801,11 @@ class CantoCursesConfig(SubThread):
             if tag in c["tagorder"]:
                 c["tagorder"] = [ x for x in self.config["tagorder"] if x != tag ]
 
-        self._set_conf(c)
-        self._eval_tags()
+        self.set_conf(c)
+        self.eval_tags()
 
-    def _eval_tags(self):
+    @write_lock(config_lock)
+    def eval_tags(self):
         prevtags = self.vars["curtags"]
 
         sorted_tags = []
@@ -827,10 +825,6 @@ class CantoCursesConfig(SubThread):
         if prevtags != self.vars["curtags"]:
             log.debug("Evaluated Tags Changed: %s" % [ t.tag for t in self.vars["curtags"]])
             call_hook("curses_eval_tags_changed", [])
-
-    @write_lock(config_lock)
-    def eval_tags(self):
-        return self._eval_tags()
 
     # This needs to hold var lock, but we also want to avoid calling the var
     # hooks while holding locks, so we do it manually. Vars are a bit different
@@ -893,12 +887,6 @@ class CantoCursesConfig(SubThread):
     # code can "get" the conf, which is a copy of the real conf, modify it,
     # then "set" the conf which will properly process the changes.
 
-    def _set_conf(self, conf):
-        self._prot_configs({"CantoCurses" : conf }, True)
-
-    def _set_tag_conf(self, tag, conf):
-        self._prot_configs({ "tags" : { tag : conf } }, True)
-
     # prot_configs handles locking
 
     def set_conf(self, conf):
@@ -907,56 +895,47 @@ class CantoCursesConfig(SubThread):
     def set_tag_conf(self, tag, conf):
         self.prot_configs({ "tags" : { tag : conf } }, True)
 
-    def _get_conf(self):
+    @read_lock(config_lock)
+    def get_conf(self):
         return eval(repr(self.config), {}, {})
 
     @read_lock(config_lock)
-    def get_conf(self):
-        return self._get_conf()
-
-    def _get_tag_conf(self, tag):
+    def get_tag_conf(self, tag):
         if tag in self.tag_config:
             return eval(repr(self.tag_config[tag]), {}, {})
         return eval(repr(self.tag_template_config))
 
-    @read_lock(config_lock)
-    def get_tag_conf(self, tag):
-        return self._get_tag_conf(tag)
-
-    def _get_opt(self, option, d):
-        valid, value = access_dict(d, option)
-        if not valid:
-            return None
-        return value
-
-    def _set_opt(self, option, value, d):
-        assign_to_dict(d, option, value)
-
     @write_lock(config_lock)
     def set_opt(self, option, value):
         c = self.get_conf()
-        self._set_opt(option, value, c)
+        assign_to_dict(c, option, value)
         self.set_conf(c)
 
     @read_lock(config_lock)
     def get_opt(self, option):
         c = self.get_conf()
-        return  self._get_opt(option, c)
+        valid, value = access_dict(c, option)
+        if not valid:
+            return None
+        return value
 
     @write_lock(config_lock)
     def set_tag_opt(self, tag, option, value):
-        tc = self._get_tag_conf(tag)
-        self._set_opt(option, value, tc)
-        self._set_tag_conf(tag, tc)
+        tc = self.get_tag_conf(tag)
+        self.set_opt(option, value, tc)
+        self.set_tag_conf(tag, tc)
 
     @read_lock(config_lock)
     def get_tag_opt(self, tag, option):
-        tc = self._get_tag_conf(tag)
-        return self._get_opt(option, tc)
+        tc = self.get_tag_conf(tag)
+        valid, value = access_dict(tc, option)
+        if not valid:
+            return None
+        return value
 
     @write_lock(config_lock)
     def switch_tags(self, tag1, tag2):
-        c = self._get_conf()
+        c = self.get_conf()
 
         t1_idx = c["tagorder"].index(tag1.tag)
         t2_idx = c["tagorder"].index(tag2.tag)
@@ -964,8 +943,8 @@ class CantoCursesConfig(SubThread):
         c["tagorder"][t1_idx] = tag2.tag
         c["tagorder"][t2_idx] = tag1.tag
 
-        self._set_conf(c)
+        self.set_conf(c)
 
-        self._eval_tags()
+        self.eval_tags()
 
 config = CantoCursesConfig()
