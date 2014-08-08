@@ -606,15 +606,11 @@ class Screen(CommandHandler):
         # Don't flush, because readline loses keys.
         r = self.get_key(False)
 
-        # Reject current completion
-        if r == curses.KEY_BACKSPACE or chr(r) == "\b":
-            self.input_box.break_completion()
-
-            # Convert KEY_BACKSPACE into \b, not sure why they're different.
-            return ord("\b")
+        if r == curses.KEY_BACKSPACE:
+            r = ord("\b")
 
         # Accept current completion
-        elif chr(r) == " ":
+        elif chr(r) in " \b":
             comp = self.input_box.break_completion()
             if comp:
                 log.debug("inserting: %s" % comp)
