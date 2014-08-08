@@ -568,7 +568,6 @@ class Screen(CommandHandler):
         self.redraw()
 
     def _readline_redisplay(self):
-        log.debug("rredisplay: %s" % readline.get_line_buffer())
         self.input_box.set_content(readline.get_line_buffer())
         self.input_box.refresh()
         curses.doupdate()
