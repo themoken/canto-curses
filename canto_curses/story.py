@@ -48,6 +48,7 @@ class Story(PluginHandler):
         self.changed = True
 
         self.fresh_state = False
+        self.fresh_tags = False
 
         # Information from last refresh
         self.width = 0
@@ -108,13 +109,13 @@ class Story(PluginHandler):
         self.content = self.new_content
         self.new_content = None
 
-        # Setting canto-state generates a SETATTRIBUTES, which generates a
-        # TAGCHANGE which will cause ATTRIBUTES to be refetched. So there's
-        # a window of
-
         if 'canto-state' in old_content and self.fresh_state:
             self.content['canto-state'] = old_content['canto-state']
             self.fresh_state = False
+
+        if 'canto-tags' in old_content and self.fresh_tags:
+            self.content['canto-tags'] = old_content['canto-tags']
+            self.fresh_tags = False
 
         self.need_redraw()
 
@@ -145,17 +146,17 @@ class Story(PluginHandler):
 
     # Add / remove state. Return True if an actual change, False otherwise.
 
-    def _handle_state(self, attr):
-        if "canto-state" not in self.content or self.content["canto-state"] == "":
-            self.content["canto-state"] = []
+    def _handle_key(self, attr, key):
+        if key not in self.content or self.content[key] == "":
+            self.content[key] = []
 
         # Negative attribute
         if attr[0] == "-":
             attr = attr[1:]
             if attr == "marked":
                 return self.unmark()
-            elif attr in self.content["canto-state"]:
-                self.content["canto-state"].remove(attr)
+            elif attr in self.content[key]:
+                self.content[key].remove(attr)
                 self.need_redraw()
                 return True
 
@@ -163,8 +164,8 @@ class Story(PluginHandler):
         else:
             if attr == "marked":
                 return self.mark()
-            elif attr not in self.content["canto-state"]:
-                self.content["canto-state"].append(attr)
+            elif attr not in self.content[key]:
+                self.content[key].append(attr)
                 self.need_redraw()
                 return True
         return False
@@ -173,9 +174,16 @@ class Story(PluginHandler):
     # change.
 
     def handle_state(self, attr):
-        r = self._handle_state(attr)
+        r = self._handle_key(attr, "canto-state")
         if r:
             self.fresh_state = True
+            self.callbacks["item_state_change"](self)
+        return r
+
+    def handle_tag(self, tag):
+        r = self._handle_key(tag, "canto-tags")
+        if r:
+            self.fresh_tags = True
             self.callbacks["item_state_change"](self)
         return r
 
@@ -254,6 +262,7 @@ class Story(PluginHandler):
                   "rel_enumerated" : rel_enumerated,
                   "enumerated" : story_conf["enumerated"],
                   "state" : self.content["canto-state"][:],
+                  "user_tags" : self.content["canto-tags"][:],
                   "selected" : self.selected,
                   "marked" : self.marked,
                   "fstring" : story_conf["format"] }
@@ -312,6 +321,7 @@ class Story(PluginHandler):
                   'sel' : state["selected"],
                     'm' : state["marked"],
                    'rd' : "read" in self.content["canto-state"],
+                   'ut' : state["user_tags"],
                     't' : self.content["title"],
                     'l' : self.content["link"],
                  'item' : self,

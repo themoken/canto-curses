@@ -93,6 +93,8 @@ class TagList(GuiBase):
 
             "promote" : (self.cmd_promote, ["tag-list"], "Move tags up in the order"),
             "demote" : (self.cmd_demote, ["tag-list"], "Move tags down in the order"),
+
+            "tag-item" : (self.cmd_tag_item, ["string", "item-list"], "Add a tag to individual items"),
         }
 
         register_arg_types(self, args)
@@ -288,6 +290,23 @@ class TagList(GuiBase):
         for item in items:
             if item.handle_state(state):
                 attributes[item.id] = { "canto-state" : item.content["canto-state"] }
+
+        if attributes:
+            tag_updater.set_attributes(attributes)
+
+    # tag-item : Same as above, with tags.
+
+    def cmd_tag_item(self, tag, items):
+        # Proper prefix
+        if tag[0] == '-':
+            tag = "-user:" + tag[1:]
+        else:
+            tag = "user:" + tag
+
+        attributes = {}
+        for item in items:
+            if item.handle_tag(tag):
+                attributes[item.id] = { "canto-tags" : item.content["canto-tags"] }
 
         if attributes:
             tag_updater.set_attributes(attributes)

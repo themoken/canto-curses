@@ -100,7 +100,7 @@ class TagUpdater(SubThread):
         # We know we're going to want at least these attributes for
         # all stories, as they're part of the fallback format string.
 
-        self.needed_attrs = [ "title", "canto-state", "link", "enclosures" ]
+        self.needed_attrs = [ "title", "canto-state", "canto-tags", "link", "enclosures" ]
 
         # Make sure we grab attributes needed for the story
         # format and story format.
