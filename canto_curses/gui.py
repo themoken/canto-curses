@@ -141,7 +141,6 @@ class CantoCursesGui(CommandHandler):
     def run(self):
         while self.alive:
             r = self.screen.get_key()
-            log.debug("KEY: %s" % r)
 
             # Get a list of all command handlers
             f = [self] + self.screen.get_focus_list()

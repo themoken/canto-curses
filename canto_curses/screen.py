@@ -610,12 +610,13 @@ class Screen(CommandHandler):
             r = ord("\b")
 
         # Accept current completion
-        elif chr(r) in " \b":
+        if chr(r) in " \b":
             comp = self.input_box.break_completion()
             if comp:
                 log.debug("inserting: %s" % comp)
                 readline.insert_text(comp)
 
+        log.debug("KEY: %s" % r)
         return r
 
     def _exception_wrap(self, fn, *args):
