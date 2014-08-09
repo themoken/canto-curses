@@ -32,9 +32,6 @@ class Story(PluginHandler):
     def __init__(self, tag, id, callbacks):
         PluginHandler.__init__(self)
 
-        self.plugin_class = StoryPlugin
-        self.update_plugin_lookups()
-
         self.callbacks = callbacks
 
         self.parent_tag = tag
@@ -53,6 +50,10 @@ class Story(PluginHandler):
         # Information from last refresh
         self.width = 0
         self.lines = 0
+
+        # Pre and post formats, to be used by plugins
+        self.pre_format = ""
+        self.post_format = ""
 
         # Lines not in our pad, but placed after us (tag footer)
 
@@ -74,6 +75,9 @@ class Story(PluginHandler):
 
         self.content = tag_updater.get_attributes(self.id)
         self.new_content = None
+
+        self.plugin_class = StoryPlugin
+        self.update_plugin_lookups()
 
     def die(self):
         self.parent_tag = None
@@ -265,6 +269,8 @@ class Story(PluginHandler):
                   "user_tags" : self.content["canto-tags"][:],
                   "selected" : self.selected,
                   "marked" : self.marked,
+                  "pre" : self.pre_format,
+                  "post" : self.post_format,
                   "fstring" : story_conf["format"] }
 
         # Render once to a FakePad (no IO) to determine the correct
@@ -320,7 +326,9 @@ class Story(PluginHandler):
                     'x' : state["rel_idx"],
                   'sel' : state["selected"],
                     'm' : state["marked"],
-                   'rd' : "read" in self.content["canto-state"],
+                  'pre' : state["pre"],
+                 'post' : state["post"],
+                   'rd' : "read" in state["state"],
                    'ut' : state["user_tags"],
                     't' : self.content["title"],
                     'l' : self.content["link"],

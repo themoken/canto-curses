@@ -21,9 +21,9 @@ from canto_next.hooks import call_hook
 from canto_next.rwlock import RWLock, write_lock, read_lock
 from canto_next.remote import assign_to_dict, access_dict
 
-DEFAULT_FSTRING = "%[1]%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})%?{m}(%{marked}:%{unmarked})%?{'user:favorite' in ut}(#:)%t%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})%0"
+DEFAULT_FSTRING = "%1%?{en}([%i] :)%?{ren}([%x] :)%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})%?{m}(%{marked}:%{unmarked})%{pre}%t%{post}%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})%0"
 
-DEFAULT_TAG_FSTRING = "%[1]%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%?{en}([%{to}]:)%?{aen}([%{vto}]:) %t [%B%2%n%1%b]%?{sel}(%{selected_end}:%{unselected_end})%0"
+DEFAULT_TAG_FSTRING = "%1%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%?{en}([%{to}]:)%?{aen}([%{vto}]:) %{pre}%t%{post} [%B%2%n%1%b]%?{sel}(%{selected_end}:%{unselected_end})%0"
 
 from .locks import config_lock, var_lock
 from .subthread import SubThread

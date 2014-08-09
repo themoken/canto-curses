@@ -7,6 +7,7 @@
 #   published by the Free Software Foundation.
 
 from canto_next.hooks import call_hook, on_hook, remove_hook
+from canto_next.plugins import Plugin, PluginHandler
 from canto_next.rwlock import read_lock
 
 from .locks import sync_lock
@@ -27,9 +28,14 @@ log = logging.getLogger("TAG")
 # like a Tag takes IDs from the backend and renders an ncurses pad. No class
 # other than Tag actually touches Story objects directly.
 
-class Tag(list):
+class TagPlugin(Plugin):
+    pass
+
+class Tag(PluginHandler, list):
     def __init__(self, tagcore, callbacks):
         list.__init__(self)
+        PluginHandler.__init__(self)
+
         self.tagcore = tagcore
         self.tag = tagcore.tag
 
@@ -71,6 +77,10 @@ class Tag(list):
         self.extra_lines = 0
         self.width = 0
 
+        # Formats for plugins to override
+        self.pre_format = ""
+        self.post_format = ""
+
         # Global indices (for enumeration)
         self.item_offset = None
         self.visible_tag_offset = None
@@ -89,6 +99,9 @@ class Tag(list):
         config.eval_tags()
 
         self.sync(True)
+
+        self.plugin_class = TagPlugin
+        self.update_plugin_lookups()
 
     def die(self):
         # Reset so items get die() called and everything
@@ -308,6 +321,8 @@ class Tag(list):
                     'to' : self.tag_offset,
                     'vto' : self.visible_tag_offset,
                     "extra_tags" : extra_tags,
+                    'pre' : self.pre_format,
+                    'post' : self.post_format,
                     'tag' : self,
                     'prep' : prep_for_display}
 
