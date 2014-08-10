@@ -311,8 +311,8 @@ class TagList(GuiBase):
 
     def cmd_tag_item(self, tag, items):
         # Proper prefix
-        if tag[0] == '-':
-            tag = "-user:" + tag[1:]
+        if tag[0] in '-%':
+            tag = tag[0] + "user:" + tag[1:]
         else:
             tag = "user:" + tag
 

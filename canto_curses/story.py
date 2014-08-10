@@ -164,6 +164,22 @@ class Story(PluginHandler):
                 self.need_redraw()
                 return True
 
+        # Toggle attribute
+        elif attr[0] == '%':
+            attr = attr[1:]
+            if attr == "marked":
+                if self.marked:
+                    self.unmark()
+                else:
+                    self.mark()
+            else:
+                if attr in self.content[key]:
+                    self.content[key].remove(attr)
+                else:
+                    self.content[key].append(attr)
+                self.need_redraw()
+                return True
+
         # Positive attribute
         else:
             if attr == "marked":
