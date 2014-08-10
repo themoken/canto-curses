@@ -342,8 +342,7 @@ class TagList(GuiBase):
         # start and next sel.
 
         while o and o != ns:
-            o.do_changes(self.width)
-            lines += o.lines + o.extra_lines
+            lines += o.lines(self.width) + o.extra_lines
             o = o.next_obj
 
         return (ns, lines)
@@ -364,8 +363,7 @@ class TagList(GuiBase):
 
         while o and o != ps:
             o = o.prev_obj
-            o.do_changes(self.width)
-            lines += o.lines + o.extra_lines
+            lines += o.lines(self.width) + o.extra_lines
 
         return (ps, lines)
 
@@ -424,14 +422,12 @@ class TagList(GuiBase):
             else:
                 tag = self.tag_by_item(item)
 
-            tag.do_changes(self.width)
-            wl_top = max(curstyle["edge"], tag.lines)
+            wl_top = max(curstyle["edge"], tag.lines(self.width))
 
             # Similarly, if the current item is larger than the (edge + 1), the
             # scroll won't be triggered, so we take the max edge there too.
 
-            item.do_changes(self.width)
-            wl_bottom = (self.height - 1) - max(curstyle["edge"], item.lines)
+            wl_bottom = (self.height - 1) - max(curstyle["edge"], item.lines(self.width))
 
             if window_location > wl_bottom:
                 if curstyle["scroll"] == "scroll":
@@ -484,17 +480,14 @@ class TagList(GuiBase):
             while scroll > 0 and sel.prev_sel:
                 pstory = sel.prev_sel
                 while sel != pstory:
-                    sel.do_changes(self.width)
-                    scroll -= sel.lines
+                    scroll -= sel.lines(self.width)
                     sel = sel.prev_obj
 
             self._set_cursor(sel, target_offset)
         else:
             while scroll > 0 and target_obj.prev_obj:
                 target_obj = target_obj.prev_obj
-
-                target_obj.do_changes(self.width)
-                scroll -= target_obj.lines
+                scroll -= target_obj.lines(self.width)
 
             self.callbacks["set_var"]("target_obj", target_obj)
             self.callbacks["set_var"]("target_offset", target_offset)
@@ -513,21 +506,18 @@ class TagList(GuiBase):
 
         if sel:
             while scroll > 0 and sel.next_sel:
-                sel.do_changes(self.width)
-                if scroll < sel.lines:
+                if scroll < sel.lines(self.width):
                     break
 
                 nstory = sel.next_sel
                 while sel != nstory:
-                    sel.do_changes(self.width)
-                    scroll -= sel.lines
+                    scroll -= sel.lines(self.width)
                     sel = sel.next_obj
 
             self._set_cursor(sel, target_offset)
         else:
             while scroll > 0 and target_obj.next_obj:
-                target_obj.do_changes(self.width)
-                scroll -= target_obj.lines
+                scroll -= target_obj.lines(self.width)
                 if scroll < 0:
                     break
                 target_obj = target_obj.next_obj
@@ -959,10 +949,10 @@ class TagList(GuiBase):
     # main_offset - starting line from top of pad
 
     def _partial_render(self, obj, main_offset, curpos, footer = False):
-        if not footer:
-            lines = obj.lines
-            pad = obj.pad
-        else:
+        lines = obj.pads(self.width)
+        pad = obj.pad
+
+        if footer:
             lines = obj.footlines
             pad = obj.footpad
 
@@ -1013,18 +1003,18 @@ class TagList(GuiBase):
 
         if target_obj not in self.tags:
             tag = self.tag_by_item(target_obj)
-            tag.do_changes(self.width)
-            if target_offset < tag.lines:
-                target_offset = tag.lines
+            tl = tag.lines(self.width)
+            if target_offset < tl:
+                target_offset = tl
         elif target_offset < 0:
             target_offset = 0
 
         # If we're trying to render too close to the bottom, we also
         # need an adjustment.
 
-        target_obj.do_changes(self.width)
-        if target_offset > ((self.height - 1) - target_obj.lines):
-            target_offset = (self.height - 1) - target_obj.lines
+        tol = target_obj.lines(self.width)
+        if target_offset > ((self.height - 1) - tol):
+            target_offset = (self.height - 1) - tol
 
         # Step 1. Find first object based on target_obj and target_offset,
         # This will cause any changes to be resolved for objects on screen
@@ -1036,8 +1026,7 @@ class TagList(GuiBase):
 
         while curpos > 0:
             if obj.prev_obj:
-                obj.prev_obj.do_changes(self.width)
-                curpos -= (obj.prev_obj.lines + obj.prev_obj.extra_lines)
+                curpos -= (obj.prev_obj.lines(self.width) + obj.prev_obj.extra_lines)
                 obj = obj.prev_obj
 
             # If there aren't enough items to render before this item and
@@ -1056,8 +1045,7 @@ class TagList(GuiBase):
 
         while last_off < (self.height - 1):
             if last_obj:
-                last_obj.do_changes(self.width)
-                last_off += last_obj.lines
+                last_off += last_obj.lines(self.width)
                 last_obj = last_obj.next_obj
 
             # Not enough items to render after our item,
@@ -1105,7 +1093,7 @@ class TagList(GuiBase):
 
         while obj != None:
             # Refresh if necessary, update curpos for scrolling.
-            obj.do_changes(self.width)
+            obj.lines(self.width)
             obj.curpos = curpos
 
             # Copy item into window
@@ -1118,9 +1106,8 @@ class TagList(GuiBase):
 
             if not rendered_header and curpos > 0:
                 tag = self.tag_by_obj(obj)
-                tag.do_changes(self.width)
 
-                if curpos >= tag.lines:
+                if curpos >= tag.lines(self.width):
                     self._partial_render(tag, 0, 0)
                     rendered_header = True
 
@@ -1134,7 +1121,7 @@ class TagList(GuiBase):
                     tag = obj
                 else:
                     tag = self.tag_by_item(obj)
-                    tag.do_changes(self.width)
+                    tag.lines(self.width)
                     obj.extra_lines = tag.footlines
 
                 w_offset, curpos = self._partial_render(tag, w_offset, curpos, True)

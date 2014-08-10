@@ -215,14 +215,15 @@ def theme_print_one(pad, uni, width):
 
             try:
                 pad.waddch(ec)
-            except:
+            except Exception as e:
                 log.debug("Can't print ec: %s in: %s" % (ec, uni))
+                log.debug("Exception: %s" % e)
 
             width -= cwidth
 
     return None
 
-def theme_print(pad, uni, mwidth, pre = "", post = "", cursorbash=True):
+def theme_print(pad, uni, mwidth, pre = "", post = "", cursorbash=True, clear=True):
     prel = theme_len(pre)
     postl = theme_len(post)
     y = pad.getyx()[0]
@@ -235,7 +236,8 @@ def theme_print(pad, uni, mwidth, pre = "", post = "", cursorbash=True):
 
     r = theme_print_one(pad, uni, width)
 
-    pad.clrtoeol()
+    if clear:
+        pad.clrtoeol()
 
     if post:
         try:

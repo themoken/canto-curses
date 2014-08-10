@@ -72,10 +72,14 @@ class Tag(PluginHandler, list):
         self.marked = False
 
         # Information from last refresh
-        self.lines = 0
         self.footlines = 0
         self.extra_lines = 0
         self.width = 0
+
+        self.collapsed = False
+        self.border = False
+        self.enumerated = False
+        self.abs_enumerated = False
 
         # Formats for plugins to override
         self.pre_format = ""
@@ -251,36 +255,18 @@ class Tag(PluginHandler, list):
         self.changed = True
         self.callbacks["set_var"]("needs_redraw", True)
 
-    def do_changes(self, width):
-        if width != self.width or self.changed:
-            self.refresh(width)
+    def lines(self, width):
+        if width == self.width and not self.changed:
+            return self.lns
 
-    def refresh(self, width):
-        self.width = width
-
-        lines = self.render_header(width, FakePad(width))
-
-        self.pad = curses.newpad(lines, width)
-        self.render_header(width, WrapPad(self.pad))
-
-        self.lines = lines
-
-        lines = self.render_footer(width, FakePad(width))
-
-        if lines:
-            self.footpad = curses.newpad(lines, width)
-            self.render_footer(width, WrapPad(self.footpad))
-        else:
-            self.footpad = None
-
-        self.footlines = lines
-
-        self.changed = False
-
-    def render_header(self, width, pad):
         tag_conf = self.callbacks["get_opt"]("tag")
         taglist_conf = self.callbacks["get_opt"]("taglist")
-        collapsed = self.callbacks["get_tag_opt"]("collapsed")
+
+        # Values to pass on to render
+        self.collapsed = self.callbacks["get_tag_opt"]("collapsed")
+        self.border = taglist_conf["border"]
+        self.enumerated = taglist_conf["tags_enumerated"]
+        self.abs_enumerated = taglist_conf["tags_enumerated_absolute"]
 
         # Make sure to strip out the category from category:name
         tag = self.tag.split(':', 1)[1]
@@ -309,14 +295,10 @@ class Tag(PluginHandler, list):
         parsed_pre = try_parse(self.pre_format, "")
         parsed_post = try_parse(self.post_format, "")
 
-        values = { 'en' : taglist_conf["tags_enumerated"],
-                    'aen' : taglist_conf["tags_enumerated_absolute"],
-                    'c' : collapsed,
+        values = {  'c' : self.collapsed,
                     't' : tag,
                     'sel' : self.selected,
                     'n' : unread,
-                    'to' : self.tag_offset,
-                    'vto' : self.visible_tag_offset,
                     "extra_tags" : extra_tags,
                     'tag' : self,
                     'prep' : prep_for_display}
@@ -331,28 +313,67 @@ class Tag(PluginHandler, list):
 
         values["pre"] = try_eval(parsed_pre, values, "")
         values["post"] = try_eval(parsed_post, values, "")
-        s = try_eval(parsed, values, DEFAULT_TAG_FSTRING)
+        self.evald_string = try_eval(parsed, values, DEFAULT_TAG_FSTRING)
 
+        self.pad = None
+        self.footpad = None
+        self.width = width
+
+        self.lns = self.render_header(width, FakePad(width))
+        self.footlines = self.render_footer(width, FakePad(width))
+
+        return self.lns
+
+    def pads(self, width):
+        if self.pad and (self.footpad or not self.footlines) and not self.changed:
+            return self.lns
+
+        self.pad = curses.newpad(self.lines(width), width)
+        self.render_header(width, WrapPad(self.pad))
+
+        if self.footlines:
+            self.footpad = curses.newpad(self.footlines, width)
+            self.render_footer(width, WrapPad(self.footpad))
+        return self.lns
+
+    def render_header(self, width, pad):
+        s = self.evald_string
         lines = 0
 
-        while s:
-            s = theme_print(pad, s, width, "", "")
-            lines += 1
+        try:
+            while s:
+                s = theme_print(pad, s, width, "", "")
 
-        if not collapsed and taglist_conf["border"]:
-            theme_print(pad, theme_border("ts") * (width - 2), width,\
-                    "%B%1"+ theme_border("tl"), theme_border("tr") + "%0%b")
-            lines += 1
+                if lines == 0:
+                    header = ""
+                    if self.enumerated:
+                        header += "%1[" + str(self.visible_tag_offset) + "]%0"
+                    if self.abs_enumerated:
+                        header += "%1[" + str(self.tag_offset) + "]%0"
+                    if header:
+                        pad.move(0, 0)
+                        theme_print(pad, header, width, "", "", False, False)
+                        try:
+                            pad.move(1, 0)
+                        except:
+                            pass
+                lines += 1
+
+            if not self.collapsed and self.border:
+                theme_print(pad, theme_border("ts") * (width - 2), width,\
+                        "%B%1"+ theme_border("tl"), theme_border("tr") + "%0%b")
+                lines += 1
+        except Exception as e:
+            tb = traceback.format_exc()
+            log.debug("Tag exception:")
+            log.debug("\n" + "".join(tb))
 
         theme_reset()
 
         return lines
 
     def render_footer(self, width, pad):
-        taglist_conf = self.callbacks["get_opt"]("taglist")
-        collapsed = self.callbacks["get_tag_opt"]("collapsed")
-
-        if not collapsed and taglist_conf["border"]:
+        if not self.collapsed and self.border:
             theme_print(pad, theme_border("bs") * (width - 2), width,\
                     "%B%1" + theme_border("bl"), theme_border("br") + "%0%b")
             theme_reset()

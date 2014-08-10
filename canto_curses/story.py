@@ -9,7 +9,7 @@
 from canto_next.plugins import Plugin, PluginHandler
 from canto_next.hooks import on_hook, remove_hook
 
-from .theme import FakePad, WrapPad, theme_print, theme_len, theme_process, theme_reset, theme_border
+from .theme import FakePad, WrapPad, theme_print, theme_len, theme_reset, theme_border
 from .parser import try_parse, try_eval, prep_for_display
 from .config import DEFAULT_FSTRING
 from .tagcore import tag_updater
@@ -26,7 +26,6 @@ class StoryPlugin(Plugin):
 # The Story class is the basic wrapper for an item to be displayed. It manages
 # its own state only because it affects its representation, it's up to a higher
 # class to actually communicate state changes to the backend.
-
 
 class Story(PluginHandler):
     def __init__(self, tag, id, callbacks):
@@ -47,21 +46,17 @@ class Story(PluginHandler):
         self.fresh_state = False
         self.fresh_tags = False
 
-        # Information from last refresh
         self.width = 0
-        self.lines = 0
 
         # Pre and post formats, to be used by plugins
         self.pre_format = ""
         self.post_format = ""
 
-        # Lines not in our pad, but placed after us (tag footer)
-
-        self.extra_lines = 0
-
         # Offset globally and in-tag.
         self.offset = 0
         self.rel_offset = 0
+        self.enumerated = False
+        self.rel_enumerated = False
 
         # This should exist before the hook is setup, or the hook will fail.
         self.content = {}
@@ -251,67 +246,25 @@ class Story(PluginHandler):
         self.changed = True
         self.callbacks["set_var"]("needs_redraw", True)
 
-    def do_changes(self, width):
-        if width != self.width or self.changed:
-            self.refresh(width)
-
-    def refresh(self, width):
-        story_conf = self.callbacks["get_opt"]("story")
-        self.width = width
+    def lines(self, width):
+        if width == self.width and not self.changed:
+            return self.lns
 
         # Make sure we actually have all of the attributes needed
         # to complete the render.
 
+        story_conf = self.callbacks["get_opt"]("story")
+
+        self.enumerated = story_conf["enumerated"]
+        self.rel_enumerated = self.callbacks["get_tag_opt"]("enumerated")
+
         for attr in story_conf["format_attrs"]:
             if attr not in self.content:
                 log.debug("%s still needs %s" % (self, attr))
-                self.pad = curses.newpad(1, width)
-                self.pad.addstr("Waiting on content...")
-                self.lines = 1
-                return
+                pad.addstr("Waiting on content...")
+                return 1
 
-        # Do we need the relative enumerated form?
-        rel_enumerated = self.callbacks["get_tag_opt"]("enumerated")
-
-        # These are the only things that affect the drawing
-        # of this item.
-
-        state = { "width" : width,
-                  "abs_idx" : self.offset,
-                  "rel_idx" : self.rel_offset,
-                  "rel_enumerated" : rel_enumerated,
-                  "enumerated" : story_conf["enumerated"],
-                  "state" : self.content["canto-state"][:],
-                  "user_tags" : self.content["canto-tags"][:],
-                  "selected" : self.selected,
-                  "marked" : self.marked,
-                  "pre" : self.pre_format,
-                  "post" : self.post_format,
-                  "fstring" : story_conf["format"] }
-
-        # Render once to a FakePad (no IO) to determine the correct
-        # amount of lines. Force this to entirely unenumerated because
-        # we don't want the enumerated content to take any more lines
-        # than the unenumerated. Render will truncate smartly if we
-        # attempt to go over. This avoids insane amounts of line shifting
-        # when enumerating items and allows us to get the perfect size
-        # for this story's pad.
-
-        unenum_state = state.copy()
-        unenum_state["enumerated"] = False
-        unenum_state["rel_enumerated"] = False
-        lines = self.render(FakePad(width), unenum_state)
-
-        # Create the new pad and actually do the render.
-
-        self.pad = curses.newpad(lines, width)
-        self.render(WrapPad(self.pad), state)
-
-        self.lines = lines
-        self.changed = False
-
-    def render(self, pad, state):
-        parsed = try_parse(state["fstring"], DEFAULT_FSTRING)
+        parsed = try_parse(story_conf["format"], DEFAULT_FSTRING)
         parsed_pre = try_parse(self.pre_format, "")
         parsed_post = try_parse(self.post_format, "")
 
@@ -325,21 +278,16 @@ class Story(PluginHandler):
 
         # Add refactored themability variables:
 
-        story_conf = self.callbacks["get_opt"]("story")
         for attr in [ "selected", "read", "marked" ]:
             passthru[attr] = story_conf[attr]
             passthru["un" + attr] = story_conf["un" + attr]
             passthru[attr + "_end"] = story_conf[attr + "_end"]
             passthru["un" + attr + "_end"] = story_conf["un" + attr + "_end"]
 
-        values = { 'en' : state["enumerated"],
-                    'i' : state["abs_idx"],
-                  'ren' : state["rel_enumerated"],
-                    'x' : state["rel_idx"],
-                  'sel' : state["selected"],
-                    'm' : state["marked"],
-                   'rd' : "read" in state["state"],
-                   'ut' : state["user_tags"],
+        values = { 'sel' : self.selected,
+                    'm' : self.marked,
+                   'rd' : "read" in self.content["canto-state"],
+                   'ut' : self.content["canto-tags"],
                     't' : self.content["title"],
                     'l' : self.content["link"],
                  'item' : self,
@@ -355,62 +303,68 @@ class Story(PluginHandler):
 
         values["pre"] = try_eval(parsed_pre, values, "")
         values["post"] = try_eval(parsed_post, values, "")
-        s = try_eval(parsed, values, DEFAULT_FSTRING)
-
-        lines = 0
+        self.evald_string = try_eval(parsed, values, DEFAULT_FSTRING)
 
         taglist_conf = self.callbacks["get_opt"]("taglist")
 
         if taglist_conf["border"]:
-            left = "%C%B%1" + theme_border("ls") + "%0%b %c"
-            left_more = "%C%B%1" + theme_border("ls") + "%0%b     %c"
-            right = "%C %B%1" + theme_border("rs") + "%0%b%c"
+            self.left = "%C%B%1" + theme_border("ls") + "%0%b %c"
+            self.left_more = "%C%B%1" + theme_border("ls") + "%0%b     %c"
+            self.right = "%C %B%1" + theme_border("rs") + "%0%b%c"
         else:
-            left = "%C %c"
-            left_more = "%C     %c"
-            right = "%C %c"
+            self.left = "%C %c"
+            self.left_more = "%C     %c"
+            self.right = "%C %c"
+
+        self.pad = None
+        self.width = width
+        self.changed = False
+
+        self.lns = self.render(FakePad(width), width)
+        return self.lns
+
+    def pads(self, width):
+        if self.pad and not self.changed:
+            return self.lns
+
+        self.pad = curses.newpad(self.lines(width), width)
+        self.render(WrapPad(self.pad), width)
+        return self.lns
+
+    def render(self, pad, width):
+        s = self.evald_string
+
+        lines = 0
 
         try:
             while s:
                 # Left border, for first line
                 if lines == 0:
-                    l = left
+                    l = self.left
 
                 # Left border, for subsequent lines (indent)
                 else:
-                    l = left_more
+                    l = self.left_more
 
-                s = theme_print(pad, s, state["width"], l, right)
+                s = theme_print(pad, s, width, l, self.right)
 
-                # Avoid line shifting when temporarily enumerating.
-                if s and (state["enumerated"] or state["rel_enumerated"]) and\
-                        lines == (self.unenumerated_lines - 1):
-                    pad.move(pad.getyx()[0],\
-                            pad.getyx()[1] - (theme_len(right) + 3))
+                # Handle overwriting with offset information
 
-                    # Write out the ellipsis.
-
-                    for i in range(3):
+                if lines == 0:
+                    header = ""
+                    if self.enumerated:
+                        header += "%1[" + str(self.offset) + "]%0"
+                    if self.rel_enumerated:
+                        header += "%1[" + str(self.rel_offset) + "]%0"
+                    if header:
+                        pad.move(0, 0)
+                        theme_print(pad, header, width, "","", False, False)
                         try:
-                            pad.waddch(".")
+                            pad.move(1, 0)
                         except:
-                            # We have to encode this as UTF-8 because of python
-                            # bug 12567, fixed in 3.3
+                            pass
 
-                            pad.waddch(".".encode("UTF-8"))
-
-                    # Handling any dangling codes
-                    theme_process(pad, s)
-                    s = None
-
-                # Keep track of lines for this item
                 lines += 1
-
-            # Keep track of unenumerated lines so that we can
-            # do the above shift-avoiding.
-
-            if not state["enumerated"] and not state["rel_enumerated"]:
-                self.unenumerated_lines = lines
 
         # Render exceptions should be non-fatal. The worst
         # case scenario is that one story's worth of space
@@ -424,5 +378,4 @@ class Story(PluginHandler):
         # Reset theme counters
         theme_reset()
 
-        # Return number of lines this story took to render entirely.
         return lines
