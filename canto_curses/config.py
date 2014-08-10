@@ -922,7 +922,7 @@ class CantoCursesConfig(SubThread):
     @write_lock(config_lock)
     def set_tag_opt(self, tag, option, value):
         tc = self.get_tag_conf(tag)
-        self.set_opt(option, value, tc)
+        assign_to_dict(tc, option, value)
         self.set_tag_conf(tag, tc)
 
     @read_lock(config_lock)

@@ -642,7 +642,7 @@ class TagList(GuiBase):
 
         s = self.callbacks["get_var"]("selected")
         if s and tag == s and len(tag) != 0:
-            toffset = self.callbacks["get_var"]("target_offset") + tag.lines
+            toffset = self.callbacks["get_var"]("target_offset") + tag.lines(self.width)
             self._set_cursor(tag[0], toffset)
 
         self.callbacks["set_tag_opt"](tag.tag, "collapsed", False)
