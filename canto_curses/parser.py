@@ -193,3 +193,25 @@ def prep_for_display(s):
     s = html_entity_convert(s)
     s = char_ref_convert(s)
     return s
+
+def try_parse(s, default):
+    try:
+        parsed = parse_conditionals(s)
+    except Exception as e:
+        log.warn("Failed to parse conditionals in fstring: %s" % s)
+        log.warn("\n" + "".join(traceback.format_exc()))
+        log.warn("Falling back to default.")
+        parsed = parse_conditionals(default)
+    return parsed
+
+def try_eval(parsed, values, fallback_parse):
+    try:
+        s = eval_theme_string(parsed, values)
+    except Exception as e:
+        log.warn("Failed to evaluate fstring: %s with %s" % (parsed, values))
+        log.warn("\n" + "".join(traceback.format_exc()))
+        log.warn("Falling back to default")
+
+        parsed = parse_conditionals(fallback_parse)
+        s = eval_theme_string(parsed, values)
+    return s
