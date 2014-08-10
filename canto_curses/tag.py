@@ -318,6 +318,7 @@ class Tag(PluginHandler, list):
         self.pad = None
         self.footpad = None
         self.width = width
+        self.changed = False
 
         self.lns = self.render_header(width, FakePad(width))
         self.footlines = self.render_footer(width, FakePad(width))
