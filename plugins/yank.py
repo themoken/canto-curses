@@ -5,12 +5,10 @@
 # Requires xclip to be somewhere in $PATH
 
 from canto_curses.taglist import TagListPlugin
-from canto_curses.reader import ReaderPlugin
 from canto_curses.command import register_commands
 
 from os import system
 import logging
-import traceback
 
 log = logging.getLogger("YANK")
 
@@ -25,7 +23,7 @@ class TagListYank(TagListPlugin):
             "yank-link" : (self.cmd_yank_link, ["item-list"], "Yank link"),
             "yank-title" : (self.cmd_yank_title, ["item-list"], "Yank title"),
         }
-        register_commands(self, cmds)
+        register_commands(taglist, cmds)
 
         taglist.bind('y', 'yank-link')
         taglist.bind('Y', 'yank-title')
