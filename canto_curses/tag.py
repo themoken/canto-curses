@@ -24,9 +24,9 @@ log = logging.getLogger("TAG")
 
 # TagCore provides the core tag functionality of keeping track of a list of IDs.
 
-# The Tag class manages stories. Externally, it looks
-# like a Tag takes IDs from the backend and renders an ncurses pad. No class
-# other than Tag actually touches Story objects directly.
+# The Tag class manages stories. Externally, it looks like a Tag takes IDs from
+# the backend and renders an ncurses pad. No class other than Tag actually
+# touches Story objects directly.
 
 class TagPlugin(Plugin):
     pass

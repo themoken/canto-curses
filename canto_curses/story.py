@@ -48,6 +48,9 @@ class Story(PluginHandler):
 
         self.width = 0
 
+        # This is used by the rendering code.
+        self.extra_lines = 0
+
         # Pre and post formats, to be used by plugins
         self.pre_format = ""
         self.post_format = ""
