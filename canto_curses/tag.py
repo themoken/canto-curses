@@ -277,6 +277,28 @@ class Tag(PluginHandler, list):
 
         self.changed = False
 
+    def try_parse(self, s, default):
+        try:
+            parsed = parse_conditionals(s)
+        except Exception as e:
+            log.warn("Failed to parse conditionals in fstring: %s" % s)
+            log.warn("\n" + "".join(traceback.format_exc()))
+            log.warn("Falling back to default.")
+            parsed = parse_conditionals(default)
+        return parsed
+
+    def try_eval(self, parsed, values, fallback_parse):
+        try:
+            s = eval_theme_string(parsed, values)
+        except Exception as e:
+            log.warn("Failed to evaluate fstring: %s with %s" % (parsed, values))
+            log.warn("\n" + "".join(traceback.format_exc()))
+            log.warn("Falling back to default")
+
+            parsed = parse_conditionals(fallback_parse)
+            s = eval_theme_string(parsed, values)
+        return s
+
     def render_header(self, width, pad):
         tag_conf = self.callbacks["get_opt"]("tag")
         taglist_conf = self.callbacks["get_opt"]("taglist")
@@ -302,15 +324,12 @@ class Tag(PluginHandler, list):
         for attr in [ "selected", "unselected", "selected_end", "unselected_end" ]:
             passthru[attr] = tag_conf[attr]
 
-        fstring = tag_conf["format"]
-        try:
-            parsed = parse_conditionals(fstring)
-        except Exception as e:
-            log.warn("Failed to parse conditionals in fstring: %s" %
-                    fstring)
-            log.warn("\n" + "".join(traceback.format_exc()))
-            log.warn("Falling back to default.")
-            parsed = parse_conditionals(DEFAULT_TAG_FSTRING)
+        passthru['pre'] = self.pre_format
+        passthru['post'] = self.post_format
+
+        parsed = self.try_parse(tag_conf["format"], DEFAULT_TAG_FSTRING)
+        parsed_pre = self.try_parse(self.pre_format, "")
+        parsed_post = self.try_parse(self.post_format, "")
 
         values = { 'en' : taglist_conf["tags_enumerated"],
                     'aen' : taglist_conf["tags_enumerated_absolute"],
@@ -321,8 +340,6 @@ class Tag(PluginHandler, list):
                     'to' : self.tag_offset,
                     'vto' : self.visible_tag_offset,
                     "extra_tags" : extra_tags,
-                    'pre' : self.pre_format,
-                    'post' : self.post_format,
                     'tag' : self,
                     'prep' : prep_for_display}
 
@@ -334,15 +351,9 @@ class Tag(PluginHandler, list):
 
         values.update(passthru)
 
-        try:
-            s = eval_theme_string(parsed, values)
-        except Exception as e:
-            log.warn("Failed to evaluate fstring: %s" % fstring)
-            log.warn("\n" + "".join(traceback.format_exc()))
-            log.warn("Falling back to default")
-
-            parsed = parse_conditionals(DEFAULT_TAG_FSTRING)
-            s = eval_theme_string(parsed, values)
+        values["pre"] = self.try_eval(parsed_pre, values, "")
+        values["post"] = self.try_eval(parsed_post, values, "")
+        s = self.try_eval(parsed, values, DEFAULT_TAG_FSTRING)
 
         lines = 0
 

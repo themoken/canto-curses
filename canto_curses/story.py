@@ -310,14 +310,35 @@ class Story(PluginHandler):
         self.lines = lines
         self.changed = False
 
-    def render(self, pad, state):
+    def try_parse(self, s, default):
         try:
-            parsed = parse_conditionals(state["fstring"])
+            parsed = parse_conditionals(s)
         except Exception as e:
-            log.warn("Failed to parse conditionals in fstring: %s" % state["fstring"])
+            log.warn("Failed to parse conditionals in fstring: %s" % s)
             log.warn("\n" + "".join(traceback.format_exc()))
             log.warn("Falling back to default.")
-            parsed = parse_conditionals(DEFAULT_FSTRING)
+            parsed = parse_conditionals(default)
+        return parsed
+
+    def try_eval(self, parsed, values, fallback_parse):
+        try:
+            s = eval_theme_string(parsed, values)
+        except Exception as e:
+            log.warn("Failed to evaluate fstring: %s with %s" % (parsed, values))
+            log.warn("\n" + "".join(traceback.format_exc()))
+            log.warn("Falling back to default")
+
+            parsed = parse_conditionals(fallback_parse)
+            s = eval_theme_string(parsed, values)
+        return s
+
+        # s is now a themed line based on this story.
+        # This doesn't include a border.
+
+    def render(self, pad, state):
+        parsed = self.try_parse(state["fstring"], DEFAULT_FSTRING)
+        parsed_pre = self.try_parse(self.pre_format, "")
+        parsed_post = self.try_parse(self.post_format, "")
 
         # These are escapes that are handled in the theme_print
         # lower in the function and should remain present after
@@ -342,8 +363,6 @@ class Story(PluginHandler):
                     'x' : state["rel_idx"],
                   'sel' : state["selected"],
                     'm' : state["marked"],
-                  'pre' : state["pre"],
-                 'post' : state["post"],
                    'rd' : "read" in state["state"],
                    'ut' : state["user_tags"],
                     't' : self.content["title"],
@@ -359,18 +378,9 @@ class Story(PluginHandler):
 
         values.update(passthru)
 
-        try:
-            s = eval_theme_string(parsed, values)
-        except Exception as e:
-            log.warn("Failed to evaluate fstring: %s" % state["fstring"])
-            log.warn("\n" + "".join(traceback.format_exc()))
-            log.warn("Falling back to default")
-
-            parsed = parse_conditionals(DEFAULT_FSTRING)
-            s = eval_theme_string(parsed, values)
-
-        # s is now a themed line based on this story.
-        # This doesn't include a border.
+        values["pre"] = self.try_eval(parsed_pre, values, "")
+        values["post"] = self.try_eval(parsed_post, values, "")
+        s = self.try_eval(parsed, values, DEFAULT_FSTRING)
 
         lines = 0
 
