@@ -206,10 +206,11 @@ def cmd_execute(cmd):
         obj, hlp, val, hook = arg_types[typ][-1]
         completions, validator = val()
 
-        # If we're on the last part of the sig, all remaining tokens are fed to
-        # the validator.
+        # If we're on the last part of the sig, and there's more than one
+        # argument remaining, then smash them together in such a way that
+        # shlex.split will properly reparse them.
 
-        if i == len(c_sig) - 1:
+        if i == len(c_sig) - 1 and len(lookup) > (i + 2):
             token = " ".join([ shlex.quote(x) for x in lookup[i + 1:]])
         elif i < len(lookup) - 1:
             token = lookup[i + 1]
