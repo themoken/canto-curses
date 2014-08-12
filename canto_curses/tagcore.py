@@ -244,6 +244,10 @@ class TagUpdater(SubThread):
         self.write("PING", [])
         self.discard = True
 
+    def transform(self, name, transform):
+        self.write("TRANSFORM", { name : transform })
+        self.reset()
+
     # Writes are already serialized, so in the meantime, we protect
     # self.attributes and self.needed_attrs with our lock.
 

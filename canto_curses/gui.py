@@ -122,6 +122,7 @@ class CantoCursesGui(CommandHandler):
         tag_updater.reset()
         tag_updater.update()
         self.sync_timer = 0
+        self.release_gui()
 
     def cmd_quit(self):
         self.alive = False

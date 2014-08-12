@@ -8,6 +8,8 @@
 
 from canto_next.plugins import PluginHandler, Plugin
 
+from .tagcore import tag_updater
+
 import traceback
 import logging
 import curses
@@ -355,6 +357,7 @@ class CommandHandler(PluginHandler):
 
         cmds = {
             "bind" : (self.cmd_bind, [ "key", "command" ], "Add bind to %s" % self),
+            "transform" : (self.cmd_transform, ["string"], "Set user transform"),
 
         }
 
@@ -447,6 +450,10 @@ class CommandHandler(PluginHandler):
             return r
 
         return None
+
+    def cmd_transform(self, transform):
+        tag_updater.transform("user", transform)
+        tag_updater.update()
 
     def cmd_bind(self, key, cmd):
         self.bind(key, cmd, True)
