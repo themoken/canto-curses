@@ -762,6 +762,9 @@ class CantoCursesConfig(SubThread):
         c = self.get_conf()
 
         for tag in tags:
+            if tag not in c["tagorder"]:
+                c["tagorder"] = self.config["tagorder"] + [ tag ]
+
             if tag not in self.vars["strtags"]:
                 log.info("New tag %s" % tag)
 
@@ -773,9 +776,6 @@ class CantoCursesConfig(SubThread):
                     self.tag_config[tag] = self.tag_template_config.copy()
 
                 call_hook("curses_new_tag", [ tag ])
-
-            if tag not in c["tagorder"]:
-                c["tagorder"] = self.config["tagorder"] + [ tag ]
 
         self.set_conf(c)
         self.eval_tags()

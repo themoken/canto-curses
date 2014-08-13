@@ -9,8 +9,7 @@
 from canto_next.plugins import Plugin
 from canto_next.format import escsplit
 
-from .tagcore import alltagcores, tag_updater
-from .tag import Tag
+from .tagcore import tag_updater
 
 from .locks import sync_lock
 from .command import CommandHandler, cmd_execute, register_command
@@ -75,35 +74,28 @@ class CantoCursesGui(CommandHandler):
             "switch_tags" : config.switch_tags,
         }
 
-        # Instantiate graphical Tag objects
-
-        for tagcore in alltagcores:
-            log.debug("Instantiating Tag() for %s" % tagcore.tag)
-            Tag(tagcore, self.callbacks)
-
         log.debug("Starting curses.")
+
+        self.alive = True
+        self.sync_timer = 1
 
         self.screen = Screen(self.callbacks)
         self.screen.refresh()
-
-        self.glog_handler = GraphicalLog(self.callbacks, self.screen)
-        rootlog = logging.getLogger()
-        rootlog.addHandler(self.glog_handler)
-
-        self.alive = True
 
         self.graphical_thread = Thread(target = self.run_gui)
         self.graphical_thread.daemon = True
         self.graphical_thread.start()
 
-        self.input_thread = Thread(target = self.run)
-        self.input_thread.daemon = True
-        self.input_thread.start()
-
-        self.sync_timer = 1
+        self.glog_handler = GraphicalLog(self.callbacks, self.screen)
+        rootlog = logging.getLogger()
+        rootlog.addHandler(self.glog_handler)
 
         register_command(self, "refresh", self.cmd_refresh, [], "Refetch everything from the daemon")
         register_command(self, "quit", self.cmd_quit, [], "Quit canto-curses")
+
+        self.input_thread = Thread(target = self.run)
+        self.input_thread.daemon = True
+        self.input_thread.start()
 
     def release_gui(self):
         self.do_gui.set()

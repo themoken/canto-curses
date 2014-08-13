@@ -7,9 +7,10 @@
 #   published by the Free Software Foundation.
 
 from canto_next.rwlock import RWLock
-from canto_next.hooks import call_hook
+from canto_next.hooks import call_hook, on_hook
 
 from .subthread import SubThread
+from .locks import config_lock
 from .config import config
 
 import traceback
@@ -115,6 +116,11 @@ class TagUpdater(SubThread):
 
         self.write("AUTOATTR", self.needed_attrs)
 
+        # Lock config so strtags doesn't change and we don't miss any
+        # subsequent new tags because our hook isn't installed.
+
+        config_lock.acquire_read()
+
         strtags = config.get_var("strtags")
 
         # Request initial information, instantiate TagCores()
@@ -122,6 +128,13 @@ class TagUpdater(SubThread):
         self.write("WATCHTAGS", strtags)
         for tag in strtags:
             TagCore(tag)
+
+        on_hook("curses_new_tag", self.on_new_tag)
+
+        config_lock.release_read()
+
+    def on_new_tag(self, tag):
+        call_hook("curses_new_tagcore", [ TagCore(tag) ])
 
     def prot_attributes(self, d):
         if self.discard:

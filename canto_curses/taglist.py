@@ -10,9 +10,11 @@ from canto_next.hooks import on_hook, remove_hook
 from canto_next.plugins import Plugin
 
 from .command import register_commands, register_arg_types, unregister_all, _int_range
-from .tagcore import tag_updater
+from .tagcore import tag_updater, alltagcores
+from .locks import config_lock
 from .guibase import GuiBase
 from .reader import Reader
+from .tag import Tag
 
 import logging
 import curses
@@ -51,11 +53,32 @@ class TagList(GuiBase):
 
         self.tags = []
 
+        # Hold config log so we don't miss any new TagCores or get updates
+        # before we're ready.
+
+        config_lock.acquire_read()
+
+        # Instantiate graphical Tag objects
+        # Keep in mind TagList may be instantiated more than once.
+
+        for tagcore in alltagcores:
+            for created_tag in callbacks["get_var"]("alltags"):
+                if tagcore.tag == created_tag.tag:
+                    break
+            else:
+                log.debug("Instantiating Tag() for %s" % tagcore.tag)
+                Tag(tagcore, self.callbacks)
+
+        self.update_tag_lists()
+
         # Hooks
         on_hook("curses_eval_tags_changed", self.on_eval_tags_changed)
         on_hook("curses_stories_added", self.on_stories_added)
         on_hook("curses_stories_removed", self.on_stories_removed)
         on_hook("curses_opt_change", self.on_opt_change)
+        on_hook("curses_new_tagcore", self.on_new_tagcore)
+
+        config_lock.release_read()
 
         args = {
             "cursor-offset": ("", self.type_cursor_offset),
@@ -97,8 +120,6 @@ class TagList(GuiBase):
         register_arg_types(self, args)
         register_commands(self, cmds)
 
-        self.update_tag_lists()
-
         self.plugin_class = TagListPlugin
         self.update_plugin_lookups()
 
@@ -108,6 +129,7 @@ class TagList(GuiBase):
         remove_hook("curses_stories_added", self.on_stories_added)
         remove_hook("curses_stories_removed", self.on_stories_removed)
         remove_hook("curses_opt_change", self.on_opt_change)
+        remove_hook("curses_new_tagcore", self.on_new_tagcore)
         unregister_all(self)
 
     def tag_by_item(self, item):
@@ -206,8 +228,13 @@ class TagList(GuiBase):
     def type_item_state(self):
         return (["read","marked","-read","-marked"], lambda x : (True, x))
 
+    def on_new_tagcore(self, tagcore):
+        log.debug("Instantiating Tag() for %s" % tagcore.tag)
+        Tag(tagcore, self.callbacks)
+
     def on_eval_tags_changed(self):
         self.callbacks["set_var"]("needs_refresh", True)
+        self.callbacks["release_gui"]()
 
     # Called with sync_lock, so we are unrestricted.
 
