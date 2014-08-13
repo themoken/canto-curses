@@ -191,7 +191,6 @@ class CantoCurses(CantoClient):
         signal.signal(signal.SIGWINCH, self.winch)
         signal.signal(signal.SIGCHLD, self.child)
 
-        # Block on signals.
         while self.gui.alive:
             self.gui.tick()
             time.sleep(1)
