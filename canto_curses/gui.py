@@ -71,6 +71,7 @@ class CantoCursesGui(CommandHandler):
             "get_tag_opt" : config.get_tag_opt,
             "set_tag_opt" : config.set_tag_opt,
             "release_gui" : self.release_gui,
+            "force_sync" : self.force_sync,
             "switch_tags" : config.switch_tags,
         }
 
@@ -96,6 +97,10 @@ class CantoCursesGui(CommandHandler):
         self.input_thread = Thread(target = self.run)
         self.input_thread.daemon = True
         self.input_thread.start()
+
+    def force_sync(self):
+        self.sync_timer = 0
+        self.release_gui()
 
     def release_gui(self):
         self.do_gui.set()
@@ -186,7 +191,7 @@ class CantoCursesGui(CommandHandler):
             if self.sync_timer <= 0:
                 log.debug("sync!")
                 for tag in self.callbacks["get_var"]("alltags"):
-                    tag.sync(True)
+                    tag.sync()
                 self.sync_timer = 5
 
             # Resize implies a refresh and redraw

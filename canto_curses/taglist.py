@@ -73,6 +73,7 @@ class TagList(GuiBase):
 
         # Hooks
         on_hook("curses_eval_tags_changed", self.on_eval_tags_changed)
+        on_hook("curses_items_added", self.on_items_added)
         on_hook("curses_stories_added", self.on_stories_added)
         on_hook("curses_stories_removed", self.on_stories_removed)
         on_hook("curses_opt_change", self.on_opt_change)
@@ -126,6 +127,7 @@ class TagList(GuiBase):
     def die(self):
         log.debug("Cleaning up hooks...")
         remove_hook("curses_eval_tags_changed", self.on_eval_tags_changed)
+        remove_hook("curses_items_added", self.on_items_added)
         remove_hook("curses_stories_added", self.on_stories_added)
         remove_hook("curses_stories_removed", self.on_stories_removed)
         remove_hook("curses_opt_change", self.on_opt_change)
@@ -235,6 +237,10 @@ class TagList(GuiBase):
     def on_eval_tags_changed(self):
         self.callbacks["set_var"]("needs_refresh", True)
         self.callbacks["release_gui"]()
+
+    # Called without sync_lock
+    def on_items_added(self, tagcore, items):
+        self.callbacks["force_sync"]()
 
     # Called with sync_lock, so we are unrestricted.
 
