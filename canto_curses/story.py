@@ -264,8 +264,9 @@ class Story(PluginHandler):
         for attr in story_conf["format_attrs"]:
             if attr not in self.content:
                 log.debug("%s still needs %s" % (self, attr))
-                pad.addstr("Waiting on content...")
-                return 1
+                self.evald_string = "Waiting on content..."
+                self.lns = 1
+                return self.lns
 
         parsed = try_parse(story_conf["format"], DEFAULT_FSTRING)
         parsed_pre = try_parse(self.pre_format, "")
