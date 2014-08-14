@@ -9,6 +9,7 @@
 from canto_next.client import CantoClient
 from canto_next.plugins import try_plugins
 from canto_next.rwlock import alllocks
+from canto_next.hooks import call_hook
 
 from .config import config
 from .tagcore import tag_updater, alltagcores
@@ -250,6 +251,7 @@ class CantoCurses(CantoClient):
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
 
+        call_hook("curses_exit", [])
         log.info("Exiting.")
         sys.exit(0)
 
