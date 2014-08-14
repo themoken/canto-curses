@@ -211,7 +211,7 @@ class TagList(GuiBase):
 
         sel = self.callbacks["get_var"]("selected")
 
-        deftag = None
+        deftags = []
         if sel in self.tags:
             deftags = [ sel ]
             syms['all']['.'] = [ self.tags.index(sel) ]
