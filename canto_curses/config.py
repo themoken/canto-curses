@@ -761,6 +761,9 @@ class CantoCursesConfig(SubThread):
     def prot_newtags(self, tags):
         c = self.get_conf()
 
+        # Likely the same as tags
+        newtags = []
+
         for tag in tags:
             if tag not in c["tagorder"]:
                 c["tagorder"] = self.config["tagorder"] + [ tag ]
@@ -775,9 +778,13 @@ class CantoCursesConfig(SubThread):
                     log.debug("Using default tag config for %s" % tag)
                     self.tag_config[tag] = self.tag_template_config.copy()
 
-                call_hook("curses_new_tag", [ tag ])
+                newtags.append(tag)
 
         self.set_conf(c)
+
+        for tag in newtags:
+            call_hook("curses_new_tag", [ tag ])
+
         self.eval_tags()
 
     @write_lock(config_lock)
