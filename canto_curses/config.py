@@ -811,7 +811,8 @@ class CantoCursesConfig(SubThread):
         self.set_conf(c)
         self.eval_tags()
 
-    @write_lock(config_lock)
+    @read_lock(config_lock)
+    @write_lock(var_lock)
     def eval_tags(self):
         prevtags = self.vars["curtags"]
 
