@@ -200,7 +200,8 @@ class TagUpdater(SubThread):
             self.item_adds = []
             return
 
-        self.item_tag.add_items(self.item_adds)
+        if self.item_adds:
+            self.item_tag.add_items(self.item_adds)
 
         # Eliminate discarded items. This has to be done here, so we have
         # access to all of the items given in the multiple ITEM responses.
@@ -211,10 +212,11 @@ class TagUpdater(SubThread):
             if id not in protected and id not in self.item_buf:
                 self.item_removes.append(id)
 
-        self.item_tag.remove_items(self.item_removes)
+        if self.item_removes:
+            self.item_tag.remove_items(self.item_removes)
 
-        for id in self.item_removes:
-            unprotect["auto"].append(id)
+            for id in self.item_removes:
+                unprotect["auto"].append(id)
 
         # If we're using the maintain update style, reorder the feed
         # properly. Append style requires no extra work (add_items does
