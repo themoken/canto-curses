@@ -1,4 +1,4 @@
-== Canto Curses ==
+# Canto Curses
 
 The curses (text) client for canto-daemon.
 
@@ -6,7 +6,7 @@ Canto-daemon is required to work and is found at:
 
 http://github.com/themoken/canto-next
 
-=== Requirements ===
+## Requirements
 
     Debian / Ubuntu
     - python3 (will grab libncursesw5 and libreadline6 too)
@@ -23,5 +23,8 @@ http://github.com/themoken/canto-next
 
     Others, just ensure you have Python 3.3+, ncurses, their headers and GCC
 
-=== Install ===
+## Install
+
+```sh
     $ sudo python3 setup.py install
+```
