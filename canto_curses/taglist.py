@@ -324,7 +324,7 @@ class TagList(GuiBase):
         for tag in tags:
             for item in tag:
                 if item.handle_state(state):
-                    attributes[item.id] = { "canto-state" : state }
+                    attributes[item.id] = { "canto-state" : item.content["canto-state"] }
 
         if attributes:
             tag_updater.set_attributes(attributes)
