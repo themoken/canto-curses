@@ -758,6 +758,7 @@ class CantoCursesConfig(SubThread):
     # Process new tags.
 
     @write_lock(config_lock)
+    @write_lock(var_lock) # eval_tags
     def prot_newtags(self, tags):
         c = self.get_conf()
 
@@ -788,6 +789,7 @@ class CantoCursesConfig(SubThread):
         self.eval_tags()
 
     @write_lock(config_lock)
+    @write_lock(var_lock) # eval_tags
     def prot_deltags(self, tags):
         c = self.get_conf()
 
@@ -844,10 +846,8 @@ class CantoCursesConfig(SubThread):
         # value, which should always cause a fresh message display,
         # even if it's the same error as before.
 
-        var_lock.acquire_read()
+        var_lock.acquire_write()
         if self.vars[tweak] != value:
-            var_lock.release_read()
-            var_lock.acquire_write()
 
             # If we're selecting or unselecting a story, then
             # we need to make sure it doesn't disappear.
@@ -883,7 +883,7 @@ class CantoCursesConfig(SubThread):
 
             call_hook("curses_var_change", [{ tweak : value }])
         else:
-            var_lock.release_read()
+            var_lock.release_write()
 
     @read_lock(var_lock)
     def get_var(self, tweak):
