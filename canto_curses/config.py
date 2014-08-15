@@ -701,9 +701,11 @@ class CantoCursesConfig(SubThread):
     # TagUpdater()
 
     @write_lock(config_lock)
+    @write_lock(var_lock)
     def prot_listtags(self, tags):
         log.debug("listtags: %s" % tags)
         self.vars["strtags"] = tags
+        self.config["tagorder"] = tags
 
     # configs accepts any changes, calls the opt_change hooks and if write is
     # set, sends those changes to the daemon. It's called both when receving
