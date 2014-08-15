@@ -781,6 +781,7 @@ class CantoCursesConfig(SubThread):
                     log.debug("Using default tag config for %s" % tag)
                     self.tag_config[tag] = self.tag_template_config.copy()
 
+                self.vars["strtags"].append(tag)
                 newtags.append(tag)
 
         self.set_conf(c)
