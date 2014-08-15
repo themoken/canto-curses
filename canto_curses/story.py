@@ -264,6 +264,9 @@ class Story(PluginHandler):
         for attr in story_conf["format_attrs"]:
             if attr not in self.content:
                 log.debug("%s still needs %s" % (self, attr))
+                self.left = " "
+                self.left_more = " "
+                self.right = " "
                 self.evald_string = "Waiting on content..."
                 self.lns = 1
                 return self.lns
