@@ -10,7 +10,7 @@ from canto_next.rwlock import RWLock
 from canto_next.hooks import call_hook, on_hook
 
 from .subthread import SubThread
-from .locks import config_lock
+from .locks import var_lock
 from .config import config
 
 import traceback
@@ -116,10 +116,10 @@ class TagUpdater(SubThread):
 
         self.write("AUTOATTR", self.needed_attrs)
 
-        # Lock config so strtags doesn't change and we don't miss any
-        # subsequent new tags because our hook isn't installed.
+        # Lock vars so strtags doesn't change and we don't miss any subsequent
+        # new tags because our hook isn't installed.
 
-        config_lock.acquire_read()
+        var_lock.acquire_read()
 
         strtags = config.get_var("strtags")
 
@@ -131,7 +131,7 @@ class TagUpdater(SubThread):
 
         on_hook("curses_new_tag", self.on_new_tag)
 
-        config_lock.release_read()
+        var_lock.release_read()
 
     def on_new_tag(self, tag):
         call_hook("curses_new_tagcore", [ TagCore(tag) ])
