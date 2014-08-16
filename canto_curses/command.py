@@ -228,6 +228,7 @@ def cmd_execute(cmd):
         args.append(r)
 
     c_func(*args)
+    return True
 
 # Return a function taking a string definition of a list, with possible special
 # characters, and return an explicit list. Each item in the returned list will be unique, so

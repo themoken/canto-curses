@@ -133,8 +133,9 @@ class CantoCursesGui(CommandHandler):
 
     def issue_cmd(self, winlist, cmd):
         sync_lock.acquire_write()
-        cmd_execute(cmd)
+        r = cmd_execute(cmd)
         sync_lock.release_write()
+        return r
 
     def run(self):
         while self.alive:
@@ -157,15 +158,23 @@ class CantoCursesGui(CommandHandler):
             # Now actually issue the commands
 
             for cmd in cmds:
+
+                okay = False
+
                 # Command is our one hardcoded command because it's special, and also shouldn't invoke itself.
                 if cmd == "command":
                     subcmd = self.screen.input_callback(':')
                     log.debug("Got %s from user command" % subcmd)
                     subcmds = self.cmdsplit(subcmd)
                     for subcmd in subcmds:
-                        self.issue_cmd(reversed(f), subcmd)
+                        okay = self.issue_cmd(reversed(f), subcmd)
+                        if not okay:
+                            break
                 else:
-                    self.issue_cmd(reversed(f), cmd)
+                    okay = self.issue_cmd(reversed(f), cmd)
+
+                if not okay:
+                    break
 
             # Let the GUI thread process, or realize it's dead.
             self.release_gui()
