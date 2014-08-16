@@ -71,6 +71,7 @@ aliases = {
     "q" : "quit",
     "filter" : "transform",
     "sort" : "transform",
+    "global_transform" : "remote one-config defaults.global_transform",
     "cursor_type" : "remote one-config CantoCurses.taglist.cursor.type",
     "cursor_scroll" : "remote one-config CantoCurses.taglist.cursor.scroll",
     "cursor_edge" : "remote one-config --eval CantoCurses.taglist.cursor.edge",
