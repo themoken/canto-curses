@@ -330,6 +330,10 @@ def _int_range(name, itrs, syms, fallback, s):
         rlist = fallback
         log.debug("%s falling back to %s" % (rlist, fallback))
 
+    # If our fallback was empty, fail it.
+    if not rlist:
+        return (False, None)
+
     # XXX should we return (False, []) on rlist empty, or...?
 
     return (True, rlist)
