@@ -116,6 +116,8 @@ class TagList(GuiBase):
             "demote" : (self.cmd_demote, ["tag-list"], "Move tags down in the order"),
 
             "tag-item" : (self.cmd_tag_item, ["string", "item-list"], "Add a tag to individual items"),
+
+            "tag-config" : (self.cmd_tag_config, ["tag-list", "string"], "Manipulate a tag's configuration"),
         }
 
         register_arg_types(self, args)
@@ -797,12 +799,12 @@ class TagList(GuiBase):
 
         self._set_cursor(cur, curpos)
 
-    def cmd_tag_config(self, **kwargs):
-        tag = kwargs["tag"].tag.replace(".","\\.")
-        config = kwargs["config"]
+    def cmd_tag_config(self, tags, config):
+        for tag in tags:
+            strtag = tag.tag.replace(".","\\.")
 
-        argv = ["canto-remote", "one-config", "tags." + tag + "." + config]
-        self._remote_argv(argv)
+            argv = ["canto-remote", "one-config", "tags." + strtag + "." + config]
+            self._remote_argv(argv)
 
     def cmd_add_tag(self, **kwargs):
         for tag in kwargs["tags"]:
