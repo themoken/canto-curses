@@ -616,7 +616,7 @@ class Screen(CommandHandler):
             r = ord("\b")
 
         # Accept current completion
-        if chr(r) in " \b":
+        if chr(r) in " \b\n":
             comp = self.input_box.break_completion()
             if comp:
                 log.debug("inserting: %s" % comp)
