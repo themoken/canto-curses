@@ -572,30 +572,40 @@ class Screen(CommandHandler):
         log.debug("rcomplete: %s %s" % (prefix, index))
         r = cmd_complete(prefix, index)
         log.debug("rcomp ret: %s" % (r,))
-        return r
+
+        # Still have completions, return this one
+        if r:
+            return r
+
+        # No more completions (last call of this), so trigger completion info
+        # display.
+
+        # TODO: Does this need to be behind a configuration?
+
+        if True:
+            r = cmd_complete_info()
+            if r and (r[0] or r[1]):
+                c_hlp, a_hlp, completions = r
+                msg = "%s\n%s" % (c_hlp, a_hlp)
+
+                if InfoBox in self.window_types:
+                    self.callbacks["set_var"]("info_msg", msg)
+                else:
+                    log.info(msg)
+
+            # We're called from readline, so we have to take sync_lock before
+            # we cause anything other than the input box to refresh/redraw
+
+            sync_lock.acquire_write()
+            self.refresh()
+            self.redraw()
+            sync_lock.release_write()
+
+        return None
 
     def _readline_display_matches(self, sub, matches, maxlen):
         log.debug("rdispmatch: %s - %s - %s" % (sub, matches, maxlen))
-
-        r = cmd_complete_info()
-        if r and (r[0] or r[1]):
-            c_hlp, a_hlp, completions = r
-            msg = "%s\n%s" % (c_hlp, a_hlp)
-
-            if InfoBox in self.window_types:
-                self.callbacks["set_var"]("info_msg", msg)
-            else:
-                log.info(msg)
-
         self.input_box.rotate_completions(sub, matches)
-
-        # We're called from readline, so we have to take sync_lock before we
-        # cause anything other than the input box to refresh/redraw
-
-        sync_lock.acquire_write()
-        self.refresh()
-        self.redraw()
-        sync_lock.release_write()
 
     def _readline_getc(self):
 
