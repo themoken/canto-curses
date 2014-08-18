@@ -9,7 +9,7 @@
 from canto_next.hooks import on_hook
 from canto_next.plugins import Plugin
 
-from .command import CommandHandler, register_commands, register_arg_types, unregister_all
+from .command import CommandHandler, register_commands, register_arg_types, unregister_all, _string
 
 import logging
 
@@ -34,9 +34,11 @@ class GuiBase(CommandHandler):
 
         args = {
             "remote-cmd": ("[remote cmd]", self.type_remote_cmd),
+            "url" : ("[URL]", _string),
         }
 
         cmds = {
+            "remote addfeed" : (lambda x : self.cmd_remote("addfeed", x), ["url"], "Subscribe to a feed."),
             "remote": (self.cmd_remote, ["remote-cmd", "string"], "Give a command to canto-remote"),
             "destroy": (self.cmd_destroy, [], "Destroy this window"),
         }

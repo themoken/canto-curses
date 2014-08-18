@@ -118,6 +118,29 @@ def _unalias(lookup):
     else:
         return lookup
 
+# Use lookup information to find longest possible sig So, given
+# ['remote','addfeed'], return the signature for "remote addfeed" instead of
+# just "remote". This lets us get completions for specific subcommands.
+
+# Returns the a tuple with sig info, and a match, which has the command
+# stripped out.
+
+def _get_max_sig(lookup):
+    lookup = _unalias(lookup)
+    match = []
+    ret = None
+
+    for i in range(len(lookup)):
+        test = " ".join(lookup[0:i + 1])
+
+        if test in cmds:
+            ret = cmds[test][-1]
+            match = lookup[i + 1:]
+        else:
+            break
+
+    return match, ret
+
 def cmd_complete_info():
     buf = readline.get_line_buffer()
 
@@ -132,9 +155,6 @@ def cmd_complete_info():
     else:
         prefix = lookup[-1]
 
-    log.debug("LOOKUPS: %s" % lookup)
-    log.debug("PREFIX: %s" % prefix)
-
     if len(lookup) == 1:
         c = list(cmds.keys())
         c.extend(list(aliases.keys()))
@@ -142,17 +162,13 @@ def cmd_complete_info():
         log.debug("CMDS: %s" % c)
         return ("", "", c)
     else:
-        lookup = _unalias(lookup)
+        lookup, sig = _get_max_sig(lookup)
 
-        # Don't complete non-existent commands
-        if lookup[0] not in cmds:
+        # No matches, bail
+        if not sig:
             return None
 
-        c_obj, c_func, c_sig, c_hlp = cmds[lookup[0]][-1]
-
-        # Trim the command out of the lookups
-
-        lookup = lookup[1:]
+        c_obj, c_func, c_sig, c_hlp = sig
 
         # No completing beyond end of arguments
 
@@ -197,12 +213,12 @@ def cmd_execute(cmd):
     if not lookup:
         return False
 
-    lookup = _unalias(lookup)
+    lookup, sig = _get_max_sig(lookup)
 
-    if lookup[0] not in cmds:
+    if not sig:
         return False
 
-    c_obj, c_func, c_sig, c_hlp = cmds[lookup[0]][-1]
+    c_obj, c_func, c_sig, c_hlp = sig
     args = []
 
     for i, typ in enumerate(c_sig):
@@ -213,10 +229,10 @@ def cmd_execute(cmd):
         # argument remaining, then smash them together in such a way that
         # shlex.split will properly reparse them.
 
-        if i == len(c_sig) - 1 and len(lookup) > (i + 2):
-            token = " ".join([ shlex.quote(x) for x in lookup[i + 1:]])
-        elif i < len(lookup) - 1:
-            token = lookup[i + 1]
+        if i == len(c_sig) - 1 and len(lookup) > (i + 1):
+            token = " ".join([ shlex.quote(x) for x in lookup[i:]])
+        elif i < len(lookup):
+            token = lookup[i]
         else:
             token = ""
 
