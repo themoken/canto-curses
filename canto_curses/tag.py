@@ -386,7 +386,7 @@ class Tag(PluginHandler, list):
     # Synchronize this Tag with its TagCore
 
     def sync(self, force=False):
-        if force or self.tagcore.changed:
+        if force or self.tagcore.changes:
             my_ids = [ s.id for s in self ]
             current_stories = []
             added_stories = []
@@ -426,3 +426,5 @@ class Tag(PluginHandler, list):
         # Pass the sync onto story objects
         for s in self:
             s.sync()
+
+        self.tagcore.ack_changes()
