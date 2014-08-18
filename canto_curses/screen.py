@@ -80,11 +80,7 @@ class Screen(CommandHandler):
         os.unsetenv('LINES')
         os.unsetenv('COLUMNS')
 
-        for line in ['tab: complete',\
-                'set show-all-if-ambiguous on',
-                'set echo-control-characters off']:
-            readline.parse_and_bind(line)
-
+        readline.parse_and_bind('tab: complete')
         readline.set_completer(self.readline_complete)
 
         self.floats = []
