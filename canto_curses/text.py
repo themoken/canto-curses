@@ -6,6 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from canto_next.hooks import on_hook, remove_hook
+
 from .theme import FakePad, WrapPad, theme_print, theme_lstrip, theme_border, theme_reset
 from .command import register_commands, unregister_command
 from .guibase import GuiBase
@@ -200,24 +202,43 @@ class TextBox(GuiBase):
     def get_width(self, mwidth):
         return mwidth
 
-class ErrorBox(TextBox):
-    def __init__(self):
-        TextBox.__init__(self)
+class VarBox(TextBox):
+    def init(self, pad, callbacks, var):
+        TextBox.init(self, pad, callbacks)
         unregister_command(self, "bind")
+        self.var = var
+        self.value = self.callbacks["get_var"](var)
+
+        on_hook("curses_var_change", self.on_var_change)
+
+    def on_var_change(self, change):
+        if self.var in change:
+            self.value = change[self.var]
+            if self.value == "":
+                self.cmd_destroy()
+            self.callbacks["set_var"]("needs_refresh", True)
+            self.callbacks["release_gui"]()
+
+    def cmd_destroy(self):
+        remove_hook("curses_var_change", self.on_var_change)
+        TextBox.cmd_destroy(self)
+
+class InfoBox(VarBox):
+    def init(self, pad, callbacks):
+        VarBox.init(self, pad, callbacks, "info_msg")
 
     def update_text(self):
-        self.text = "%7" + self.callbacks["get_var"]("error_msg") + "%0"
-
-    def get_opt_name(self):
-        return "errorbox"
-
-class InfoBox(TextBox):
-    def __init__(self):
-        TextBox.__init__(self)
-        unregister_command(self, "bind")
-
-    def update_text(self):
-        self.text = "%1" + self.callbacks["get_var"]("info_msg") + "%0"
+        self.text = "%1" + self.value + "%0"
 
     def get_opt_name(self):
         return "infobox"
+
+class ErrorBox(VarBox):
+    def init(self, pad, callbacks):
+        VarBox.init(self, pad, callbacks, "error_msg")
+
+    def update_text(self):
+        self.text = "%7" + self.value + "%0"
+
+    def get_opt_name(self):
+        return "errorbox"
