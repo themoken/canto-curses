@@ -217,7 +217,6 @@ class VarBox(TextBox):
             if self.value == "":
                 self.cmd_destroy()
             self.callbacks["set_var"]("needs_refresh", True)
-            self.callbacks["release_gui"]()
 
     def cmd_destroy(self):
         remove_hook("curses_var_change", self.on_var_change)

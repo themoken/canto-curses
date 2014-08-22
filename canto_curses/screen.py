@@ -622,6 +622,10 @@ class Screen(CommandHandler):
                 log.debug("inserting: %s" % comp)
                 readline.insert_text(comp)
 
+            # Clear out any old completion info
+            self.callbacks["set_var"]("info_msg", "")
+            self.callbacks["release_gui"]()
+
         log.debug("KEY: %s" % r)
         return r
 

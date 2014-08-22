@@ -150,6 +150,12 @@ class CantoCursesGui(CommandHandler):
                 if cmd:
                     break
             else:
+
+                # Dismiss info box on any unbound key.
+
+                if self.callbacks["get_var"]("info_msg"):
+                    self.callbacks["set_var"]("info_msg", "")
+                    self.release_gui()
                 continue
 
             cmds = self.cmdsplit(cmd)
