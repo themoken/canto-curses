@@ -277,6 +277,13 @@ def _range(cur_iter, syms, item):
             pass
     return None
 
+def _int_check(x):
+    try:
+        r = int(x)
+        return (True, r)
+    except:
+        return (False, None)
+
 def _int_range(name, itrs, syms, fallback, s):
     slist = s.split(',')
 
@@ -372,51 +379,7 @@ class CommandHandler(PluginHandler):
                   ' ' : "space",
                   "\\" : "\\\\" }
 
-        args = {
-                "key": ("[key]:\nSimple keys (a), basic chords (C-r, M-a), or named whitespace like space or tab", _string),
-                "command": ("[command]:\nAny canto-curses command. Can be chained with &, other uses of & should be quoted or escaped.", _string),
-        }
-
-        cmds = {
-            "bind" : (self.cmd_bind, [ "key", "command" ], "Add bind to %s" % self),
-            "transform" : (self.cmd_transform, ["string"], "Set user transform"),
-
-        }
-
-        register_arg_types(self, args)
-        register_commands(self, cmds)
-
         self.meta = False
-
-    def _int_check(self, x):
-        try:
-            r = int(x)
-            return (True, r)
-        except:
-            return (False, None)
-
-    def command(self, command):
-        if " " in command:
-            command, args = command.split(" ", 1)
-        else:
-            args = ""
-
-        attr = "cmd_" + command.replace("-","_")
-        if hasattr(self, attr):
-            try:
-                func = getattr(self, attr)
-                r = func(self, args = args)
-                # Consider returning None as OK
-                if r == None:
-                    return True
-                return r
-            except Exception as e:
-                tb = traceback.format_exc()
-                log.error("Exception running command %s" % command)
-                log.error("\n" + "".join(tb))
-                log.error("Continuing...")
-
-        return None
 
     def translate_key(self, key):
         if key in self.key_translations:
@@ -473,30 +436,3 @@ class CommandHandler(PluginHandler):
 
         return None
 
-    def cmd_transform(self, transform):
-        tag_updater.transform("user", transform)
-        tag_updater.update()
-
-    def cmd_bind(self, key, cmd):
-        self.bind(key, cmd, True)
-
-    def bind(self, key, cmd, overwrite=False):
-        opt = self.get_opt_name()
-        key = self.translate_key(key)
-        c = self.callbacks["get_conf"]()
-        if not cmd:
-            if key in c[opt]["key"]:
-                log.info("[%s] %s = %s" % (opt, key, c[opt]["key"][key]))
-                return True
-            else:
-                return False
-        else:
-            if key in c[opt]["key"] and c[opt]["key"][key] and not overwrite:
-                log.debug("%s already bound to %s" % (key, c[opt]["key"][key]))
-                return False
-
-            log.debug("Binding %s.%s to %s" % (opt, key, cmd))
-
-            c[opt]["key"][key] = cmd
-            self.callbacks["set_conf"](c)
-            return True

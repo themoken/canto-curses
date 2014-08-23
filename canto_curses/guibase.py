@@ -33,11 +33,15 @@ class GuiBase(CommandHandler):
         self.update_plugin_lookups()
 
         args = {
+            "key": ("[key]:\nSimple keys (a), basic chords (C-r, M-a), or named whitespace like space or tab", _string),
+            "command": ("[command]:\nAny canto-curses command. Can be chained with &, other uses of & should be quoted or escaped.", _string),
             "remote-cmd": ("[remote cmd]", self.type_remote_cmd),
             "url" : ("[URL]", _string),
         }
 
         cmds = {
+            "bind" : (self.cmd_bind, [ "key", "command" ], "Add bind to %s" % self),
+            "transform" : (self.cmd_transform, ["string"], "Set user transform"),
             "remote addfeed" : (lambda x : self.cmd_remote("addfeed", x), ["url"], "Subscribe to a feed."),
             "remote": (self.cmd_remote, ["remote-cmd", "string"], "Give a command to canto-remote"),
             "destroy": (self.cmd_destroy, [], "Destroy this window"),
@@ -226,3 +230,31 @@ class GuiBase(CommandHandler):
 
     def _fetch(self, urls):
         self._goto(urls, True)
+
+    def cmd_transform(self, transform):
+        tag_updater.transform("user", transform)
+        tag_updater.update()
+
+    def cmd_bind(self, key, cmd):
+        self.bind(key, cmd, True)
+
+    def bind(self, key, cmd, overwrite=False):
+        opt = self.get_opt_name()
+        key = self.translate_key(key)
+        c = self.callbacks["get_conf"]()
+        if not cmd:
+            if key in c[opt]["key"]:
+                log.info("[%s] %s = %s" % (opt, key, c[opt]["key"][key]))
+                return True
+            else:
+                return False
+        else:
+            if key in c[opt]["key"] and c[opt]["key"][key] and not overwrite:
+                log.debug("%s already bound to %s" % (key, c[opt]["key"][key]))
+                return False
+
+            log.debug("Binding %s.%s to %s" % (opt, key, cmd))
+
+            c[opt]["key"][key] = cmd
+            self.callbacks["set_conf"](c)
+            return True

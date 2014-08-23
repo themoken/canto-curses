@@ -9,7 +9,7 @@
 from canto_next.hooks import on_hook, remove_hook
 from canto_next.plugins import Plugin
 
-from .command import register_commands, register_arg_types, unregister_all, _int_range
+from .command import register_commands, register_arg_types, unregister_all, _int_range, _int_check
 from .tagcore import tag_updater, alltagcores
 from .locks import config_lock
 from .guibase import GuiBase
@@ -150,7 +150,7 @@ class TagList(GuiBase):
     # happens if it's a generic type without bounds)
 
     def type_cursor_offset(self):
-        return (None, self._int_check)
+        return (None, _int_check)
 
     def unhook_item_list(self, vars):
         # Perhaps this should be a separate hook for command completion?
