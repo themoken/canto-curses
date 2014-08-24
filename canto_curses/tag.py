@@ -113,6 +113,10 @@ class Tag(PluginHandler, list):
         # Reset so items get die() called and everything
         # else is notified about items disappearing.
 
+        for s in self:
+            s.die()
+        del self[:]
+
         remove_hook("curses_opt_change", self.on_opt_change)
         remove_hook("curses_tag_opt_change", self.on_tag_opt_change)
         remove_hook("curses_attributes", self.on_attributes)
