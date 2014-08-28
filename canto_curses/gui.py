@@ -12,7 +12,7 @@ from canto_next.format import escsplit
 from .tagcore import tag_updater
 
 from .locks import sync_lock
-from .command import CommandHandler, cmd_execute, register_command
+from .command import CommandHandler, cmd_execute, register_command, register_alias
 from .text import ErrorBox, InfoBox
 from .config import config
 from .screen import Screen
@@ -93,6 +93,7 @@ class CantoCursesGui(CommandHandler):
 
         register_command(self, "refresh", self.cmd_refresh, [], "Refetch everything from the daemon")
         register_command(self, "quit", self.cmd_quit, [], "Quit canto-curses")
+        register_alias(self, "q", "quit")
 
         self.input_thread = Thread(target = self.run)
         self.input_thread.daemon = True

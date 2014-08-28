@@ -9,7 +9,7 @@
 from canto_next.hooks import on_hook
 from canto_next.plugins import Plugin
 
-from .command import CommandHandler, register_commands, register_arg_types, unregister_all, _string
+from .command import CommandHandler, register_commands, register_arg_types, unregister_all, _string, register_aliases
 
 import logging
 
@@ -47,8 +47,48 @@ class GuiBase(CommandHandler):
             "destroy": (self.cmd_destroy, [], "Destroy this window"),
         }
 
+        aliases = {
+            "browser" : "remote one-config CantoCurses.browser.path",
+            "txt_browser" : "remote one-config --eval CantoCurses.browser.text",
+            "add" : "remote addfeed",
+            "del" : "remote delfeed",
+            "list" : "remote listfeeds",
+            "global_transform" : "remote one-config defaults.global_transform",
+            "cursor_type" : "remote one-config CantoCurses.taglist.cursor.type",
+            "cursor_scroll" : "remote one-config CantoCurses.taglist.cursor.scroll",
+            "cursor_edge" : "remote one-config --eval CantoCurses.taglist.cursor.edge",
+            "story_unselected" : "remote one-config CantoCurses.story.unselected",
+            "story_selected" : "remote one-config CantoCurses.story.selected",
+            "story_selected_end" : "remote one-config CantoCurses.story.selected_end",
+            "story_unselected_end" : "remote one-config CantoCurses.story.unselected_end",
+            "story_unread" : "remote one-config CantoCurses.story.unread",
+            "story_read" : "remote one-config CantoCurses.story.read",
+            "story_read_end" : "remote one-config CantoCurses.story.read_end",
+            "story_unread_end" : "remote one-config CantoCurses.story.unread_end",
+            "story_unmarked" : "remote one-config CantoCurses.story.unmarked",
+            "story_marked" : "remote one-config CantoCurses.story.marked",
+            "story_marked_end" : "remote one-config CantoCurses.story.marked_end",
+            "story_unmarked_end" : "remote one-config CantoCurses.story.unmarked_end",
+            "tag_unselected" : "remote one-config CantoCurses.tag.unselected",
+            "tag_selected" : "remote one-config CantoCurses.tag.selected",
+            "tag_selected_end" : "remote one-config CantoCurses.tag.selected_end",
+            "tag_unselected_end" : "remote one-config CantoCurses.tag.unselected_end",
+            "update_interval" : "remote one-config --eval CantoCurses.update.auto.interval",
+            "update_style" : "remote one-config CantoCurses.update.style",
+            "update_auto" : "remote one-config --eval CantoCurses.update.auto.enabled",
+            "border" : "remote one-config --eval CantoCurses.taglist.border",
+            "reader_align" : "remote one-config CantoCurses.reader.window.align",
+            "reader_float" : "remote one-config --eval CantoCurses.reader.window.float",
+            "keep_time" : "remote one-config --eval defaults.keep_time",
+            "keep_unread" : "remote one-config --eval defaults.keep_unread",
+            "kill_daemon_on_exit" : "remote one-config --eval CantoCurses.kill_daemon_on_exit",
+            "filter" : "transform",
+            "sort" : "transform",
+        }
+
         register_arg_types(self, args)
         register_commands(self, cmds)
+        register_aliases(self, aliases)
 
         self.editor = None
 

@@ -45,62 +45,48 @@ def register_arg_types(obj, types):
     for name in types:
         register_arg_type(obj, name, *types[name])
 
+aliases = {}
+
+def register_alias(obj, alias, longform):
+    if alias in aliases:
+        aliases[alias].append((obj, longform))
+    else:
+        aliases[alias] = [ (obj, longform) ]
+
+def register_aliases(obj, given):
+    for alias in given:
+        register_alias(obj, alias, given[alias])
+
 # Passthru for any string, including empty
 def _string():
     return (None, lambda x : (True, x))
 
 register_arg_type(_string, "string", "Any String", _string)
 
+# Unregister, clear out obj associations, del keys if empty.
+
+def _unregister(obj, dct, name):
+    if name in dct:
+        dct[name] = [ x for x in dct[name] if x[0] != obj]
+        if not dct[name]:
+            del dct[name]
+
 def unregister_command(obj, name):
-    cmds[name] = [ x for x in cmds[name] if x[0] != obj ]
+    _unregister(obj, cmds, name)
+
+def unregister_arg_type(obj, typ):
+    _unregister(obj, arg_types, typ)
+
+def unregister_alias(obj, alias):
+    _unregister(obj, aliases, alias)
 
 def unregister_all(obj):
-    for key in cmds.keys():
-        cmds[key] = [ x for x in cmds[key] if x[0] != obj ]
-    for key in arg_types.keys():
-        arg_types[key] = [ x for x in arg_types[key] if x[0] != obj ]
-
-# TODO : Make aliases registerable, for plugins.
-
-aliases = {
-    "browser" : "remote one-config CantoCurses.browser.path",
-    "txt_browser" : "remote one-config --eval CantoCurses.browser.text",
-    "add" : "remote addfeed",
-    "del" : "remote delfeed",
-    "list" : "remote listfeeds",
-    "q" : "quit",
-    "filter" : "transform",
-    "sort" : "transform",
-    "global_transform" : "remote one-config defaults.global_transform",
-    "cursor_type" : "remote one-config CantoCurses.taglist.cursor.type",
-    "cursor_scroll" : "remote one-config CantoCurses.taglist.cursor.scroll",
-    "cursor_edge" : "remote one-config --eval CantoCurses.taglist.cursor.edge",
-    "story_unselected" : "remote one-config CantoCurses.story.unselected",
-    "story_selected" : "remote one-config CantoCurses.story.selected",
-    "story_selected_end" : "remote one-config CantoCurses.story.selected_end",
-    "story_unselected_end" : "remote one-config CantoCurses.story.unselected_end",
-    "story_unread" : "remote one-config CantoCurses.story.unread",
-    "story_read" : "remote one-config CantoCurses.story.read",
-    "story_read_end" : "remote one-config CantoCurses.story.read_end",
-    "story_unread_end" : "remote one-config CantoCurses.story.unread_end",
-    "story_unmarked" : "remote one-config CantoCurses.story.unmarked",
-    "story_marked" : "remote one-config CantoCurses.story.marked",
-    "story_marked_end" : "remote one-config CantoCurses.story.marked_end",
-    "story_unmarked_end" : "remote one-config CantoCurses.story.unmarked_end",
-    "tag_unselected" : "remote one-config CantoCurses.tag.unselected",
-    "tag_selected" : "remote one-config CantoCurses.tag.selected",
-    "tag_selected_end" : "remote one-config CantoCurses.tag.selected_end",
-    "tag_unselected_end" : "remote one-config CantoCurses.tag.unselected_end",
-    "update_interval" : "remote one-config --eval CantoCurses.update.auto.interval",
-    "update_style" : "remote one-config CantoCurses.update.style",
-    "update_auto" : "remote one-config --eval CantoCurses.update.auto.enabled",
-    "border" : "remote one-config --eval CantoCurses.taglist.border",
-    "reader_align" : "remote one-config CantoCurses.reader.window.align",
-    "reader_float" : "remote one-config --eval CantoCurses.reader.window.float",
-    "keep_time" : "remote one-config --eval defaults.keep_time",
-    "keep_unread" : "remote one-config --eval defaults.keep_unread",
-    "kill_daemon_on_exit" : "remote one-config --eval CantoCurses.kill_daemon_on_exit"
-}
+    for key in list(cmds.keys()):
+        unregister_command(obj, key)
+    for key in list(arg_types.keys()):
+        unregister_arg_type(obj, key)
+    for key in list(aliases.keys()):
+        unregister_alias(obj, key)
 
 # Take a split lookup and unalias the first argument
 
@@ -111,7 +97,10 @@ def _unalias(lookup):
         if not lookup[0].startswith(alias):
             continue
         log.debug("De-alias: %s" % alias)
-        base = shlex.split(aliases[alias])
+
+        # deref -1 for latest register, 1 for longform instead of obj
+        base = shlex.split(aliases[alias][-1][1])
+
         if len(lookup[0]) > len(alias):
             base += [ lookup[0][len(alias):] ]
         return base + lookup[1:]
