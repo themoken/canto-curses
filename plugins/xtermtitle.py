@@ -20,10 +20,10 @@ def clear_xterm_title():
 
 def xt_on_var_change(var_dict):
     if "selected" in var_dict:
-        if var_dict["selected"] == None:
-            set_xterm_title("Canto")
-        else:
+        if var_dict["selected"] and "title" in var_dict["selected"].content:
             set_xterm_title("Canto - " + var_dict["selected"].content["title"])
+        else:
+            set_xterm_title("Canto")
 
 if USE_TITLE:
     on_hook("curses_var_change", xt_on_var_change)
