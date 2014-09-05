@@ -762,6 +762,13 @@ class CantoCursesConfig(SubThread):
     @write_lock(config_lock)
     @write_lock(var_lock) # eval_tags
     def prot_newtags(self, tags):
+
+        if not self.initd:
+            for tag in tags:
+                self.vars["strtags"].append(tag)
+                self.config["tagorder"].append(tag)
+            return
+
         c = self.get_conf()
 
         # Likely the same as tags
@@ -794,6 +801,15 @@ class CantoCursesConfig(SubThread):
     @write_lock(config_lock)
     @write_lock(var_lock) # eval_tags
     def prot_deltags(self, tags):
+
+        if not self.initd:
+            for tag in tags:
+                if tag in self.vars["strtags"]:
+                    self.vars["strtags"].remove(tag)
+                if tag in self.config["tagorder"]:
+                    self.config["tagorder"].append(tag)
+            return
+
         c = self.get_conf()
 
         for tag in tags:

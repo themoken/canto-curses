@@ -127,13 +127,16 @@ class TagUpdater(SubThread):
 
         self.write("WATCHTAGS", strtags)
         for tag in strtags:
+            self.prot_tagchange(tag)
             TagCore(tag)
+
 
         on_hook("curses_new_tag", self.on_new_tag)
 
         var_lock.release_read()
 
     def on_new_tag(self, tag):
+        self.prot_tagchange(tag)
         call_hook("curses_new_tagcore", [ TagCore(tag) ])
 
     def prot_attributes(self, d):
