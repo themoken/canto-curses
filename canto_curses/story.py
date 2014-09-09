@@ -249,6 +249,10 @@ class Story(PluginHandler):
         self.changed = True
         self.callbacks["set_var"]("needs_redraw", True)
 
+    def need_refresh(self):
+        self.changed = True
+        self.callbacks["set_var"]("needs_refresh", True)
+
     def lines(self, width):
         if width == self.width and not self.changed:
             return self.lns
@@ -263,11 +267,22 @@ class Story(PluginHandler):
 
         for attr in story_conf["format_attrs"]:
             if attr not in self.content:
+
+                # Not having needed info is a good reason to
+                # sync.
+
+                self.sync()
+                self.need_refresh()
+                self.callbacks["release_gui"]()
+
                 log.debug("%s still needs %s" % (self, attr))
+
                 self.left = " "
                 self.left_more = " "
                 self.right = " "
+
                 self.evald_string = "Waiting on content..."
+
                 self.lns = 1
                 return self.lns
 
