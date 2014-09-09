@@ -28,8 +28,6 @@ logging.basicConfig(
 
 log = logging.getLogger("CANTO-CURSES")
 
-version = REPLACE_WITH_VERSION
-
 import traceback
 import locale
 import getopt
@@ -60,7 +58,8 @@ class CantoCurses(CantoClient):
         # (debug option)
         self.log_fname_pid = False
 
-        optl = self.common_args('hl', ["help"], "canto-curses " + version)
+        version = "canto-curses " + VERSION + " " + GIT_HASH
+        optl = self.common_args('hl', ["help"], version)
         if optl == -1:
             sys.exit(-1)
 
