@@ -156,7 +156,10 @@ class GuiBase(CommandHandler):
             os.setpgid(os.getpid(), os.getpid())
             os.dup2(fd, sys.stdout.fileno())
 
-        path = path.replace("%u", href)
+        if "%u" in path:
+            path = path.replace("%u", href)
+        elif href:
+            path = path + " " + href
 
         os.execv("/bin/sh", ["/bin/sh", "-c", path])
 
