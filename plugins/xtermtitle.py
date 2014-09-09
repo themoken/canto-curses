@@ -28,6 +28,6 @@ def xt_on_var_change(var_dict):
 if USE_TITLE:
     on_hook("curses_var_change", xt_on_var_change)
 else:
-    set_xterm_title("Canto")
+    on_hook("curses_start", lambda: set_xterm_title("Canto"))
 
 on_hook("curses_exit", clear_xterm_title)

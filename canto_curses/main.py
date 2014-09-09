@@ -99,6 +99,8 @@ class CantoCurses(CantoClient):
         try_plugins(self.conf_dir, self.plugin_default, self.disabled_plugins,
                 self.enabled_plugins)
 
+        call_hook("curses_start", [])
+
     def print_help(self):
         print("USAGE: canto-curses [options]")
         print("\t-h/--help\tThis help")
