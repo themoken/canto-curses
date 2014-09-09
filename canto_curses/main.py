@@ -60,14 +60,15 @@ class CantoCurses(CantoClient):
         # (debug option)
         self.log_fname_pid = False
 
-        self.short_args = 'vlV'
-        optl = self.common_args(self.short_args)
-
+        optl = self.common_args('hl', ["help"], "canto-curses " + version)
         if optl == -1:
             sys.exit(-1)
 
         if self.args(optl):
             sys.exit(-1)
+
+        rootlog = logging.getLogger()
+        rootlog.setLevel(max(rootlog.level - 10 * self.verbosity,0))
 
         try:
             if self.port < 0:
@@ -96,18 +97,32 @@ class CantoCurses(CantoClient):
         log.info("Canto-curses started.")
 
         # Evaluate anything in the target /plugins directory.
-        try_plugins(self.conf_dir)
+        try_plugins(self.conf_dir, self.plugin_default, self.disabled_plugins,
+                self.enabled_plugins)
+
+    def print_help(self):
+        print("USAGE: canto-curses [options]")
+        print("\t-h/--help\tThis help")
+        print("\t-V/--version\tPrint version")
+        print("\t-v/\t\tVerbose logging (for debug)")
+        print("\t-D/--dir <dir>\tSet configuration directory.")
+        print("\t-l\t\tAppend pid to log file name")
+        print("\nPlugin control\n")
+        print("\t--noplugins\t\t\t\tDisable plugins")
+        print("\t--enableplugins 'plugin1 plugin2...'\tEnable single plugins (overrides --noplugins)")
+        print("\t--disableplugins 'plugin1 plugin2...'\tDisable single plugins")
+        print("\nNetwork control\n")
+        print("NOTE: These should be used in conjunction with SSH port forwarding to be secure\n")
+        print("\t-a/--address <IP>\tBind to interface with this address")
+        print("\t-p/--port <port>\tBind to this port")
 
     def args(self, optlist):
         for opt, arg in optlist:
-            if opt in ["-v"]:
-                rootlog = logging.getLogger()
-                rootlog.setLevel(max(rootlog.level - 10,0))
-            if opt in ["-l"]:
-                self.log_fname_pid = True
-            if opt in ['-V']:
-                print("canto-curses %s" % version)
+            if opt in ["-h"]:
+                self.print_help()
                 return 1
+            elif opt in ["-l"]:
+                self.log_fname_pid = True
         return 0
 
     def winch(self, a = None, b = None):
