@@ -779,7 +779,6 @@ class CantoCursesConfig(SubThread):
                 c["tagorder"] = self.config["tagorder"] + [ tag ]
 
             if tag not in self.vars["strtags"]:
-                log.info("New tag %s" % tag)
 
                 # If we don't have configuration for this
                 # tag already, substitute the default template.
@@ -794,9 +793,11 @@ class CantoCursesConfig(SubThread):
         self.set_conf(c)
 
         for tag in newtags:
+            log.info("New tag %s" % tag)
             call_hook("curses_new_tag", [ tag ])
 
         self.eval_tags()
+
 
     @write_lock(config_lock)
     @write_lock(var_lock) # eval_tags
@@ -820,8 +821,10 @@ class CantoCursesConfig(SubThread):
                 tagobj = new_alltags[self.vars["strtags"].index(tag)]
                 tagobj.die()
 
-                # Remove it from alltags.
+                # Remove it from our vars.
                 del new_alltags[self.vars["strtags"].index(tag)]
+                self.vars["strtags"].remove(tag)
+
                 call_hook("curses_del_tag", tag)
             else:
                 log.warn("Got DELTAG for non-existent tag!")
