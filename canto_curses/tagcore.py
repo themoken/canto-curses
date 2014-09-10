@@ -191,8 +191,6 @@ class TagUpdater(SubThread):
                 self.item_adds.append(id)
 
     def prot_itemsdone(self, empty):
-        unprotect = {"auto":[]}
-
         if self.item_tag == None:
             return
 
@@ -209,17 +207,12 @@ class TagUpdater(SubThread):
         # Eliminate discarded items. This has to be done here, so we have
         # access to all of the items given in the multiple ITEM responses.
 
-        protected = config.get_var("protected_ids")
-
         for id in self.item_tag:
-            if id not in protected and id not in self.item_buf:
+            if id not in self.item_buf:
                 self.item_removes.append(id)
 
         if self.item_removes:
             self.item_tag.remove_items(self.item_removes)
-
-            for id in self.item_removes:
-                unprotect["auto"].append(id)
 
         # If we're using the maintain update style, reorder the feed
         # properly. Append style requires no extra work (add_items does
@@ -235,9 +228,6 @@ class TagUpdater(SubThread):
         self.item_buf = []
         self.item_removes = []
         self.item_adds = []
-
-        if unprotect["auto"]:
-            self.write("UNPROTECT", unprotect)
 
     def prot_tagchange(self, tag):
         self.write("ITEMS", [ tag ])
