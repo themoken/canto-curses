@@ -99,7 +99,6 @@ class CantoCurses(CantoClient):
         try_plugins(self.conf_dir, self.plugin_default, self.disabled_plugins,
                 self.enabled_plugins)
 
-        call_hook("curses_start", [])
 
     def print_help(self):
         print("USAGE: canto-curses [options]")
@@ -207,6 +206,8 @@ class CantoCurses(CantoClient):
         # Initial signal setup.
         signal.signal(signal.SIGWINCH, self.winch)
         signal.signal(signal.SIGCHLD, self.child)
+
+        call_hook("curses_start", [])
 
         while self.gui.alive:
             self.gui.tick()
