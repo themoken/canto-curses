@@ -651,7 +651,6 @@ class CantoCursesConfig(SubThread):
         # Validate existing values.
 
         for key in list(c.keys()):
-            log.debug("validating %s" % key)
             # Unknown values, don't validate
             if key not in v:
                 continue
