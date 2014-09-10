@@ -132,7 +132,7 @@ class CantoCursesGui(CommandHandler):
         # want to use .startswith instead of a regex.
         return [ s.lstrip() for s in r ]
 
-    def issue_cmd(self, winlist, cmd):
+    def issue_cmd(self, cmd):
         sync_lock.acquire_write()
         r = cmd_execute(cmd)
         sync_lock.release_write()
@@ -174,11 +174,11 @@ class CantoCursesGui(CommandHandler):
                     log.debug("Got %s from user command" % subcmd)
                     subcmds = self.cmdsplit(subcmd)
                     for subcmd in subcmds:
-                        okay = self.issue_cmd(reversed(f), subcmd)
+                        okay = self.issue_cmd(subcmd)
                         if not okay:
                             break
                 else:
-                    okay = self.issue_cmd(reversed(f), cmd)
+                    okay = self.issue_cmd(cmd)
 
                 if not okay:
                     break
