@@ -118,7 +118,7 @@ class CantoCurses(CantoClient):
 
     def args(self, optlist):
         for opt, arg in optlist:
-            if opt in ["-h"]:
+            if opt in ["-h", "--help"]:
                 self.print_help()
                 return 1
             elif opt in ["-l"]:
