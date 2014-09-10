@@ -92,20 +92,25 @@ def unregister_all(obj):
 
 def _unalias(lookup):
 
+    longest_alias = ""
+
     # Expand an alias into the lookup
     for alias in aliases:
         if not lookup[0].startswith(alias):
             continue
-        log.debug("De-alias: %s" % alias)
+        if len(alias) > len(longest_alias):
+            longest_alias = alias
 
-        # deref -1 for latest register, 1 for longform instead of obj
-        base = shlex.split(aliases[alias][-1][1])
-
-        if len(lookup[0]) > len(alias):
-            base += [ lookup[0][len(alias):] ]
-        return base + lookup[1:]
-    else:
+    if longest_alias == "":
         return lookup
+
+    # deref -1 for latest register, 1 for longform instead of obj
+    base = shlex.split(aliases[longest_alias][-1][1])
+
+    if len(lookup[0]) > len(longest_alias):
+        base += [ lookup[0][len(longest_alias):] ]
+
+    return base + lookup[1:]
 
 # Use lookup information to find longest possible sig So, given
 # ['remote','addfeed'], return the signature for "remote addfeed" instead of
