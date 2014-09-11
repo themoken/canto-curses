@@ -93,7 +93,7 @@ class CantoCurses(CantoClient):
             sys.exit(-1)
 
         self.set_log()
-        log.info("Canto-curses started.")
+        log.info(version)
 
         # Evaluate anything in the target /plugins directory.
         try_plugins(self.conf_dir, self.plugin_default, self.disabled_plugins,
