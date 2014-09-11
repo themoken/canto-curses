@@ -6,7 +6,7 @@ from distutils.core import setup, Extension
 import subprocess
 import os
 
-string_version = "0.9.0-alpha1"
+string_version = "0.9.0-alpha2"
 
 class canto_curses_build_py(build_py):
     def run(self):
