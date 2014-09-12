@@ -161,7 +161,7 @@ class Tag(PluginHandler, list):
         return list.__eq__(self, other)
 
     def __str__(self):
-        return "tag: %s" % self.tag
+        return "%s" % self.tag[self.tag.index(':') + 1:]
 
     def get_id(self, id):
         for item in self:

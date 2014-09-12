@@ -181,7 +181,7 @@ class CantoCursesConfig(SubThread):
         self.config = {
             "browser" :
             {
-                "path" : "firefox %u",
+                "path" : "firefox",
                 "text" : False
             },
 
@@ -234,8 +234,10 @@ class CantoCursesConfig(SubThread):
                     "k" : "scroll-up",
                     "npage" : "page-down",
                     "ppage" : "page-up",
-                    'n' : 'destroy & rel-set-cursor 1 & item-state read & reader',
-                    'p' : 'destroy & rel-set-cursor -1 & item-state read & reader',
+                    'n' : 'destroy & next-item & item-state read & reader',
+                    'p' : 'destroy & prev-item & item-state read & reader',
+                    'N' : 'destroy & next-tag & item-state read & reader',
+                    'P' : 'destroy & prev-tag & item-state read & reader',
                 },
             },
 
@@ -268,10 +270,10 @@ class CantoCursesConfig(SubThread):
                     "u" : "tag-state -read",
                     "npage" : "page-down",
                     "ppage" : "page-up",
-                    "down" : "rel-set-cursor 1",
-                    "j" : "rel-set-cursor 1",
-                    "up" : "rel-set-cursor -1",
-                    "k" : "rel-set-cursor -1",
+                    "down" : "next-item",
+                    "j" : "next-item",
+                    "up" : "prev-item",
+                    "k" : "prev-item",
                     "C-u" : "unset-cursor",
                     "+" : "promote",
                     "-" : "demote",
@@ -815,12 +817,12 @@ class CantoCursesConfig(SubThread):
             if tag in self.vars["strtags"]:
                 new_alltags = self.vars["alltags"]
 
-                # Allow Tag obj to cleanup hooks.
-                tagobj = new_alltags[self.vars["strtags"].index(tag)]
+                i, tagobj = [ x for x in enumerate(new_alltags) if x[1].tag == tag ][0]
                 tagobj.die()
 
                 # Remove it from our vars.
-                del new_alltags[self.vars["strtags"].index(tag)]
+                del new_alltags[i]
+                self.vars["alltags"] = new_alltags
                 self.vars["strtags"].remove(tag)
 
                 call_hook("curses_del_tag", tag)
@@ -841,7 +843,13 @@ class CantoCursesConfig(SubThread):
         sorted_tags = []
         r = re.compile(self.config["tags"])
         for tag in self.vars["alltags"]:
-            if r.match(tag.tag):
+
+            # This can happen between the time that a tag is removed from the config
+            # and the time that we receive a DELTAG event.
+            if tag.tag not in self.config["tagorder"]:
+                continue
+
+            elif r.match(tag.tag):
                 sorted_tags.append((self.config["tagorder"].index(tag.tag), tag))
         sorted_tags.sort()
 

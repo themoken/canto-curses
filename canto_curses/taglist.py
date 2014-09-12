@@ -9,7 +9,7 @@
 from canto_next.hooks import on_hook, remove_hook
 from canto_next.plugins import Plugin
 
-from .command import register_commands, register_arg_types, unregister_all, _int_range, _int_check
+from .command import register_commands, register_arg_types, unregister_all, _int_range, _int_check, _string
 from .tagcore import tag_updater, alltagcores
 from .locks import config_lock
 from .guibase import GuiBase
@@ -18,6 +18,7 @@ from .tag import Tag
 
 import logging
 import curses
+import shlex
 import os
 import re
 
@@ -82,46 +83,81 @@ class TagList(GuiBase):
         config_lock.release_read()
 
         args = {
-            "cursor-offset": ("", self.type_cursor_offset),
-            "item-list": ("[item-list]", self.type_item_list, self.hook_item_list),
-            "item-state": ("[item-state]: Any string", self.type_item_state),
-            "tag-list": ("", self.type_tag_list),
+            "cursor-offset": ("[cursor-offset]", self.type_cursor_offset),
+            "item-list": ("[item-list]: List of item indices (tab complete to show)\n  Simple: 1,3,6,5\n  Ranges: 1-100\n  All: *\n  Selected item: .\n  Domains tag,1,2,3 for 1,2,3 of current tag", self.type_item_list, self.hook_item_list),
+            "item-state": ("[item-state]: Any word, can be inverted with minus ex: '-read' or 'marked'", self.type_item_state),
+            "tag-list": ("[tag-list]: List of tag indices (tab complete to show)\n  Simple: 1,3,6,5\n  Ranges: 1-100\n  Selected tag: .\n  All: *", self.type_tag_list, self.hook_tag_list),
+            # string because tag-item will manually bash in user: prefix
+            "user-tag" : ("[user-tag]: Any string, like 'favorite', or 'cool'", _string),
+            "category" : ("[category]: Any string, like 'news' or 'comics'", self.type_category),
         }
 
-        cmds = {
+        base_cmds = {
+            "remote delfeed" : (self.cmd_delfeed, ["tag-list"], "Unsubscribe from feeds."),
+        }
+
+        nav_cmds = {
             "page-down": (self.cmd_page_down, [], "Move down a page of items"),
             "page-up": (self.cmd_page_up, [], "Move up a page of items"),
-            "rel-set-cursor": (self.cmd_rel_set_cursor, ["cursor-offset"], "Move the cursor by cursor-offset items"),
-            "foritems": (self.cmd_foritems, ["item-list"], "Collect items for future commands"),
-            "foritem": (self.cmd_foritem, ["item-list"], "Collect one item for future commands"),
-            "clearitems": (self.cmd_clearitems, [], "Clear collected items (foritem / foritems)"),
-            "goto": (self.cmd_goto, ["item-list"], "Open story links in browser"),
-            "reader": (self.cmd_reader, ["item-list"], "Open the built-in reader"),
-            "item-state": (self.cmd_item_state, ["item-state", "item-list"], "Set item state (i.e. 'item-state read .')"),
-            "tag-state": (self.cmd_tag_state, ["item-state", "tag-list"], "Set tag state (i.e. 'tag-state read .')"),
             "next-tag" : (self.cmd_next_tag, [], "Scroll to next tag"),
             "prev-tag" : (self.cmd_prev_tag, [], "Scroll to previous tag"),
-
-            "collapse" : (self.cmd_collapse, ["tag-list"], "Collapse tags"),
-            "uncollapse" : (self.cmd_uncollapse, ["tag-list"], "Uncollapse tags"),
-            "toggle-collapse" : (self.cmd_toggle_collapse, ["tag-list"], "Toggle collapsed state of tags"),
-
             "next-marked" : (self.cmd_next_marked, [], "Scroll to next marked item"),
             "prev-marked" : (self.cmd_prev_marked, [], "Scroll to previous marked item"),
-
-            "search" : (self.cmd_search, ["string"], "Search items for string"),
-            "search-regex" : (self.cmd_search_regex, ["string"], "Search items for regex"),
-
-            "promote" : (self.cmd_promote, ["tag-list"], "Move tags up in the order"),
-            "demote" : (self.cmd_demote, ["tag-list"], "Move tags down in the order"),
-
-            "tag-item" : (self.cmd_tag_item, ["string", "item-list"], "Add a tag to individual items"),
-
-            "tag-config" : (self.cmd_tag_config, ["tag-list", "string"], "Manipulate a tag's configuration"),
+            "rel-set-cursor 1": (lambda : self.cmd_rel_set_cursor(1), [], "Next item"),
+            "rel-set-cursor -1": (lambda : self.cmd_rel_set_cursor(-1), [], "Previous item"),
         }
 
+        hidden_cmds = {
+            "rel-set-cursor": (self.cmd_rel_set_cursor, ["cursor-offset"], "Move the cursor by cursor-offset items"),
+        }
+
+        grouping_cmds = {
+            "foritems": (self.cmd_foritems, ["item-list"], "Collect items for future commands\n\nAfter a foritems call, subsequent commands that take [item-lists] will use them.\n\nCan be cleared with clearitems."),
+            "foritem": (self.cmd_foritem, ["item-list"], "Collect first item for future commands\n\nAfter a foritem call, subsequent commands that take [item-lists] will use the first item given.\n\nCan be cleared with clearitems."),
+            "clearitems": (self.cmd_clearitems, [], "Clear collected items (see foritem / foritems)"),
+        }
+
+        item_cmds = {
+            "goto": (self.cmd_goto, ["item-list"], "Open story links in browser"),
+            "reader": (self.cmd_reader, ["item-list"], "Open the built-in reader"),
+            "tag-item" : (self.cmd_tag_item, ["user-tag", "item-list"], "Add a tag to individual items"),
+            "item-state": (self.cmd_item_state, ["item-state", "item-list"], "Set item state (i.e. 'item-state read .')"),
+        }
+
+        collapse_cmds = {
+            "collapse" : (self.cmd_collapse, ["tag-list"], "Collapse tags - reduce the tag's output to a simple status line."),
+            "uncollapse" : (self.cmd_uncollapse, ["tag-list"], "Uncollapse tags - show the full content of a tag"),
+            "toggle-collapse" : (self.cmd_toggle_collapse, ["tag-list"], "Toggle collapsed state of tags."),
+        }
+
+
+        search_cmds = {
+            "search" : (self.cmd_search, ["string"], "Search items for string"),
+            "search-regex" : (self.cmd_search_regex, ["string"], "Search items for regex"),
+        }
+
+
+        tag_cmds = {
+            "categorize" : (self.cmd_categorize, ["category", "tag-list"], "Categorize a tag"),
+            "remove-category" : (self.cmd_remove_category, ["category", "tag-list"], "Remove a tag from a category"),
+            "categories" : (self.cmd_categories, ["tag-list"], "Query what categories a tag is in."),
+            "show-category" : (self.cmd_show_category, ["category"], "Show only tags in category."),
+            "promote" : (self.cmd_promote, ["tag-list"], "Move tags up in the display order (opposite of demote)"),
+            "demote" : (self.cmd_demote, ["tag-list"], "Move tags down in the display order (opposite of promote)"),
+            "tag-config" : (self.cmd_tag_config, ["tag-list", "string"], "Manipulate a tag's configuration"),
+            "tag-state": (self.cmd_tag_state, ["item-state", "tag-list"], "Set tag state (i.e. 'tag-state read .')"),
+        }
+
+        register_commands(self, base_cmds, "Base")
+        register_commands(self, nav_cmds, "Navigation")
+        register_commands(self, hidden_cmds, "hidden")
+        register_commands(self, grouping_cmds, "Grouping")
+        register_commands(self, item_cmds, "Item")
+        register_commands(self, collapse_cmds, "Collapse")
+        register_commands(self, search_cmds, "Search")
+        register_commands(self, tag_cmds, "Tag")
+
         register_arg_types(self, args)
-        register_commands(self, cmds)
 
         self.plugin_class = TagListPlugin
         self.update_plugin_lookups()
@@ -202,10 +238,26 @@ class TagList(GuiBase):
         # if we have items, pass them in, otherwise pass in selected which is the implied context
 
         fallback = self.got_items[:]
-        if fallback == [] and sel:
-            fallback = [ sel ]
+        if fallback == []:
+            if sel:
+                fallback = [ sel ]
+            elif self.first_sel:
+                fallback = [ self.first_sel ]
 
         return (None, lambda x: _int_range("item", domains, syms, fallback, x))
+
+    def unhook_tag_list(self, vars):
+        # Perhaps this should be a separate hook for command completion?
+        if "input_prompt" in vars:
+            self.callbacks["set_opt"]("taglist.tags_enumerated", False)
+            self.callbacks["release_gui"]()
+            remove_hook("curses_var_change", self.unhook_tag_list)
+
+    def hook_tag_list(self):
+        if not self.callbacks["get_opt"]("taglist.tags_enumerated"):
+            self.callbacks["set_opt"]("taglist.tags_enumerated", True)
+            self.callbacks["release_gui"]()
+            on_hook("curses_var_change", self.unhook_tag_list)
 
     def type_tag_list(self):
         domains = { 'all' : self.tags }
@@ -806,25 +858,60 @@ class TagList(GuiBase):
             argv = ["canto-remote", "one-config", "tags." + strtag + "." + config]
             self._remote_argv(argv)
 
-    def cmd_add_tag(self, **kwargs):
-        for tag in kwargs["tags"]:
-            tc = self.callbacks["get_tag_conf"](tag)
-            extratag = kwargs["extratag"]
+    # Just like "string" but prepend "user:"
 
-            if extratag not in tc["extra_tags"]:
-                tc["extra_tags"].append(extratag)
+    def type_category(self):
+        def category_validator(x):
+            if x.lower() == "none":
+                return (True, None)
+            else:
+                return (True, "category:" + x)
+        return (None, category_validator)
 
-            self.callbacks["set_tag_conf"](tag, tc)
+    def cmd_categorize(self, category, tags):
+        if not category:
+            return
+        for tag in tags:
+            tc = self.callbacks["get_tag_conf"](tag.tag)
 
-    def cmd_del_tag(self, **kwargs):
-        for tag in kwargs["tags"]:
-            tc = self.callbacks["get_tag_conf"](tag)
-            extratag = kwargs["extratag"]
+            if category not in tc["extra_tags"]:
+                tc["extra_tags"].append(category)
+                self.callbacks["set_tag_conf"](tag.tag, tc)
+                log.info("%s is now in category %s" % (tag, category[9:]))
 
-            if extratag in tc["extra_tags"]:
-                tc["extra_tags"].remove(extratag)
+    def cmd_remove_category(self, category, tags):
+        if not category:
+            return
+        for tag in tags:
+            tc = self.callbacks["get_tag_conf"](tag.tag)
 
-            self.callbacks["set_tag_conf"](tag, tc)
+            if category in tc["extra_tags"]:
+                tc["extra_tags"].remove(category)
+                self.callbacks["set_tag_conf"](tag.tag, tc)
+                log.info("%s is no longer in category %s" % (tag, category[9:]))
+
+    def cmd_categories(self, tags):
+        for tag in tags:
+            tc = self.callbacks["get_tag_conf"](tag.tag)
+            categories = [ x[9:] for x in tc["extra_tags"] if x.startswith("category:")]
+            if categories == []:
+                log.info("%s - No categories" % tag)
+            else:
+                log.info("%s - %s" % (tag, " ".join(categories)))
+
+    def cmd_show_category(self, category):
+        if category:
+            tag_updater.transform("categories", "InTags(\'" + shlex.quote(category) + "\')")
+        else:
+            tag_updater.transform("categories", "None")
+        tag_updater.update()
+
+    def cmd_delfeed(self, tags):
+        for tag in tags:
+            if tag.tag.startswith("maintag:"):
+                self._remote_argv(["canto-remote", "delfeed", tag.tag[8:]])
+            else:
+                log.info("tag %s is not a feed tag")
 
     def update_tag_lists(self):
         sel = self.callbacks["get_var"]("selected")

@@ -9,7 +9,7 @@
 from canto_next.hooks import on_hook
 from canto_next.plugins import Plugin
 
-from .command import CommandHandler, register_commands, register_arg_types, unregister_all, _string, register_aliases
+from .command import CommandHandler, register_commands, register_arg_types, unregister_all, _string, register_aliases, commands, command_help
 
 import logging
 
@@ -33,18 +33,24 @@ class GuiBase(CommandHandler):
         self.update_plugin_lookups()
 
         args = {
-            "key": ("[key]:\nSimple keys (a), basic chords (C-r, M-a), or named whitespace like space or tab", _string),
-            "command": ("[command]:\nAny canto-curses command. Can be chained with &, other uses of & should be quoted or escaped.", _string),
+            "key": ("[key]: Simple keys (a), basic chords (C-r, M-a), or named whitespace like space or tab", _string),
+            "command": ("[command]: Any canto-curses command. (Will show current binding if not given)\n  Simple: goto\n  Chained: foritems \\\\& goto \\\\& item-state read \\\\& clearitems \\\\& next-item", self.type_unescape_command),
             "remote-cmd": ("[remote cmd]", self.type_remote_cmd),
             "url" : ("[URL]", _string),
+            "help-command" : ("[help-command]: Any canto-curses command, if blank, 'any' or unknown, will display help overview", self.type_help_cmd),
         }
 
         cmds = {
-            "bind" : (self.cmd_bind, [ "key", "command" ], "Add bind to %s" % self),
+            "bind" : (self.cmd_bind, [ "key", "command" ], "Add or query %s keybinds" % self.get_opt_name()),
             "transform" : (self.cmd_transform, ["string"], "Set user transform"),
-            "remote addfeed" : (lambda x : self.cmd_remote("addfeed", x), ["url"], "Subscribe to a feed."),
+            "remote addfeed" : (lambda x : self.cmd_remote("addfeed", x), ["url"], "Subscribe to a feed"),
+            "remote listfeeds" : (lambda x : self.cmd_remote("listfeeds", x), [], "List feeds"),
             "remote": (self.cmd_remote, ["remote-cmd", "string"], "Give a command to canto-remote"),
-            "destroy": (self.cmd_destroy, [], "Destroy this window"),
+            "destroy": (self.cmd_destroy, [], "Destroy this %s" % self.get_opt_name()),
+        }
+
+        help_cmds = {
+            "help" : (self.cmd_help, ["help-command"], "Get help on a specific command")
         }
 
         aliases = {
@@ -84,10 +90,15 @@ class GuiBase(CommandHandler):
             "kill_daemon_on_exit" : "remote one-config --eval CantoCurses.kill_daemon_on_exit",
             "filter" : "transform",
             "sort" : "transform",
+            "next-item" : "rel-set-cursor 1",
+            "prev-item" : "rel-set-cursor -1",
         }
 
         register_arg_types(self, args)
-        register_commands(self, cmds)
+
+        register_commands(self, cmds, "Base")
+        register_commands(self, help_cmds, "Help")
+
         register_aliases(self, aliases)
 
         self.editor = None
@@ -278,8 +289,14 @@ class GuiBase(CommandHandler):
         tag_updater.transform("user", transform)
         tag_updater.update()
 
+    def type_unescape_command(self):
+        def validate_uescape_command(x):
+            # Change the escaped '&' from shlex into a raw &
+            return (True, x.replace(" '&' ", " & "))
+        return (None, validate_uescape_command)
+
     def cmd_bind(self, key, cmd):
-        self.bind(key, cmd, True)
+        self.bind(key, cmd.lstrip().rstrip(), True)
 
     def bind(self, key, cmd, overwrite=False):
         opt = self.get_opt_name()
@@ -301,3 +318,25 @@ class GuiBase(CommandHandler):
             c[opt]["key"][key] = cmd
             self.callbacks["set_conf"](c)
             return True
+
+    def type_help_cmd(self):
+        help_cmds = commands()
+
+        def help_validator(x):
+            for group in help_cmds:
+                if x in help_cmds[group]:
+                    return (True, x)
+            return (True, 'all')
+
+        return (help_cmds, help_validator)
+
+    def cmd_help(self, cmd):
+        if cmd == 'all':
+            gc = commands()
+            for group in sorted(gc.keys()):
+                log.info("%B" + group + "%b\n")
+                for c in sorted(gc[group]):
+                    log.info(command_help(c))
+                log.info("")
+        else:
+            log.info(command_help(cmd, True))

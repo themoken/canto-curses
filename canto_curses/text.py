@@ -19,13 +19,14 @@ import curses
 log = logging.getLogger("TEXTBOX")
 
 class TextBox(GuiBase):
-    def init(self, pad, callbacks):
+    def init(self, pad, callbacks, lstrip=True):
         self.pad = pad
 
         self.max_offset = 0
 
         self.callbacks = callbacks
 
+        self.lstrip = lstrip
         self.text = ""
 
         # This relies on the actual subclasses (i.e. Reader) to cleanup.
@@ -152,7 +153,8 @@ class TextBox(GuiBase):
         # Render main content
 
         while s:
-            s = theme_lstrip(pad, s)
+            if self.lstrip:
+                s = theme_lstrip(pad, s)
             if s:
                 s = theme_print(pad, s, self.width, l, r)
                 lines += 1
@@ -204,7 +206,7 @@ class TextBox(GuiBase):
 
 class VarBox(TextBox):
     def init(self, pad, callbacks, var):
-        TextBox.init(self, pad, callbacks)
+        TextBox.init(self, pad, callbacks, False)
         unregister_command(self, "bind")
         self.var = var
         self.value = self.callbacks["get_var"](var)

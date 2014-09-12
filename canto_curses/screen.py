@@ -90,12 +90,13 @@ class Screen(CommandHandler):
         self.subwindows()
 
         args = {
-            "color_idx" : ("[color idx] between 1 and 256", self.type_color_idx),
-            "color" : ("[color]", self.type_color),
+            "color_idx" : ("[color idx] between 1 and 256 ( >8 will be ignored on 8 color terminals)", self.type_color_idx),
+            "fg-color" : ("[fg-color] Foreground color", self.type_color),
+            "bg-color" : ("[bg-color] Background color (optional)\n\nNamed colors: white black red yellow green blue magenta pink\nNumeric colors: 1-256", self.type_color),
         }
 
         cmds = {
-            "color": (self.cmd_color, ["color_idx", "color", "color"], "Change colors"),
+            "color": (self.cmd_color, ["color_idx", "fg-color", "bg-color"], "Change the color palette"),
         }
 
         register_arg_types(self, args)

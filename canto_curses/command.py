@@ -21,19 +21,63 @@ import readline
 log = logging.getLogger("COMMAND")
 
 cmds = {}
+arg_types = {}
+aliases = {}
 
-def register_command(obj, name, func, args, help_txt):
+def register_command(obj, name, func, args, help_txt, group="hidden"):
     if name not in cmds:
-        cmds[name] = [(obj, func, args, help_txt)]
+        cmds[name] = [(obj, func, args, help_txt, group)]
     else:
-        cmds[name].append((obj, func, args, help_txt))
+        cmds[name].append((obj, func, args, help_txt, group))
 
-def register_commands(obj, cmds):
+def register_commands(obj, cmds, group="hidden"):
     for name in cmds:
         func, args, help_text = cmds[name]
-        register_command(obj, name, func, args, help_text)
+        register_command(obj, name, func, args, help_text, group)
 
-arg_types = {}
+def commands():
+    c = {}
+
+    for ck in cmds.keys():
+        group = cmds[ck][-1][4]
+        for ak in aliases.keys():
+            if aliases[ak][-1][1] == ck:
+                if group in c:
+                    c[group].append(ak)
+                else:
+                    c[group] = [ak]
+                break
+        else:
+            if group in c:
+                c[group].append(ck)
+            else:
+                c[group] = [ck]
+
+    if "hidden" in c:
+        del c["hidden"]
+
+    return c
+
+def command_help(command, detailed=False):
+    if command in aliases:
+        if aliases[command][-1][1] in cmds:
+            working_cmd = cmds[aliases[command][-1][1]]
+        else:
+            return "%s - alias of '%s'" % (command, aliases[command][-1][1])
+    else:
+        working_cmd = cmds[command]
+
+    if not detailed:
+        s = "%s - %s" % (command, working_cmd[-1][3])
+        if '\n' in s:
+            s = s[:s.index('\n')]
+    else:
+        s = "%s %s\n" % (command, " ".join(["[" + x + "]" for x in working_cmd[-1][2]]))
+        s += "\n%s" % working_cmd[-1][3]
+        for arg in working_cmd[-1][2]:
+            s += "\n\n"
+            s += arg_types[arg][-1][1]
+    return s
 
 def register_arg_type(obj, name, help_txt, validator, hook=None):
     if name not in arg_types:
@@ -44,8 +88,6 @@ def register_arg_type(obj, name, help_txt, validator, hook=None):
 def register_arg_types(obj, types):
     for name in types:
         register_arg_type(obj, name, *types[name])
-
-aliases = {}
 
 def register_alias(obj, alias, longform):
     if alias in aliases:
@@ -61,7 +103,16 @@ def register_aliases(obj, given):
 def _string():
     return (None, lambda x : (True, x))
 
-register_arg_type(_string, "string", "Any String", _string)
+def word():
+    def word_validator(x):
+        for c in ' \t':
+            if c in x:
+                return (False, x)
+        return (True, x)
+    return (None, word_validator)
+
+register_arg_type(_string, "string", "[string] Any string", _string)
+register_arg_type(word, "word", "[word] Any word (no whitespace)", word)
 
 # Unregister, clear out obj associations, del keys if empty.
 
@@ -162,7 +213,7 @@ def cmd_complete_info():
         if not sig:
             return None
 
-        c_obj, c_func, c_sig, c_hlp = sig
+        c_obj, c_func, c_sig, c_hlp, c_grp = sig
 
         # No completing beyond end of arguments
 
@@ -212,7 +263,7 @@ def cmd_execute(cmd):
     if not sig:
         return False
 
-    c_obj, c_func, c_sig, c_hlp = sig
+    c_obj, c_func, c_sig, c_hlp, c_grp = sig
     args = []
 
     for i, typ in enumerate(c_sig):
