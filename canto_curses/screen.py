@@ -598,10 +598,13 @@ class Screen(CommandHandler):
                 c_hlp, a_hlp, completions = r
                 msg = "%s\n%s" % (c_hlp, a_hlp)
 
+                sync_lock.acquire_write()
                 if InfoBox in self.window_types:
                     self.callbacks["set_var"]("info_msg", msg)
                 else:
                     log.info(msg)
+                self.callbacks["set_var"]("dispel_msg", True)
+                sync_lock.release_write()
 
             # We're called from readline, so we have to take sync_lock before
             # we cause anything other than the input box to refresh/redraw
@@ -632,9 +635,10 @@ class Screen(CommandHandler):
                 log.debug("inserting: %s" % comp)
                 readline.insert_text(comp)
 
-            # Clear out any old completion info
-            self.callbacks["set_var"]("info_msg", "")
-            self.callbacks["release_gui"]()
+            # Clear out any old dispellable windows
+            if self.callbacks["get_var"]("dispel_msg"):
+                self.callbacks["set_var"]("info_msg", "")
+                self.callbacks["release_gui"]()
 
         log.debug("KEY: %s" % r)
         return r

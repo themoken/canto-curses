@@ -50,6 +50,7 @@ class CantoCursesConfig(SubThread):
             "location" : backend.location_args,
             "error_msg" : "No error.",
             "info_msg" : "No info.",
+            "dispel_msg" : False,
             "input_prompt" : "",
             "input_completion_root" : None,
             "input_completions" : [],

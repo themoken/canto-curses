@@ -161,6 +161,7 @@ class CantoCursesGui(CommandHandler):
 
                 if self.callbacks["get_var"]("info_msg"):
                     self.callbacks["set_var"]("info_msg", "")
+                    self.callbacks["set_var"]("dispel_msg", False)
                     self.release_gui()
                 continue
 
