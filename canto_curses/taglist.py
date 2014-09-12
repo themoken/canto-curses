@@ -122,6 +122,7 @@ class TagList(GuiBase):
             "reader": (self.cmd_reader, ["item-list"], "Open the built-in reader"),
             "tag-item" : (self.cmd_tag_item, ["user-tag", "item-list"], "Add a tag to individual items"),
             "item-state": (self.cmd_item_state, ["item-state", "item-list"], "Set item state (i.e. 'item-state read .')"),
+            "tag-state": (self.cmd_tag_state, ["item-state", "tag-list"], "Set item state for all items in tag (i.e. 'tag-state read .')"),
         }
 
         collapse_cmds = {
@@ -136,16 +137,17 @@ class TagList(GuiBase):
             "search-regex" : (self.cmd_search_regex, ["string"], "Search items for regex"),
         }
 
-
         tag_cmds = {
+            "promote" : (self.cmd_promote, ["tag-list"], "Move tags up in the display order (opposite of demote)"),
+            "demote" : (self.cmd_demote, ["tag-list"], "Move tags down in the display order (opposite of promote)"),
+            "tag-config" : (self.cmd_tag_config, ["tag-list", "string"], "Manipulate a tag's configuration"),
+        }
+
+        tag_group_cmds = {
             "categorize" : (self.cmd_categorize, ["category", "tag-list"], "Categorize a tag"),
             "remove-category" : (self.cmd_remove_category, ["category", "tag-list"], "Remove a tag from a category"),
             "categories" : (self.cmd_categories, ["tag-list"], "Query what categories a tag is in."),
             "show-category" : (self.cmd_show_category, ["category"], "Show only tags in category."),
-            "promote" : (self.cmd_promote, ["tag-list"], "Move tags up in the display order (opposite of demote)"),
-            "demote" : (self.cmd_demote, ["tag-list"], "Move tags down in the display order (opposite of promote)"),
-            "tag-config" : (self.cmd_tag_config, ["tag-list", "string"], "Manipulate a tag's configuration"),
-            "tag-state": (self.cmd_tag_state, ["item-state", "tag-list"], "Set tag state (i.e. 'tag-state read .')"),
         }
 
         register_commands(self, base_cmds, "Base")
@@ -156,6 +158,7 @@ class TagList(GuiBase):
         register_commands(self, collapse_cmds, "Collapse")
         register_commands(self, search_cmds, "Search")
         register_commands(self, tag_cmds, "Tag")
+        register_commands(self, tag_group_cmds, "Tag Grouping")
 
         register_arg_types(self, args)
 
