@@ -51,7 +51,7 @@ class Reader(TextBox):
         }
 
         register_arg_types(self, args)
-        register_commands(self, cmds)
+        register_commands(self, cmds, "Reader")
 
     def die(self):
         remove_hook("curses_opt_change", self.on_opt_change)
