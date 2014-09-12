@@ -515,6 +515,8 @@ class Screen(CommandHandler):
         return r
 
     def die_callback(self, window):
+        sync_lock.acquire_write()
+
         # Call the window's die function
         window.die()
 
@@ -533,17 +535,18 @@ class Screen(CommandHandler):
 
         curses.doupdate()
 
+        sync_lock.release_write()
+
     # The pause interface callback keeps the interface from updating. This is
     # useful if we have to temporarily surrender the screen (i.e. text browser).
 
     # NOTE: This does not affect signals so even while "paused", c-c continues
     # to take things like SIGWINCH which will be interpreted on wakeup.
 
-    # NOTE: This callback must be called from within the GUI thread, and the
-    # calling function must call unpause *without* returning.
-
     def pause_interface_callback(self):
         log.debug("Pausing interface.")
+        sync_lock.acquire_write()
+
         self.input_lock.acquire()
 
     def unpause_interface_callback(self):
@@ -553,7 +556,11 @@ class Screen(CommandHandler):
         # All of our window information could be stale.
         self.resize()
 
+        sync_lock.release_write()
+
     def add_window_callback(self, cls):
+        sync_lock.acquire_write()
+
         self.window_types.append(cls)
 
         self.subwindows()
@@ -563,6 +570,8 @@ class Screen(CommandHandler):
 
         self.refresh()
         self.redraw()
+
+        sync_lock.release_write()
 
     def _readline_redisplay(self):
         self.input_box.set_content(readline.get_line_buffer())

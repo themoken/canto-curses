@@ -29,6 +29,8 @@ class GraphicalLog(logging.Handler):
         self.screen = screen
 
     def _emit(self, var, window_type, record):
+        sync_lock.acquire_write()
+
         if window_type not in self.screen.window_types:
             self.callbacks["set_var"](var, record.message)
             self.screen.add_window_callback(window_type)
@@ -36,6 +38,9 @@ class GraphicalLog(logging.Handler):
             cur = self.callbacks["get_var"](var)
             cur += "\n" + record.message
             self.callbacks["set_var"](var, cur)
+
+        sync_lock.release_write()
+
         self.callbacks["set_var"]("needs_refresh", True)
 
     def emit(self, record):
