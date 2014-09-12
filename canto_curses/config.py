@@ -225,8 +225,9 @@ class CantoCursesConfig(SubThread):
                 "key" :
                 {
                     "space" : "destroy",
-                    "d" : "toggle reader.show_description",
-                    "l" : "toggle reader.enumerate_links",
+                    "s" : "show-summary",
+                    "l" : "show-links",
+                    "e" : "show-enclosures",
                     "g" : "goto",
                     "f" : "fetch",
                     "down" : "scroll-down",

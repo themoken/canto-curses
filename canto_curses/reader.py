@@ -45,6 +45,9 @@ class Reader(TextBox):
             "goto" : (self.cmd_goto, ["link-list"], "Goto a specific link"),
             "fetch" : (self.cmd_fetch, ["link-list"], "Fetch a specific link"),
             "destroy" : (self.cmd_destroy, [], "Destroy this window"),
+            "show-links" : (self.cmd_show_links, [], "Toggle link list display"),
+            "show-summary" : (self.cmd_show_desc, [], "Toggle summary display"),
+            "show-enclosures" : (self.cmd_show_encs, [], "Toggle enclosure list display")
         }
 
         register_arg_types(self, args)
@@ -59,10 +62,11 @@ class Reader(TextBox):
         if "reader" not in change:
             return
 
-        if "show_description" in change["reader"] or\
-                "enumerate_links" in change["reader"]:
-            self.callbacks["set_var"]("needs_refresh", True)
-            self.callbacks["release_gui"]()
+        for opt in ["show_description", "enumerate_links", "show_enclosures"]:
+            if opt in change["reader"]:
+                self.callbacks["set_var"]("needs_refresh", True)
+                self.callbacks["release_gui"]()
+                return
 
     def on_attributes(self, attributes):
         sel = self.callbacks["get_var"]("reader_item")
@@ -121,22 +125,25 @@ class Reader(TextBox):
                 extra_content = ""
 
                 if reader_conf['show_enclosures']:
-                    for enc in sel.content["enclosures"]:
-                        # No point in enclosures without links
-                        if "href" not in enc:
-                            continue
+                    if not len(sel.content["enclosures"]):
+                        extra_content +="<br /><br />[ No enclosures ]"
+                    else:
+                        for enc in sel.content["enclosures"]:
+                            # No point in enclosures without links
+                            if "href" not in enc:
+                                continue
 
-                        if "type" not in enc:
-                            enc["type"] = "unknown"
+                            if "type" not in enc:
+                                enc["type"] = "unknown"
 
-                        if not extra_content:
-                            extra_content = "\n\n"
+                            if not extra_content:
+                                extra_content = "<br /><br />"
 
-                        extra_content += "<a href=\""
-                        extra_content += enc["href"]
-                        extra_content += "\">("
-                        extra_content += enc["type"]
-                        extra_content += ")</a>\n"
+                            extra_content += "<a href=\""
+                            extra_content += enc["href"]
+                            extra_content += "\">("
+                            extra_content += enc["type"]
+                            extra_content += ")</a>\n"
 
                 # Grab text content over description, as it's likely got more
                 # information.
@@ -191,6 +198,20 @@ class Reader(TextBox):
         # link = ( type, url, text )
         hrefs = [ l[1] for l in links ]
         self._fetch(hrefs)
+
+    def _toggle_cmd(self, opt):
+        c = self.callbacks["get_conf"]()
+        c["reader"][opt] = not c["reader"][opt]
+        self.callbacks["set_conf"](c)
+
+    def cmd_show_links(self):
+        self._toggle_cmd("enumerate_links")
+
+    def cmd_show_desc(self):
+        self._toggle_cmd("show_description")
+
+    def cmd_show_encs(self):
+        self._toggle_cmd("show_enclosures")
 
     def cmd_destroy(self):
         self.callbacks["set_var"]("reader_item", None)
