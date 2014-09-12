@@ -331,6 +331,9 @@ class GuiBase(CommandHandler):
         return (help_cmds, help_validator)
 
     def cmd_help(self, cmd):
+        if self.callbacks["get_var"]("info_msg"):
+            self.callbacks["set_var"]("info_msg", "")
+
         if cmd == 'all':
             gc = commands()
             for group in sorted(gc.keys()):
