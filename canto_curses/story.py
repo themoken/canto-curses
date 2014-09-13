@@ -34,6 +34,7 @@ class Story(PluginHandler):
         self.callbacks = callbacks
 
         self.parent_tag = tag
+        self.is_tag = False
         self.id = id
         self.pad = None
 

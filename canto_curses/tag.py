@@ -38,6 +38,7 @@ class Tag(PluginHandler, list):
 
         self.tagcore = tagcore
         self.tag = tagcore.tag
+        self.is_tag = True
 
         self.pad = None
         self.footpad = None
@@ -156,7 +157,7 @@ class Tag(PluginHandler, list):
     # as equal and screw up things like enumeration.
 
     def __eq__(self, other):
-        if not hasattr(other, "tag") or self.tag != other.tag:
+        if other and (not other.is_tag or self.tag != other.tag):
             return False
         return list.__eq__(self, other)
 

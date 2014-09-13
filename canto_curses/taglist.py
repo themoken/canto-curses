@@ -179,9 +179,9 @@ class TagList(GuiBase):
         return item.parent_tag
 
     def tag_by_obj(self, obj):
-        if obj in self.tags:
+        if obj.is_tag:
             return obj
-        return self.tag_by_item(obj)
+        return obj.parent_tag
 
     # Types return (completion generator, validator)
 
@@ -214,7 +214,7 @@ class TagList(GuiBase):
 
         syms = { 'all' : {} }
         sel = self.callbacks["get_var"]("selected")
-        if sel and sel not in self.tags:
+        if sel and not sel.is_tag:
 
             # If we have a selection, we have a sensible tag domain
 
@@ -222,7 +222,7 @@ class TagList(GuiBase):
             domains['tag']  = [ x for x in self.tag_by_item(sel) ]
             syms['tag'] = {}
 
-            if sel not in self.tags:
+            if not sel.is_tag:
                 syms['tag']['.'] = [ domains['tag'].index(sel) ]
                 syms['tag']['*'] = range(0, len(domains['tag']))
             elif len(sel) > 0:
@@ -242,9 +242,9 @@ class TagList(GuiBase):
 
         fallback = self.got_items[:]
         if fallback == []:
-            if sel and sel not in self.tags:
+            if sel and not sel.is_tag:
                 fallback = [ sel ]
-            elif self.first_sel and self.first_sel not in self.tags:
+            elif self.first_sel and not self.first_sel.is_tag:
                 fallback = [ self.first_sel ]
 
         return (None, lambda x: _int_range("item", domains, syms, fallback, x))
@@ -269,7 +269,7 @@ class TagList(GuiBase):
         sel = self.callbacks["get_var"]("selected")
 
         deftags = []
-        if sel in self.tags:
+        if sel and sel.is_tag:
             deftags = [ sel ]
             syms['all']['.'] = [ self.tags.index(sel) ]
         elif sel:
@@ -507,10 +507,7 @@ class TagList(GuiBase):
             # be triggered (redraw resets screen position to keep items visible
             # despite the tag header).
 
-            if item in self.tags:
-                tag = item
-            else:
-                tag = self.tag_by_item(item)
+            tag = self.tag_by_obj(item)
 
             wl_top = max(curstyle["edge"], tag.lines(self.width))
 
@@ -624,10 +621,7 @@ class TagList(GuiBase):
 
         target_offset = self.callbacks["get_var"]("target_offset")
 
-        if sel not in self.tags:
-            tag = self.tag_by_item(sel)
-        else:
-            tag = sel
+        tag = self.tag_by_obj(sel)
 
         while sel.next_sel:
             sel = sel.next_sel
@@ -646,15 +640,12 @@ class TagList(GuiBase):
 
         target_offset = self.callbacks["get_var"]("target_offset")
 
-        if sel not in self.tags:
-            tag = self.tag_by_item(sel)
-        else:
-            tag = sel
+        tag = self.tag_by_obj(sel)
 
         while sel.prev_sel:
             sel = sel.prev_sel
 
-            if sel not in self.tags:
+            if not sel.is_tag:
                 newtag = self.tag_by_item(sel)
                 if newtag != tag:
 
@@ -929,14 +920,6 @@ class TagList(GuiBase):
         self.first_sel = None
         self._set_cursor(None, 0)
 
-        # Determine if our selection is a tag.
-        # If it is, and it is no longer visible,
-        # then we have to unset the selection.
-
-        sel_is_tag = False
-        if self.tags and sel and sel in self.tags:
-            sel_is_tag = True
-
         self.tags = self.callbacks["get_var"]("curtags")
         hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")
 
@@ -969,7 +952,7 @@ class TagList(GuiBase):
 
         # Restore selected tag, if it exists
 
-        if sel_is_tag and sel in t:
+        if sel and sel.is_tag and sel in t:
             self._set_cursor(sel, toffset)
 
         self.callbacks["set_var"]("taglist_visible_tags", t)
@@ -1241,8 +1224,8 @@ class TagList(GuiBase):
 
             obj.extra_lines = 0
 
-            if not obj.next_obj or obj.next_obj in self.tags:
-                if obj in self.tags:
+            if not obj.next_obj or obj.next_obj.is_tag:
+                if obj.is_tag:
                     tag = obj
                 else:
                     tag = self.tag_by_item(obj)
