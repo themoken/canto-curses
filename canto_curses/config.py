@@ -71,11 +71,6 @@ class CantoCursesConfig(SubThread):
             "taglist_visible_tags" : [],
         }
 
-        self.keys = {
-            ":" : "command",
-            "q" : "quit"
-        }
-
         self.validators = {
             "browser" :
             {
@@ -379,6 +374,7 @@ class CantoCursesConfig(SubThread):
                 {
                     ":" : "command",
                     "q" : "quit",
+                    "h" : "help",
                     "\\" : "refresh",
                 }
             },
