@@ -92,7 +92,9 @@ class TagUpdater(SubThread):
         self.attributes = {}
         self.lock = RWLock("tagupdater")
 
-        self.discard = False
+        # Response counters
+        self.discard = 0
+        self.still_updating = 0
 
         self.start_pthread()
 
@@ -132,12 +134,21 @@ class TagUpdater(SubThread):
 
 
         on_hook("curses_new_tag", self.on_new_tag)
+        on_hook("curses_stories_removed", self.on_stories_removed)
 
         var_lock.release_read()
 
     def on_new_tag(self, tag):
         self.prot_tagchange(tag)
         call_hook("curses_new_tagcore", [ TagCore(tag) ])
+
+    # Once they've been removed from the GUI, their attributes can be forgotten
+    def on_stories_removed(self, tag, items):
+        self.lock.acquire_write()
+        for item in items:
+            if item.id in self.attributes:
+                del self.attributes[item.id]
+        self.lock.release_write()
 
     def prot_attributes(self, d):
         if self.discard:
@@ -201,6 +212,9 @@ class TagUpdater(SubThread):
             self.item_adds = []
             return
 
+        if self.still_updating:
+            self.still_updating -= 1
+
         if self.item_adds:
             self.item_tag.add_items(self.item_adds)
 
@@ -233,7 +247,7 @@ class TagUpdater(SubThread):
         self.write("ITEMS", [ tag ])
 
     def prot_pong(self, args):
-        self.discard=False
+        self.discard -= 1
 
     # The following is the external interface to tagupdater.
 
@@ -241,20 +255,22 @@ class TagUpdater(SubThread):
         strtags = config.get_var("strtags")
         for tag in strtags:
             self.write("ITEMS", [ tag ])
+            self.still_updating += 1
 
-    def reset(self):
-        self.lock.acquire_write()
-        self.attributes = {}
-        self.lock.release_write()
+    def reset(self, force=False):
+        if self.still_updating and not force:
+            log.debug("Not initiating refresh, update still in progress")
+            return False
 
         for tag in alltagcores:
             tag.reset()
+        self.discard += 1
         self.write("PING", [])
-        self.discard = True
+        return True
 
     def transform(self, name, transform):
         self.write("TRANSFORM", { name : transform })
-        self.reset()
+        self.reset(True)
 
     # Writes are already serialized, so in the meantime, we protect
     # self.attributes and self.needed_attrs with our lock.

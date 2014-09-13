@@ -305,58 +305,21 @@ class TagList(GuiBase):
         # Items being added implies we need to remap them
         self.callbacks["set_var"]("needs_refresh", True)
 
-        # The rest of this function is about trying to
-        # maintain the selection.
-
+        # If our selections have appeared, reref them
         sel = self.callbacks["get_var"]("selected")
         if sel:
-            return
+            if sel == tag:
+                self.callbacks["set_var"]("selected", tag)
+            elif sel in items:
+                self.callbacks["set_var"]("selected", items[items.index(sel)])
 
-        old_sel = self.callbacks["get_var"]("old_selected")
-
-        if not old_sel or\
-                old_sel in self.tags or\
-                old_sel not in items:
-            return
-
-        # Re-reference. The stories equality is based
-        # entirely on its ID value, but we still need
-        # to make sure we have the new item.
-
-        new_sel = items[items.index(old_sel)]
-        new_sel.select()
-
-        # Retain cursor and attempt to keep it at the
-        # same place on screen.
-
-        old_toffset = self.callbacks["get_var"]("old_toffset")
-
-        self._set_cursor(new_sel, old_toffset)
-
-        self.callbacks["set_var"]("old_selected", None)
+            self._set_cursor(sel, self.callbacks["get_var"]("target_offset"))
 
     # Called with sync_lock, so we are unrestricted.
 
     def on_stories_removed(self, tag, items):
         # Items being removed implies we need to remap them.
         self.callbacks["set_var"]("needs_refresh", True)
-
-        # We need to clear self.first_sel if it's gone
-        # so that a potential unselect doesn't try and set
-        # it as the redraw target object.
-
-        if self.first_sel and\
-                self.first_sel not in self.tags and\
-                self.first_sel in items:
-            self.first_sel = None
-
-        sel = self.callbacks["get_var"]("selected")
-        if sel and sel not in self.tags and sel in items:
-            toffset = self.callbacks["get_var"]("target_offset")
-            self._set_cursor(None, 0)
-
-            self.callbacks["set_var"]("old_selected", sel)
-            self.callbacks["set_var"]("old_toffset", toffset)
 
     def on_opt_change(self, conf):
         if "taglist" not in conf or "search_attributes" not in conf["taglist"]:
@@ -961,20 +924,15 @@ class TagList(GuiBase):
         # Set initial target_obj if none already set, or if it's stale.
 
         target_obj = self.callbacks["get_var"]("target_obj")
+
+        if target_obj:
+            return
+
         vistags = self.callbacks["get_var"]("taglist_visible_tags")
 
         if vistags:
-            if not target_obj:
-                self.callbacks["set_var"]("target_obj", vistags[0])
-                self.callbacks["set_var"]("target_offset", 0)
-            else:
-                try:
-                    tag = self.tag_by_item(target_obj)
-                except Exception as e:
-                    if target_obj not in vistags:
-                        # Not a story in tags and not a tag? Reset.
-                        self.callbacks["set_var"]("target_obj", vistags[0])
-                        self.callbacks["set_var"]("target_offset", 0)
+            self.callbacks["set_var"]("target_obj", vistags[0])
+            self.callbacks["set_var"]("target_offset", 0)
         else:
             self.callbacks["set_var"]("target_obj", None)
             self.callbacks["set_var"]("target_offset", 0)

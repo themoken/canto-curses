@@ -59,8 +59,6 @@ class CantoCursesConfig(SubThread):
             "errorbox_offset" : 0,
             "infobox_offset" : 0,
             "selected" : None,
-            "old_selected" : None,
-            "old_toffset" : 0,
             "target_obj" : None,
             "target_offset" : 0,
             "strtags" : [],

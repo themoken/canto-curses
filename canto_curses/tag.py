@@ -392,35 +392,48 @@ class Tag(PluginHandler, list):
 
     def sync(self, force=False):
         if force or self.tagcore.changes:
-            my_ids = [ s.id for s in self ]
             current_stories = []
             added_stories = []
 
+            sel = self.callbacks["get_var"]("selected")
+
             self.tagcore.lock.acquire_read()
 
-            for id in self.tagcore:
-                if id in my_ids:
-                    s = self[my_ids.index(id)]
-                    current_stories.append(s)
-                    self.remove(s)
-                    my_ids.remove(s.id)
-                else:
+            for story in self:
+                if story.id in self.tagcore:
+                    current_stories.append((self.tagcore.index(story.id), story))
+                elif story == sel:
+                    if current_stories:
+                        place = max([ x[0] for x in current_stories ]) + .5
+                    else:
+                        place = -1
+                    current_stories.append((place, story))
+
+            for place, id in enumerate(self.tagcore):
+                if id not in [ x[1].id for x in current_stories ]:
                     s = Story(self, id, self.callbacks)
-                    current_stories.append(s)
+                    current_stories.append((place, s))
                     added_stories.append(s)
 
             self.tagcore.lock.release_read()
 
             call_hook("curses_stories_added", [ self, added_stories ])
 
+            current_stories.sort()
+            current_stories = [ x[1] for x in current_stories ]
+
+            deleted = []
+
+            for story in self:
+                if not story in current_stories:
+                    deleted.append(story)
+                    story.die()
+
             # Properly dispose of the remaining stories
 
-            call_hook("curses_stories_removed", [ self, self[:] ])
+            call_hook("curses_stories_removed", [ self, deleted ])
 
-            for s in self:
-                s.die()
             del self[:]
-
             self.extend(current_stories)
 
             # Trigger a refresh so that classes above (i.e. TagList) will remap
