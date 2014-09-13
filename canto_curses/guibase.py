@@ -239,14 +239,14 @@ class GuiBase(CommandHandler):
         out = subprocess.check_output(argv).decode()
 
         log.debug("Output:")
-        log.debug(out)
+        log.debug(out.rstrip())
 
         # Strip anything that could be misconstrued as style
         # from remote output.
 
         out = out.replace("%","\\%")
 
-        log.info(out)
+        log.info(out.rstrip())
 
     def _remote(self, args):
         args = "canto-remote " + args
