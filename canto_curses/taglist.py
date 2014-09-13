@@ -214,7 +214,7 @@ class TagList(GuiBase):
 
         syms = { 'all' : {} }
         sel = self.callbacks["get_var"]("selected")
-        if sel:
+        if sel and sel not in self.tags:
 
             # If we have a selection, we have a sensible tag domain
 
@@ -242,9 +242,9 @@ class TagList(GuiBase):
 
         fallback = self.got_items[:]
         if fallback == []:
-            if sel:
+            if sel and sel not in self.tags:
                 fallback = [ sel ]
-            elif self.first_sel:
+            elif self.first_sel and self.first_sel not in self.tags:
                 fallback = [ self.first_sel ]
 
         return (None, lambda x: _int_range("item", domains, syms, fallback, x))
