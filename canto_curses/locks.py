@@ -9,7 +9,6 @@
 from canto_next.rwlock import RWLock
 
 config_lock = RWLock('config_lock')
-var_lock = RWLock('var_lock')
 
 # This lock can be held with write to keep sync operations from happening.
 sync_lock = RWLock("global sync lock")

@@ -10,7 +10,7 @@ from canto_next.hooks import call_hook, on_hook, remove_hook
 from canto_next.plugins import Plugin, PluginHandler
 from canto_next.rwlock import read_lock
 
-from .locks import sync_lock, var_lock
+from .locks import sync_lock, config_lock
 from .parser import try_parse, try_eval, prep_for_display
 from .theme import FakePad, WrapPad, theme_print, theme_reset, theme_border
 from .config import config, DEFAULT_TAG_FSTRING
@@ -99,11 +99,11 @@ class Tag(PluginHandler, list):
         # Upon creation, this Tag adds itself to the
         # list of all tags.
 
-        var_lock.acquire_write()
+        config_lock.acquire_write()
         callbacks["get_var"]("alltags").append(self)
-        var_lock.release_write()
 
         config.eval_tags()
+        config_lock.release_write()
 
         self.sync(True)
 

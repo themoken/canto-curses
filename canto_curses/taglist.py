@@ -57,7 +57,7 @@ class TagList(GuiBase):
         # Hold config log so we don't miss any new TagCores or get updates
         # before we're ready.
 
-        config_lock.acquire_read()
+        config_lock.acquire_write()
 
         # Instantiate graphical Tag objects
         # Keep in mind TagList may be instantiated more than once.
@@ -80,7 +80,7 @@ class TagList(GuiBase):
         on_hook("curses_opt_change", self.on_opt_change)
         on_hook("curses_new_tagcore", self.on_new_tagcore)
 
-        config_lock.release_read()
+        config_lock.release_write()
 
         args = {
             "cursor-offset": ("[cursor-offset]", self.type_cursor_offset),

@@ -25,7 +25,7 @@ DEFAULT_FSTRING = "%1%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})
 
 DEFAULT_TAG_FSTRING = "%1%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%{pre} %t %{post} [%B%2%n%1%b]%?{sel}(%{selected_end}:%{unselected_end})%0"
 
-from .locks import config_lock, var_lock
+from .locks import config_lock
 from .subthread import SubThread
 
 from threading import Thread
@@ -697,7 +697,6 @@ class CantoCursesConfig(SubThread):
     # TagUpdater()
 
     @write_lock(config_lock)
-    @write_lock(var_lock)
     def prot_listtags(self, tags):
         log.debug("listtags: %s" % tags)
         self.vars["strtags"] = tags
@@ -756,7 +755,6 @@ class CantoCursesConfig(SubThread):
     # Process new tags.
 
     @write_lock(config_lock)
-    @write_lock(var_lock) # eval_tags
     def prot_newtags(self, tags):
 
         if not self.initd:
@@ -796,7 +794,6 @@ class CantoCursesConfig(SubThread):
 
 
     @write_lock(config_lock)
-    @write_lock(var_lock) # eval_tags
     def prot_deltags(self, tags):
 
         if not self.initd:
@@ -831,8 +828,7 @@ class CantoCursesConfig(SubThread):
         self.set_conf(c)
         self.eval_tags()
 
-    @read_lock(config_lock)
-    @write_lock(var_lock)
+    @write_lock(config_lock)
     def eval_tags(self):
         prevtags = self.vars["curtags"]
 
@@ -870,20 +866,20 @@ class CantoCursesConfig(SubThread):
         # value, which should always cause a fresh message display,
         # even if it's the same error as before.
 
-        var_lock.acquire_write()
+        config_lock.acquire_write()
         if self.vars[tweak] != value:
 
             # If we're selecting or unselecting a story, then
             # we need to make sure it doesn't disappear.
 
             self.vars[tweak] = value
-            var_lock.release_write()
+            config_lock.release_write()
 
             call_hook("curses_var_change", [{ tweak : value }])
         else:
-            var_lock.release_write()
+            config_lock.release_write()
 
-    @read_lock(var_lock)
+    @read_lock(config_lock)
     def get_var(self, tweak):
         if tweak in self.vars:
             return self.vars[tweak]
