@@ -98,6 +98,7 @@ class Reader(TextBox):
         reader_conf = self.callbacks["get_opt"]("reader")
 
         s = "No selected story.\n"
+        extra_content = ""
 
         sel = self.callbacks["get_var"]("reader_item")
         if sel:
@@ -118,33 +119,6 @@ class Reader(TextBox):
                 s += "%BWaiting for content...%b\n"
                 on_hook("curses_attributes", self.on_attributes)
             else:
-
-                # Add enclosures before HTML parsing so that we can add a link
-                # and have the remaining link logic pick it up as normal.
-
-                extra_content = ""
-
-                if reader_conf['show_enclosures']:
-                    if not len(sel.content["enclosures"]):
-                        extra_content +="<br /><br />[ No enclosures ]"
-                    else:
-                        for enc in sel.content["enclosures"]:
-                            # No point in enclosures without links
-                            if "href" not in enc:
-                                continue
-
-                            if "type" not in enc:
-                                enc["type"] = "unknown"
-
-                            if not extra_content:
-                                extra_content = "<br /><br />"
-
-                            extra_content += "<a href=\""
-                            extra_content += enc["href"]
-                            extra_content += "\">("
-                            extra_content += enc["type"]
-                            extra_content += ")</a>\n"
-
                 # Grab text content over description, as it's likely got more
                 # information.
 
@@ -154,10 +128,42 @@ class Reader(TextBox):
                         if "type" in c and "text" in c["type"]:
                             mainbody = c["value"]
 
+                # Add enclosures before HTML parsing so that we can add a link
+                # and have the remaining link logic pick it up as normal.
+
+                if reader_conf['show_enclosures']:
+                    if not len(sel.content["enclosures"]):
+                        mainbody +="<br /><br />[ No enclosures ]"
+                    else:
+                        for enc in sel.content["enclosures"]:
+                            # No point in enclosures without links
+                            if "href" not in enc:
+                                continue
+
+                            if "type" not in enc:
+                                enc["type"] = "unknown"
+
+                            mainbody += "<a href=\""
+                            mainbody += enc["href"]
+                            mainbody += "\">("
+                            mainbody += enc["type"]
+                            mainbody += ")</a>\n"
+
+
+                for attr in list(self.plugin_attrs.keys()):
+                    if not attr.startswith("edit_"):
+                        continue
+                    try:
+                        a = getattr(self, attr)
+                        (mainbody, extra_content) = a(mainbody, extra_content)
+                    except:
+                        log.error("Error running Reader edit plugin")
+                        log.error(traceback.format_exc())
+
                 # This needn't be prep_for_display'd because the HTML parser
                 # handles that.
 
-                content, links = htmlparser.convert(mainbody + extra_content)
+                content, links = htmlparser.convert(mainbody)
 
                 # 0 always is the mainlink, append other links
                 # to the list.
@@ -187,7 +193,7 @@ class Reader(TextBox):
         # After we have generated the entirety of the content,
         # strip out any egregious spacing.
 
-        self.text = s.rstrip(" \t\v\n")
+        self.text = s.rstrip(" \t\v\n") + extra_content
 
     def cmd_goto(self, links):
         # link = ( type, url, text )
