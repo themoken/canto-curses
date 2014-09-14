@@ -113,11 +113,15 @@ class Reader(TextBox):
             # been fetched yet then grab that from the server now and setup
             # a hook to get notified when sel's attributes are changed.
 
-            if "description" not in sel.content\
-                    and "content" not in sel.content:
-                tag_updater.request_attributes(sel.id, ["description", "content"])
-                s += "%BWaiting for content...%b\n"
-                on_hook("curses_attributes", self.on_attributes)
+            l = ["description", "content", "links", "media_content",
+                    "enclosures"]
+
+            for attr in l:
+                if attr not in sel.content:
+                    tag_updater.request_attributes(sel.id, l)
+                    s += "%BWaiting for content...%b\n"
+                    on_hook("curses_attributes", self.on_attributes)
+                    break
             else:
                 # Grab text content over description, as it's likely got more
                 # information.
@@ -132,23 +136,36 @@ class Reader(TextBox):
                 # and have the remaining link logic pick it up as normal.
 
                 if reader_conf['show_enclosures']:
-                    if not len(sel.content["enclosures"]):
-                        mainbody +="<br /><br />[ No enclosures ]"
+                    parsed_enclosures = []
+
+                    if sel.content["links"]:
+                        for lnk in sel.content["links"]:
+                            if 'rel' in lnk and 'href' in lnk and lnk['rel'] == 'enclosure':
+                                if 'type' not in lnk:
+                                    lnk['type'] = 'unknown'
+                                parsed_enclosures.append((lnk['href'], lnk['type']))
+
+                    if sel.content["media_content"] and 'href' in sel.content["media_content"]:
+                        if 'type' not in sel.content["media_content"]:
+                            sel.content['media_content']['type'] = 'unknown'
+                        parsed_enclosures.append((sel.content["media_content"]['href'],\
+                                    sel.content["media_content"]['type']))
+
+                    if sel.content["enclosures"] and 'href' in sel.content["enclosures"]:
+                        if 'type' not in sel.content["enclosures"]:
+                            sel.content['enclosures']['type'] = 'unknown'
+                        parsed_enclosures.append((sel.content['enclosures']['href'],\
+                                    sel.content['enclosures']['type']))
+
+                    if not parsed_enclosures:
+                        mainbody += "<br />[ No enclosures. ]<br />"
                     else:
-                        for enc in sel.content["enclosures"]:
-                            # No point in enclosures without links
-                            if "href" not in enc:
-                                continue
-
-                            if "type" not in enc:
-                                enc["type"] = "unknown"
-
+                        for lnk, typ in parsed_enclosures:
                             mainbody += "<a href=\""
-                            mainbody += enc["href"]
-                            mainbody += "\">("
-                            mainbody += enc["type"]
-                            mainbody += ")</a>\n"
-
+                            mainbody += lnk
+                            mainbody += "\">["
+                            mainbody += typ
+                            mainbody += "]</a>\n"
 
                 for attr in list(self.plugin_attrs.keys()):
                     if not attr.startswith("edit_"):
