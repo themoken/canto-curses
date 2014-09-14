@@ -10,6 +10,7 @@ from canto_next.hooks import on_hook
 from canto_next.plugins import Plugin
 
 from .command import CommandHandler, register_commands, register_arg_types, unregister_all, _string, register_aliases, commands, command_help
+from .tagcore import tag_updater
 
 import logging
 
