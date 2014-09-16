@@ -11,6 +11,7 @@ from canto_next.plugins import Plugin
 
 from .command import CommandHandler, register_commands, register_arg_types, unregister_all, _string, register_aliases, commands, command_help
 from .tagcore import tag_updater
+from .parser import prep_for_display
 
 import logging
 
@@ -325,6 +326,8 @@ class GuiBase(CommandHandler):
         help_cmds = commands()
 
         def help_validator(x):
+            if x in ["commands", "cmds"]:
+                return (True, 'commands')
             for group in help_cmds:
                 if x in help_cmds[group]:
                     return (True, x)
@@ -337,6 +340,24 @@ class GuiBase(CommandHandler):
             self.callbacks["set_var"]("info_msg", "")
 
         if cmd == 'all':
+            log.info("%BHELP%b\n")
+            log.info("This is a list of available keybinds.\n")
+            log.info("For a list of commands, type ':help commands'\n")
+            log.info("For help with a specific command, type ':help [command]'\n")
+            log.info("%BBinds%b")
+
+            config = self.callbacks["get_conf"]()
+
+            for optname in [ "main", "taglist", "reader" ]:
+                if "key" in config[optname] and list(config[optname]["key"].keys()) != []:
+                    maxbindl = max([ len(x) for x in config[optname]["key"].keys() ]) + 1
+                    log.info("\n%B" + optname + "%b\n")
+                    for bind in sorted(config[optname]["key"]):
+                        bindeff = prep_for_display(bind + (" " * (maxbindl - len(bind))))
+                        cmd = prep_for_display(config[optname]["key"][bind])
+                        log.info("%s %s" % (bindeff, cmd))
+
+        elif cmd == 'commands':
             gc = commands()
             for group in sorted(gc.keys()):
                 log.info("%B" + group + "%b\n")
