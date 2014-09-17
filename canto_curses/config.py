@@ -786,7 +786,7 @@ class CantoCursesConfig(SubThread):
         self.set_conf(c)
 
         for tag in newtags:
-            log.info("New tag %s" % tag)
+            log.debug("New tag %s" % tag)
             call_hook("curses_new_tag", [ tag ])
 
         self.eval_tags()
