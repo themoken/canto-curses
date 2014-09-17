@@ -819,7 +819,7 @@ class CantoCursesConfig(SubThread):
 
                 call_hook("curses_del_tag", tag)
             else:
-                log.warn("Got DELTAG for non-existent tag!")
+                log.debug("Got DELTAG for non-existent tag!")
 
             if tag in c["tagorder"]:
                 c["tagorder"] = [ x for x in self.config["tagorder"] if x != tag ]
