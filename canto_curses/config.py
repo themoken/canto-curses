@@ -52,6 +52,7 @@ class CantoCursesConfig(SubThread):
             "info_msg" : "No info.",
             "dispel_msg" : False,
             "input_prompt" : "",
+            "input_do_completions" : True,
             "input_completion_root" : None,
             "input_completions" : [],
             "reader_item" : None,
@@ -282,6 +283,7 @@ class CantoCursesConfig(SubThread):
                     "n" : "next-marked",
                     "p" : "prev-marked",
                     "M" : "item-state -marked *",
+                    "m" : "item-state %marked",
                 },
 
                 "cursor" :

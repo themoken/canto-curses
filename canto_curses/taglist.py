@@ -733,11 +733,16 @@ class TagList(GuiBase):
 
     def cmd_search(self, term):
         if not term:
+            term = self.callbacks["input"]("search:", False)
+        if not term:
             return
+
         rgx = ".*" + re.escape(term) + ".*"
         return self.search(rgx)
 
     def cmd_search_regex(self, term):
+        if not term:
+            term = self.callbacks["input"]("search-regex:", False)
         if not term:
             return
         return self.search(term)

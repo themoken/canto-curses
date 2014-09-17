@@ -491,11 +491,13 @@ class Screen(CommandHandler):
             b = min(b, t + c.pad.getyx()[0])
         c.pad.noutrefresh(0, 0, t, l, b, r)
 
-    def input_callback(self, prompt):
+    def input_callback(self, prompt, completions=True):
         # Setup subedit
         self.curs_set(1)
 
+        self.callbacks["set_var"]("input_do_completions", completions)
         self.callbacks["set_var"]("input_prompt", prompt)
+
         self.input_box.reset()
         self.input_box.refresh()
         curses.doupdate()
@@ -504,7 +506,9 @@ class Screen(CommandHandler):
         if not r:
             r = ""
 
-        readline.add_history(r)
+        # Only add history for commands, not other prompts
+        if completions:
+            readline.add_history(r)
 
         self.callbacks["set_var"]("input_prompt", "")
         self.input_box.reset()
@@ -579,6 +583,10 @@ class Screen(CommandHandler):
         curses.doupdate()
 
     def _readline_complete(self, prefix, index):
+        do_comp = self.callbacks["get_var"]("input_do_completions")
+        if not do_comp:
+            return None
+
         log.debug("rcomplete: %s %s" % (prefix, index))
         r = cmd_complete(prefix, index)
         log.debug("rcomp ret: %s" % (r,))
@@ -621,6 +629,7 @@ class Screen(CommandHandler):
         self.input_box.rotate_completions(sub, matches)
 
     def _readline_getc(self):
+        do_comp = self.callbacks["get_var"]("input_do_completions")
 
         # Don't flush, because readline loses keys.
         r = self.get_key(False)
@@ -629,7 +638,7 @@ class Screen(CommandHandler):
             r = ord("\b")
 
         # Accept current completion
-        if chr(r) in " \b\n":
+        if chr(r) in " \b\n" and do_comp:
             comp = self.input_box.break_completion()
             if comp:
                 log.debug("inserting: %s" % comp)
