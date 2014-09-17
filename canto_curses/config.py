@@ -279,7 +279,6 @@ class CantoCursesConfig(SubThread):
                     "V" : "uncollapse *",
                     "$" : "item-state read tag,0-.",
                     "/" : "search",
-                    "?" : "search-regex",
                     "n" : "next-marked",
                     "p" : "prev-marked",
                     "M" : "item-state -marked *",
@@ -374,7 +373,7 @@ class CantoCursesConfig(SubThread):
                 {
                     ":" : "command",
                     "q" : "quit",
-                    "h" : "help",
+                    "?" : "help",
                     "\\" : "refresh",
                 }
             },
