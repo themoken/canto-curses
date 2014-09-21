@@ -145,23 +145,31 @@ def _unalias(lookup):
 
     longest_alias = ""
 
+    # Re-combine to match across multiple tokens
+    total = " ".join([ shlex.quote(x) for x in lookup])
+
+    # Commands are automatically aliases of themselves, so that, for example
+    # "quit" won't be expanded into "quituit"
+
+    possibles = list(aliases.keys())
+    possibles.extend(cmds.keys())
+
     # Expand an alias into the lookup
-    for alias in aliases:
-        if not lookup[0].startswith(alias):
+    for alias in possibles:
+        if not total.startswith(alias):
             continue
         if len(alias) > len(longest_alias):
             longest_alias = alias
 
-    if longest_alias == "":
+    if longest_alias == "" or longest_alias in cmds:
         return lookup
 
     # deref -1 for latest register, 1 for longform instead of obj
-    base = shlex.split(aliases[longest_alias][-1][1])
+    total = total.replace(longest_alias, aliases[longest_alias][-1][1], 1)
 
-    if len(lookup[0]) > len(longest_alias):
-        base += [ lookup[0][len(longest_alias):] ]
+    log.debug("Unaliased to: %s" % total)
 
-    return base + lookup[1:]
+    return shlex.split(total)
 
 # Use lookup information to find longest possible sig So, given
 # ['remote','addfeed'], return the signature for "remote addfeed" instead of
