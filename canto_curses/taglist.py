@@ -263,7 +263,9 @@ class TagList(GuiBase):
             on_hook("curses_var_change", self.unhook_tag_list)
 
     def type_tag_list(self):
-        domains = { 'all' : self.tags }
+        vtags = self.callbacks["get_var"]("taglist_visible_tags")
+
+        domains = { 'all' : vtags }
         syms = { 'all' : {} }
 
         sel = self.callbacks["get_var"]("selected")
@@ -271,14 +273,14 @@ class TagList(GuiBase):
         deftags = []
         if sel and sel.is_tag:
             deftags = [ sel ]
-            syms['all']['.'] = [ self.tags.index(sel) ]
+            syms['all']['.'] = [ vtags.index(sel) ]
         elif sel:
             deftags = [ self.tag_by_item(sel) ]
-            syms['all']['.'] = [ self.tags.index(deftags[0]) ]
+            syms['all']['.'] = [ vtags.index(deftags[0]) ]
         else:
             syms['all']['.'] = [ ]
 
-        syms['all']['*'] = range(0, len(self.tags))
+        syms['all']['*'] = range(0, len(vtags))
 
         return (None, lambda x: _int_range("tag", domains, syms, deftags, x))
 
