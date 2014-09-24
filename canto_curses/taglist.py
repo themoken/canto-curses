@@ -140,7 +140,6 @@ class TagList(GuiBase):
         tag_cmds = {
             "promote" : (self.cmd_promote, ["tag-list"], "Move tags up in the display order (opposite of demote)"),
             "demote" : (self.cmd_demote, ["tag-list"], "Move tags down in the display order (opposite of promote)"),
-            "tag-config" : (self.cmd_tag_config, ["tag-list", "string"], "Manipulate a tag's configuration"),
         }
 
         tag_group_cmds = {
@@ -814,13 +813,6 @@ class TagList(GuiBase):
                 break
 
         self._set_cursor(cur, curpos)
-
-    def cmd_tag_config(self, tags, config):
-        for tag in tags:
-            strtag = tag.tag.replace(".","\\.")
-
-            argv = ["canto-remote", "one-config", "tags." + strtag + "." + config]
-            self._remote_argv(argv)
 
     # Just like "string" but prepend "user:"
 

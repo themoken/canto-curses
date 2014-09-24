@@ -132,7 +132,7 @@ class Tag(PluginHandler, list):
                 "border" in opts["taglist"]):
             self.need_redraw()
 
-        if "tag" in opts:
+        if "tagobj" in opts:
             self.need_redraw()
 
     def on_tag_opt_change(self, opts):
@@ -266,7 +266,7 @@ class Tag(PluginHandler, list):
         if width == self.width and not self.changed:
             return self.lns
 
-        tag_conf = self.callbacks["get_opt"]("tag")
+        tag_conf = self.callbacks["get_opt"]("tagobj")
         taglist_conf = self.callbacks["get_opt"]("taglist")
 
         # Values to pass on to render

@@ -32,9 +32,42 @@ from threading import Thread
 import traceback
 import logging
 import curses   # Colors
-import re       # 'tags' setting is a regex
+import re
 
 log = logging.getLogger("CONFIG")
+
+# eval settings need to be somehow converted when read from input.
+
+# These are regexes so that window and color types can be handled with easy
+# wildcards, but care has to be taken.
+
+eval_settings = [\
+    "defaults\\.rate", "feed\\.rate",
+    "defaults\\.keep_time", "feed\\.keep_time",
+    "defaults\\.keep_unread", "feed\\.keep_unread",
+    "update\\.auto.enabled", "update\\.auto\\.interval",
+    "browser\\.text", "taglist\\.border",
+    "kill_daemon_on_exit",
+    ".*\\.window\\.(maxwidth|maxheight|float)",
+    "color\\..*", "tag.(enumerated|collapsed|extra_tags)",
+    "reader.(enumerate_links|show_description|show_enclosures)",
+    "taglist.(border|tags_enumerated|tags_enumerated_absolute|hide_empty_tags|search_attributes)",
+    "taglist.cursor.edge",
+    "story.(format_attrs|enumerated)"
+]
+
+# Do the one-time compile for the setting regexes. This is called after
+# plugins are evaluated, but before curses_start
+
+def finalize_eval_settings():
+    global eval_settings
+    eval_settings = [ re.compile(x) for x in eval_settings ]
+
+def needs_eval(option):
+    for reobj in eval_settings:
+        if reobj.match(option):
+            return True
+    return False
 
 class CantoCursesConfig(SubThread):
 
@@ -82,7 +115,7 @@ class CantoCursesConfig(SubThread):
             "tags" : self.validate_tags,
             "tagorder" : self.validate_tag_order,
 
-            "tag" :
+            "tagobj" :
             {
                 "format" : self.validate_string,
                 "selected" : self.validate_string,
@@ -183,7 +216,7 @@ class CantoCursesConfig(SubThread):
             "tags" : r"maintag:.*",
             "tagorder" : [],
 
-            "tag" :
+            "tagobj" :
             {
                 "format" : DEFAULT_TAG_FSTRING,
                 "selected" : "%R",
@@ -416,6 +449,7 @@ class CantoCursesConfig(SubThread):
             "enumerated" : self.validate_bool,
             "collapsed" : self.validate_bool,
             "extra_tags" : self.validate_string_list,
+            "transform" : self.validate_string,
         }
 
         self.tag_config = {}
@@ -424,7 +458,11 @@ class CantoCursesConfig(SubThread):
             "enumerated" : False,
             "collapsed" : False,
             "extra_tags" : [],
+            "transform" : "None"
         }
+
+        self.daemon_defaults = {}
+        self.daemon_feedconf = []
 
         self.start_pthread()
 
@@ -751,6 +789,21 @@ class CantoCursesConfig(SubThread):
             if deletions and write:
                 self.write("DELCONFIGS", { "CantoCurses" : deletions })
 
+        if "defaults" in given:
+
+            # We don't honor any default settings, so just record them
+            # and pass them on to the daemon if write
+
+            self.daemon_defaults.update(given["defaults"])
+            if write:
+                self.write("SETCONFIGS", { "defaults" : self.daemon_defaults })
+
+        if "feeds" in given:
+
+            self.daemon_feedconf = given["feeds"]
+            if write:
+                self.write("SETCONFIGS", { "feeds" : self.daemon_feedconf })
+
         self.initd = True
 
     # Process new tags.
@@ -898,6 +951,24 @@ class CantoCursesConfig(SubThread):
     def set_tag_conf(self, tag, conf):
         self.prot_configs({ "tags" : { tag : conf } }, True)
 
+    def set_def_conf(self, conf):
+        self.prot_configs({ "defaults" : conf }, True)
+
+    def set_feed_conf(self, name, conf):
+        config_lock.acquire_read()
+        d_f = eval(repr(self.daemon_feedconf), {}, {})
+        config_lock.release_read()
+
+        for f in d_f:
+            if f["name"] == name:
+                log.debug("updating %s with %s" % (f, conf))
+                f.update(conf)
+                break
+        else:
+            d_f.append(conf)
+
+        self.prot_configs({ "feeds" : d_f }, True)
+
     @read_lock(config_lock)
     def get_conf(self):
         return eval(repr(self.config), {}, {})
@@ -906,7 +977,18 @@ class CantoCursesConfig(SubThread):
     def get_tag_conf(self, tag):
         if tag in self.tag_config:
             return eval(repr(self.tag_config[tag]), {}, {})
-        return eval(repr(self.tag_template_config))
+        return eval(repr(self.tag_template_config), {}, {})
+
+    @read_lock(config_lock)
+    def get_def_conf(self):
+        return eval(repr(self.daemon_defaults), {}, {})
+
+    @read_lock(config_lock)
+    def get_feed_conf(self, name):
+        for f in self.daemon_feedconf:
+            if f["name"] == name:
+                return eval(repr(f), {}, {})
+        return None
 
     @write_lock(config_lock)
     def set_opt(self, option, value):

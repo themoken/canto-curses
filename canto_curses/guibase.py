@@ -8,10 +8,12 @@
 
 from canto_next.hooks import on_hook
 from canto_next.plugins import Plugin
+from canto_next.remote import assign_to_dict, access_dict
 
 from .command import CommandHandler, register_commands, register_arg_types, unregister_all, _string, register_aliases, commands, command_help
 from .tagcore import tag_updater
 from .parser import prep_for_display
+from .config import needs_eval
 
 import logging
 
@@ -40,6 +42,7 @@ class GuiBase(CommandHandler):
             "remote-cmd": ("[remote cmd]", self.type_remote_cmd),
             "url" : ("[URL]", _string),
             "help-command" : ("[help-command]: Any canto-curses command, if blank, 'any' or unknown, will display help overview", self.type_help_cmd),
+            "config-option" : ("[config-option]: Any canto-curses option", self.type_config_option),
         }
 
         cmds = {
@@ -49,6 +52,7 @@ class GuiBase(CommandHandler):
             "remote listfeeds" : (lambda x : self.cmd_remote("listfeeds", x), [], "List feeds"),
             "remote": (self.cmd_remote, ["remote-cmd", "string"], "Give a command to canto-remote"),
             "destroy": (self.cmd_destroy, [], "Destroy this %s" % self.get_opt_name()),
+            "set" : (self.cmd_set, ["config-option", "string"], "Set configuration options"),
         }
 
         help_cmds = {
@@ -56,42 +60,22 @@ class GuiBase(CommandHandler):
         }
 
         aliases = {
-            "browser" : "remote one-config CantoCurses.browser.path",
-            "txt_browser" : "remote one-config --eval CantoCurses.browser.text",
             "add" : "remote addfeed",
             "del" : "remote delfeed",
             "list" : "remote listfeeds",
-            "global_transform" : "remote one-config defaults.global_transform",
-            "cursor_type" : "remote one-config CantoCurses.taglist.cursor.type",
-            "cursor_scroll" : "remote one-config CantoCurses.taglist.cursor.scroll",
-            "cursor_edge" : "remote one-config --eval CantoCurses.taglist.cursor.edge",
-            "story_unselected" : "remote one-config CantoCurses.story.unselected",
-            "story_selected" : "remote one-config CantoCurses.story.selected",
-            "story_selected_end" : "remote one-config CantoCurses.story.selected_end",
-            "story_unselected_end" : "remote one-config CantoCurses.story.unselected_end",
-            "story_unread" : "remote one-config CantoCurses.story.unread",
-            "story_read" : "remote one-config CantoCurses.story.read",
-            "story_read_end" : "remote one-config CantoCurses.story.read_end",
-            "story_unread_end" : "remote one-config CantoCurses.story.unread_end",
-            "story_unmarked" : "remote one-config CantoCurses.story.unmarked",
-            "story_marked" : "remote one-config CantoCurses.story.marked",
-            "story_marked_end" : "remote one-config CantoCurses.story.marked_end",
-            "story_unmarked_end" : "remote one-config CantoCurses.story.unmarked_end",
-            "tag_unselected" : "remote one-config CantoCurses.tag.unselected",
-            "tag_selected" : "remote one-config CantoCurses.tag.selected",
-            "tag_selected_end" : "remote one-config CantoCurses.tag.selected_end",
-            "tag_unselected_end" : "remote one-config CantoCurses.tag.unselected_end",
-            "update_interval" : "remote one-config --eval CantoCurses.update.auto.interval",
-            "update_style" : "remote one-config CantoCurses.update.style",
-            "update_auto" : "remote one-config --eval CantoCurses.update.auto.enabled",
-            "border" : "remote one-config --eval CantoCurses.taglist.border",
-            "reader_align" : "remote one-config CantoCurses.reader.window.align",
-            "reader_float" : "remote one-config --eval CantoCurses.reader.window.float",
-            "keep_time" : "remote one-config --eval defaults.keep_time",
-            "keep_unread" : "remote one-config --eval defaults.keep_unread",
-            "kill_daemon_on_exit" : "remote one-config --eval CantoCurses.kill_daemon_on_exit",
+
+            # Compatibility / evaluation aliases
+            "set global_transform" : "set defaults.global_transform",
+            "set keep_time" : "set defaults.keep_time",
+            "set keep_unread" : "set defaults.keep_unread",
+            "set browser " : "set browser.path ",
+            "set txt_browser " : "set browser.text ",
+            "set update.auto " : "set update.auto.enabled ",
+            "set border" : "set taglist.border",
+
             "filter" : "transform",
             "sort" : "transform",
+
             "next-item" : "rel-set-cursor 1",
             "prev-item" : "rel-set-cursor -1",
         }
@@ -366,3 +350,101 @@ class GuiBase(CommandHandler):
                 log.info("")
         else:
             log.info(command_help(cmd, True))
+
+    # Validate a single config option
+    # Will offer completions for any recognized config option
+    # Will *not* reject validly formatted options that don't already exist
+
+    def _get_current_config_options(self, obj, stack):
+        r = []
+
+        for item in obj.keys():
+            stack.append(item)
+
+            if type(obj[item]) == dict:
+                r.extend(self._get_current_config_options(obj[item], stack[:]))
+            else:
+                r.append(shlex.quote(".".join(stack)))
+
+            stack = stack[:-1]
+
+        return r
+
+    def type_config_option(self):
+        conf = self.callbacks["get_conf"]()
+
+        possibles = self._get_current_config_options(conf, [])
+        possibles.sort()
+
+        return (possibles, lambda x : (True, x))
+
+    def cmd_set(self, opt, val):
+        log.debug("SET: %s '%s'" % (opt, val))
+
+        evaluate = needs_eval(opt)
+
+        if val != "" and evaluate:
+            log.debug("Evaluating...")
+            try:
+                val = eval(val)
+            except Exception as e:
+                log.error("Couldn't eval '%s': %s" % (val, e))
+                return
+
+        if opt.startswith("defaults."):
+            conf = { "defaults" : self.callbacks["get_defaults"]() }
+
+            if val != "":
+                assign_to_dict(conf, opt, val)
+                self.callbacks["set_defaults"](conf["defaults"])
+        elif opt.startswith("feed."):
+            sel = self.callbacks["get_var"]("selected")
+            if not sel:
+                log.info("Feed settings only work with a selected item")
+                return
+
+            if sel.is_tag:
+                try_tag = sel
+            else:
+                try_tag = sel.parent_tag
+
+            if not try_tag.tag.startswith("maintag:"):
+                log.info("Selection is in a user tag, cannot set feed settings")
+                return
+
+            name = try_tag.tag[8:]
+
+            conf = { "feed" : self.callbacks["get_feed_conf"](name) }
+
+            if val != "":
+                assign_to_dict(conf, opt, val)
+                self.callbacks["set_feed_conf"](name, conf["feed"])
+        elif opt.startswith("tag."):
+            sel = self.callbacks["get_var"]("selected")
+            if not sel:
+                log.info("Tag settings only work with a selected item")
+                return
+
+            if sel.is_tag:
+                tag = sel
+            else:
+                tag = sel.parent_tag
+
+            conf = { "tag" : self.callbacks["get_tag_conf"](tag.tag) }
+
+            if val != "":
+                assign_to_dict(conf, opt, val)
+                self.callbacks["set_tag_conf"](tag.tag, conf["tag"])
+        else:
+            conf = self.callbacks["get_conf"]()
+
+            if val != "":
+                assign_to_dict(conf, opt, val)
+                self.callbacks["set_conf"](conf)
+
+        ok, val = access_dict(conf, opt)
+        if not ok:
+            log.error("Unknown option %s" % opt)
+            log.error("Full conf: %s" % conf)
+        else:
+            log.info("%s = %s" % (opt, val))

@@ -11,7 +11,7 @@ from canto_next.plugins import try_plugins
 from canto_next.rwlock import alllocks
 from canto_next.hooks import call_hook
 
-from .config import config
+from .config import config, finalize_eval_settings
 from .tagcore import tag_updater, alltagcores
 from .gui import CantoCursesGui
 
@@ -206,6 +206,8 @@ class CantoCurses(CantoClient):
         # Initial signal setup.
         signal.signal(signal.SIGWINCH, self.winch)
         signal.signal(signal.SIGCHLD, self.child)
+
+        finalize_eval_settings()
 
         call_hook("curses_start", [])
 
