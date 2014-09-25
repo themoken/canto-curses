@@ -4,41 +4,159 @@
 Canto-curses \- An ncurses frontend for canto-daemon
 
 .SH COMMAND LINE USAGE
+canto-curses (options)
+
+.SH OPTIONS
 
 .TP
 \-V
 Print version info and exit.
 
 .TP
-\-D/--dir [directory]
-Change base directory for canto-daemon (default: ~/.canto-ng)
-
-.TP
-\-a/--address [IP]
-Attempt to connect to address instead of local Unix socket
-
-.TP
-\-p/--port [port]
-Use port when connecting with -a
+\-h/--help
+Print usage help
 
 .TP
 \-v
 Enable verbose logging (debug)
 
 .TP
+\-D/--dir [directory]
+Change base directory for canto-daemon (default: ~/.canto-ng)
+
+.TP
+\-\-noplugins
+Disable all plugins
+
+.TP
+\-\-enableplugins 'plugin1 plugin2...'
+Enable these plugins (overrides --noplugins)
+
+.TP
+\-\-disableplugins 'plugin1 plugin2...'
+Disable these plugins
+
+.TP
+\-a/--address [IP]
+Attempt to connect to address instead of local Unix socket, defaults to
+loopback (127.0.0.1)
+
+.TP
+\-p/--port [port]
+Use port when listening with -a
+
+.TP
 \-l
 Append pid to log filename (debug)
 
-.SH CONFIGURATION
+.SH GETTING STARTED
 
-For configuration details, please visit http://codezen.org/canto-ng/manual .
+.TP
+.B : (colon)
+Will bring up the canto-curses command line
+
+.TP
+.B :help
+Will bring up the internal help (more complete list of keybinds and commands)
+
+.SH BASIC COMMANDS
+
+.TP
+.B :set browser [browser]
+Set your favorite browser
+
+.TP
+.B :set browser.text [True|False]
+Set this to True if you're using a text based browser like elinks so canto-curses knows to give up the screen to it.
+
+.TP
+.B :add [URL] (username=user password=secret) (name="Some name")
+Subscribe to a feed, with optional arguments
+
+.TP
+.B :del
+Unsubscribe from the selected feed
+
+.SH BASIC KEYBINDS
+
+.TP
+.B j/k up/down
+.br
+Previous item / Next item
+
+.TP
+.B J/K
+.br
+Previous tag / Next tag
+
+.TP
+.B PgUp/PgDown
+.br
+Previous page / Next page
+
+.TP
+.B g
+.br
+Goto the selected item in your browser
+
+.TP
+.B <space>
+.br
+Open / close the internal item reader
+
+.TP
+.B c/v
+.br
+Collapse (minimize) / uncollapse the selected tag
+
+.TP
+.B C/V
+.br
+Collapse (minimize) / uncollapse all visible tags
+
+.SH ADVANCED USAGE
+
+Canto-curses supports a lot more features like categorizing feeds/tags, filtering and sorting, searching, and more that can be discovered with
+.B :help
+
+It also supports a variety of
+.B plugins
+that can add a lot of extra functionality, which are included with this install
+or available on the homepage.
+
+.SH PLUGINS
+
+Plugins are packaged in <prefix>/canto/plugins (i.e. /usr/lib/canto/plugins)
+and can be enabled by copying them into your configuration directory (i.e.
+~/.canto-ng/plugins). Many of them have configuration in them, so you may want
+to open the files to make changes. Here are a few example plugins included with
+the canto-curses source.
+
+.TP
+autocmd.py
+Issue commands automatically on startup (useful to change configuration on startup)
+
+.TP
+reader-extras.py
+Adds extra content to some feeds, also useful to see what's included in a feed.
+
+.TP
+xtermtitle.py
+Set the title of xterm compatible terminals on startup, and optionally include selected item title
+
+.TP
+yank.py
+Adds
+.B :yank-link (defaults to 'y')
+and
+.B :yank-title
+commands (needs xclip installed)
+
+.TP
+favorites.py
+A proof of concept user "favorites" tag, that can change the appearance of certain items selected by the user.
 
 .SH FILES
-.TP
-.I ~/.canto-ng/conf
-
-Shared daemon / canto-curses configuration file.
-
 .TP
 .I ~/.canto-ng/curses-log
 
@@ -47,10 +165,19 @@ Canto-curses log file.
 .TP
 .I ~/.canto-ng/plugins/
 
-Canto-curses plugins directory
+Canto-curses enabled plugins directory
+
+.TP
+.I /usr/lib/canto/plugins
+Default packaged plugin directory.
+
 
 .SH HOMEPAGE
 http://codezen.org/canto-ng
 
 .SH AUTHOR
 Jack Miller <jack@codezen.org>
+
+.SH SEE ALSO
+.BR canto-daemon (1)
+.BR canto-remote (1)
