@@ -31,9 +31,8 @@ class SubThread(object):
 
     def prot_errors(self, errors):
         for key in list(errors.keys()):
-            val = errors[key][1][0]
-            symptom = errors[key][1][1]
-            log.error("%s = %s : %s" % (key, val, symptom))
+            for val, error in errors[key]:
+                log.error("%s = %s : %s" % (key, val, error))
 
     def prot_info(self, info):
         log.info("%s" % info)
