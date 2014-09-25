@@ -17,11 +17,11 @@ cmds = []
 import os
 
 if "DISPLAY" not in os.environ:
-    cmds.append("browser = elinks")
-    cmds.append("txt_browser = True")
+    cmds.append("set browser elinks")
+    cmds.append("set browser.text True")
 else:
-    cmds.append("browser = firefox")
-    cmds.append("txt_browser = False")
+    cmds.append("set browser firefox")
+    cmds.append("set browser.text False")
 
 # The actual plugin workings below.
 
