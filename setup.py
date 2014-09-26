@@ -7,7 +7,7 @@ import subprocess
 import glob
 import os
 
-string_version = "0.9.0-alpha4"
+string_version = "0.9.0-alpha5"
 
 class canto_curses_build_py(build_py):
     def run(self):
