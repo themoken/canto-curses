@@ -65,13 +65,13 @@ class SubThread(object):
                 if hasattr(self, protfunc):
                     getattr(self, protfunc)(args)
                 else:
-                    log.error("Unknown config response?")
+                    log.error("Unknown response?")
                     log.error("%s - %s" % (cmd, args))
         except Exception as e:
-            log.error("Config thread exception: %s" % (e,))
+            log.error("Thread exception: %s" % (e,))
             log.error(''.join(traceback.format_exc()))
 
-        log.info("Config thread exiting.")
+        log.info("Thread exiting - disconnected\nAny further changes will be forgotten!")
 
     def start_pthread(self):
         self.prot_thread = Thread(target=self.pthread)
