@@ -30,12 +30,7 @@ class BasePlugin(Plugin):
     pass
 
 class GuiBase(CommandHandler):
-    def __init__(self):
-        CommandHandler.__init__(self)
-
-        self.plugin_class = BasePlugin
-        self.update_plugin_lookups()
-
+    def init(self):
         args = {
             "key": ("[key]: Simple keys (a), basic chords (C-r, M-a), or named whitespace like space or tab", _string),
             "command": ("[command]: Any canto-curses command. (Will show current binding if not given)\n  Simple: goto\n  Chained: foritems \\\\& goto \\\\& item-state read \\\\& clearitems \\\\& next-item", self.type_unescape_command),
@@ -88,6 +83,9 @@ class GuiBase(CommandHandler):
         register_aliases(self, aliases)
 
         self.editor = None
+
+        self.plugin_class = BasePlugin
+        self.update_plugin_lookups()
 
     def cmd_destroy(self):
         self.callbacks["die"](self)

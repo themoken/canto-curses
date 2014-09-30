@@ -33,10 +33,9 @@ class TagListPlugin(Plugin):
     pass
 
 class TagList(GuiBase):
-    def __init__(self):
-        GuiBase.__init__(self)
-
     def init(self, pad, callbacks):
+        GuiBase.init(self)
+
         # Drawing information
         self.pad = pad
         self.height, self.width = self.pad.getmaxyx()

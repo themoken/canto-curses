@@ -24,12 +24,6 @@ class ReaderPlugin(Plugin):
     pass
 
 class Reader(TextBox):
-    def __init__(self):
-        TextBox.__init__(self)
-
-        self.plugin_class = ReaderPlugin
-        self.update_plugin_lookups()
-
     def init(self, pad, callbacks):
         TextBox.init(self, pad, callbacks)
 
@@ -52,6 +46,9 @@ class Reader(TextBox):
 
         register_arg_types(self, args)
         register_commands(self, cmds, "Reader")
+
+        self.plugin_class = ReaderPlugin
+        self.update_plugin_lookups()
 
     def die(self):
         remove_hook("curses_opt_change", self.on_opt_change)

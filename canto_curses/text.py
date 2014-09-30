@@ -20,6 +20,8 @@ log = logging.getLogger("TEXTBOX")
 
 class TextBox(GuiBase):
     def init(self, pad, callbacks, lstrip=True):
+        GuiBase.init(self)
+
         self.pad = pad
 
         self.max_offset = 0
