@@ -49,7 +49,7 @@ class GuiBase(CommandHandler):
             "bind" : (self.cmd_bind, [ "key", "command" ], "Add or query %s keybinds" % self.get_opt_name()),
             "transform" : (self.cmd_transform, ["string"], "Set user transform"),
             "remote addfeed" : (lambda x : self.cmd_remote("addfeed", x), ["url"], "Subscribe to a feed"),
-            "remote listfeeds" : (lambda x : self.cmd_remote("listfeeds", x), [], "List feeds"),
+            "remote listfeeds" : (lambda : self.cmd_remote("listfeeds", ""), [], "List feeds"),
             "remote": (self.cmd_remote, ["remote-cmd", "string"], "Give a command to canto-remote"),
             "destroy": (self.cmd_destroy, [], "Destroy this %s" % self.get_opt_name()),
             "set" : (self.cmd_set, ["config-option", "string"], "Set configuration options"),
