@@ -502,9 +502,13 @@ class Screen(CommandHandler):
         self.input_box.refresh()
         curses.doupdate()
 
+        self.pseudo_input_box.keypad(0)
+
         r = raw_readline()
         if not r:
             r = ""
+
+        self.pseudo_input_box.keypad(1)
 
         # Only add history for commands, not other prompts
         if completions:
