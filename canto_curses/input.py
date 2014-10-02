@@ -8,6 +8,7 @@
 
 from canto_next.plugins import Plugin
 from .guibase import GuiBase
+from .widecurse import get_rlpoint
 
 import logging
 log = logging.getLogger("INPUT")
@@ -87,7 +88,7 @@ class InputBox(GuiBase):
             pass
         self.x = self.pad.getyx()[1]
         self.pad.clrtoeol()
-        self.pad.move(0, min(self.x, maxx - 1))
+        self.pad.move(0, self.minx + get_rlpoint())
         self.callbacks["refresh"]()
 
     def redraw(self):

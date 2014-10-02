@@ -206,6 +206,11 @@ static PyObject *py_raw_readline(PyObject * self, PyObject * args)
 	}
 }
 
+static PyObject *py_get_rlpoint(PyObject * self, PyObject * args)
+{
+	return Py_BuildValue("i", rl_point);
+}
+
 static PyMethodDef WCMethods[] = {
 	{"waddch", (PyCFunction) py_waddch, METH_VARARGS, "waddch() wrapper."},
 	{"wcwidth", (PyCFunction) py_wcwidth, METH_VARARGS,
@@ -218,6 +223,7 @@ static PyMethodDef WCMethods[] = {
 	 "Set readline to use func for getting characters"},
 	{"raw_readline", (PyCFunction) py_raw_readline, METH_VARARGS,
 	 "Raw readline()"},
+	{"get_rlpoint", (PyCFunction) py_get_rlpoint, METH_VARARGS, "Return current readline cursor position"},
 	{NULL, NULL},
 };
 
