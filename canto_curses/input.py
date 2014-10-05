@@ -56,8 +56,7 @@ class InputBox(GuiBase):
             self.callbacks["set_var"]("input_completion_root", self.content)
             self.callbacks["set_var"]("input_completions", [x[len(sub):] for x in matches])
         else:
-            complist = [complist[-1]] + complist[:-1]
-            log.debug("complist: %s" % complist)
+            complist = complist[1:] + [ complist[0] ]
             self.callbacks["set_var"]("input_completions", complist)
 
     def break_completion(self):
