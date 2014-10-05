@@ -249,16 +249,27 @@ def cmd_complete_info():
         return (c_hlp, hlp, completions)
     return None
 
+complete_cache = []
+
 def cmd_complete(prefix, index):
+    global complete_cache
+
     log.debug("COMPLETE: %s %s" % (prefix, index))
-    r = cmd_complete_info()
-    if r:
-        c_hlp, a_hlp, possibles = r
-        if not possibles:
-            return None
-        possibles = [ x for x in possibles if x.startswith(prefix) ]
-        if index < len(possibles):
-            return possibles[index]
+
+    if index == 0:
+        r = cmd_complete_info()
+        if r:
+            complete_cache = [ x for x in  r[2] if x.startswith(prefix) ]
+        else:
+            complete_cache = []
+
+    if not complete_cache:
+        return None
+
+    if index < len(complete_cache):
+        return complete_cache[index]
+
+    return None
 
 def cmd_execute(cmd):
     lookup = shlex.split(cmd)
