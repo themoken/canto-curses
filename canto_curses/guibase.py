@@ -24,7 +24,9 @@ import tempfile
 import urllib.request, urllib.error, urllib.parse
 import shlex
 import sys
+
 import os
+import os.path
 
 class BasePlugin(Plugin):
     pass
@@ -38,6 +40,7 @@ class GuiBase(CommandHandler):
             "url" : ("[URL]", _string),
             "help-command" : ("[help-command]: Any canto-curses command, if blank, 'any' or unknown, will display help overview", self.type_help_cmd),
             "config-option" : ("[config-option]: Any canto-curses option", self.type_config_option),
+            "executable" : ("[executable]: A program in your PATH", self.type_executable),
         }
 
         cmds = {
@@ -48,6 +51,7 @@ class GuiBase(CommandHandler):
             "remote": (self.cmd_remote, ["remote-cmd", "string"], "Give a command to canto-remote"),
             "destroy": (self.cmd_destroy, [], "Destroy this %s" % self.get_opt_name()),
             "set" : (self.cmd_set, ["config-option", "string"], "Set configuration options"),
+            "set browser.path" : (lambda x : self.cmd_set("browser.path", x), ["executable"], "Set desired browser"),
         }
 
         help_cmds = {
@@ -92,6 +96,18 @@ class GuiBase(CommandHandler):
 
     def die(self):
         unregister_all(self)
+
+    # Provide completions, but we don't care to verify settings.
+
+    def type_executable(self):
+        executables = []
+        for path_dir in os.environ["PATH"].split(os.pathsep):
+            for f in os.listdir(path_dir):
+                fullpath = os.path.join(path_dir, f)
+                if os.path.isfile(fullpath) and os.access(fullpath, os.X_OK):
+                    executables.append(f)
+
+        return (executables, lambda x : (True, x))
 
     def _fork(self, path, href, text, fetch=False):
 
