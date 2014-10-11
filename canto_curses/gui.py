@@ -152,9 +152,13 @@ class CantoCursesGui(CommandHandler):
 
     def issue_cmd(self, cmd):
         sync_lock.acquire_write()
-        r = cmd_execute(cmd)
-        sync_lock.release_write()
-        return r
+        try:
+            r = cmd_execute(cmd)
+            return r
+        except Exception as e:
+            log.error("Exception: %s" % e)
+        finally:
+            sync_lock.release_write()
 
     def run(self):
         while self.alive:
