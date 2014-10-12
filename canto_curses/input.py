@@ -9,12 +9,14 @@
 from canto_next.plugins import Plugin
 from .guibase import GuiBase
 from .widecurse import get_rlpoint
+from .command import cmd_complete_info
 
 import logging
 log = logging.getLogger("INPUT")
 
 import readline
 import curses
+import shlex
 from curses import ascii
 
 class InputPlugin(Plugin):
@@ -43,24 +45,33 @@ class InputBox(GuiBase):
         self.completion_root = None
         self.completions = None
 
-    def rotate_completions(self, sub, matches):
-        log.debug("rotate: %s %s" % (sub, matches))
-        log.debug("rotate_content: %s" % self.content)
+    def _get_prefix(self):
+        buf = readline.get_line_buffer()
+        if buf[-1].isspace():
+            prefix = ""
+        else:
+            prefix = shlex.split(buf)[-1]
+        return prefix
 
-        comproot = self.callbacks["get_var"]("input_completion_root")
+    def rotate_completions(self):
         complist = self.callbacks["get_var"]("input_completions")
+        oldpref = self.callbacks["get_var"]("input_completion_root")
 
-        if self.content != comproot or not complist:
-            log.debug("setting root: %s" % self.content)
-            log.debug("setting comps: %s" % [x[len(sub):] for x in matches])
-            self.callbacks["set_var"]("input_completion_root", self.content)
-            self.callbacks["set_var"]("input_completions", [x[len(sub):] for x in matches])
+        prefix = self._get_prefix()
+        if not complist or oldpref != prefix:
+            r = cmd_complete_info()
+            if not r:
+                complist = []
+            else:
+                complist = [ x[len(prefix):] for x in r[2] if x.startswith(prefix) ]
+                complist.sort()
         else:
             complist = complist[1:] + [ complist[0] ]
-            self.callbacks["set_var"]("input_completions", complist)
+
+        self.callbacks["set_var"]("input_completions", complist)
+        self.callbacks["set_var"]("input_completion_root", prefix)
 
     def break_completion(self):
-        log.debug("COMPLETION BROKEN")
         comp = self.callbacks["get_var"]("input_completions")
         self.callbacks["set_var"]("input_completions", [])
         self.callbacks["set_var"]("input_completion_root", "")
@@ -68,14 +79,11 @@ class InputBox(GuiBase):
             return comp[0]
         return None
 
-    def set_content(self, s):
-        self.content = s
-
     def refresh(self):
         self.pad.move(0, self.minx)
         maxx = self.pad.getmaxyx()[1]
 
-        s = self.content
+        s = readline.get_line_buffer()
         complist = self.callbacks["get_var"]("input_completions")
         if complist:
             s += complist[0]

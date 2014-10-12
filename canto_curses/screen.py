@@ -10,7 +10,7 @@ from canto_next.plugins import Plugin
 from canto_next.encoding import locale_enc
 from canto_next.hooks import on_hook
 
-from .command import CommandHandler, cmd_complete, cmd_complete_info, register_commands, register_arg_types
+from .command import CommandHandler, register_commands, register_arg_types
 from .taglist import TagList
 from .input import InputBox
 from .text import InfoBox
@@ -67,21 +67,12 @@ class Screen(CommandHandler):
         self.pseudo_input_box.nodelay(0)
         self.input_lock = Lock()
 
-        # We don't want - or * in our delims because they're valid inside a
-        # line with a range or a wildcard.
-
-        readline.set_completer_delims(' \t&')
-
-        readline.set_completion_display_matches_hook(self.readline_display_matches)
         set_redisplay_callback(self.readline_redisplay)
         set_getc(self.readline_getc)
 
         # See Python bug 2675, readline + curses
         os.unsetenv('LINES')
         os.unsetenv('COLUMNS')
-
-        readline.parse_and_bind('tab: complete')
-        readline.set_completer(self.readline_complete)
 
         self.floats = []
         self.tiles = []
@@ -582,55 +573,8 @@ class Screen(CommandHandler):
         sync_lock.release_write()
 
     def _readline_redisplay(self):
-        self.input_box.set_content(readline.get_line_buffer())
         self.input_box.refresh()
         curses.doupdate()
-
-    def _readline_complete(self, prefix, index):
-        do_comp = self.callbacks["get_var"]("input_do_completions")
-        if not do_comp:
-            return None
-
-        log.debug("rcomplete: %s %s" % (prefix, index))
-        r = cmd_complete(prefix, index)
-        log.debug("rcomp ret: %s" % (r,))
-
-        # Still have completions, return this one
-        if r:
-            return r
-
-        # No more completions (last call of this), so trigger completion info
-        # display.
-
-        # TODO: Does this need to be behind a configuration?
-
-        if True:
-            r = cmd_complete_info()
-            if r and (r[0] or r[1]):
-                c_hlp, a_hlp, completions = r
-                msg = "%s\n%s" % (c_hlp, a_hlp)
-
-                sync_lock.acquire_write()
-                if InfoBox in self.window_types:
-                    self.callbacks["set_var"]("info_msg", msg)
-                else:
-                    log.info(msg)
-                self.callbacks["set_var"]("dispel_msg", True)
-                sync_lock.release_write()
-
-            # We're called from readline, so we have to take sync_lock before
-            # we cause anything other than the input box to refresh/redraw
-
-            sync_lock.acquire_write()
-            self.refresh()
-            self.redraw()
-            sync_lock.release_write()
-
-        return None
-
-    def _readline_display_matches(self, sub, matches, maxlen):
-        log.debug("rdispmatch: %s - %s - %s" % (sub, matches, maxlen))
-        self.input_box.rotate_completions(sub, matches)
 
     def _readline_getc(self):
         do_comp = self.callbacks["get_var"]("input_do_completions")
@@ -641,6 +585,10 @@ class Screen(CommandHandler):
         if r == curses.KEY_BACKSPACE:
             r = ord("\b")
 
+        if chr(r) == '\t' and do_comp:
+            self.input_box.rotate_completions()
+            return
+
         # Accept current completion
         if chr(r) in " \b\n" and do_comp:
             comp = self.input_box.break_completion()
@@ -648,10 +596,9 @@ class Screen(CommandHandler):
                 log.debug("inserting: %s" % comp)
                 readline.insert_text(comp)
 
-            # Clear out any old dispellable windows
-            if self.callbacks["get_var"]("dispel_msg"):
-                self.callbacks["set_var"]("info_msg", "")
-                self.callbacks["release_gui"]()
+        # Discard current completion
+        else:
+            self.input_box.break_completion()
 
         log.debug("KEY: %s" % r)
         return r
