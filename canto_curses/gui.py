@@ -18,6 +18,7 @@ from .config import config
 from .screen import Screen
 
 from threading import Thread, Event
+import traceback
 import logging
 
 log = logging.getLogger("GUI")
@@ -157,6 +158,7 @@ class CantoCursesGui(CommandHandler):
             return r
         except Exception as e:
             log.error("Exception: %s" % e)
+            log.error(traceback.format_exc())
         finally:
             sync_lock.release_write()
 

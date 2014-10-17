@@ -206,7 +206,7 @@ class CantoCursesConfig(SubThread):
         for i in range(0, 256):
             self.validators["color"][str(i)] = self.validate_color
 
-        self.config = {
+        self.template_config = {
             "browser" :
             {
                 "path" : "firefox",
@@ -445,7 +445,9 @@ class CantoCursesConfig(SubThread):
         }
 
         for i in range(8, 256):
-            self.config["color"][str(i)] = i
+            self.template_config["color"][str(i)] = i
+
+        self.config = eval(repr(self.template_config))
 
         self.tag_validators = {
             "enumerated" : self.validate_bool,
@@ -575,15 +577,6 @@ class CantoCursesConfig(SubThread):
             if type(val[key]) != str:
                 return (False, False)
 
-        # For keys, because we don't want to specify each and every possible
-        # key explicitly, so we merge in default keys. If a user wants to
-        # ignore a default key, he can set it to None and it won't be merged
-        # over.
-
-        for key in list(d.keys()):
-            if key not in val:
-                val[key] = d[key]
-
         return (True, val)
 
     def validate_color(self, val, d, dict_ok=True):
@@ -698,7 +691,7 @@ class CantoCursesConfig(SubThread):
             # are actual changes.
 
             elif type(v[key]) == dict:
-                chgs, dels =  self.validate_config(c[key], d[key], v[key])
+                chgs, dels = self.validate_config(c[key], d[key], v[key])
                 if chgs:
                     changes[key] = chgs
                 if dels:
@@ -711,10 +704,15 @@ class CantoCursesConfig(SubThread):
                 # Value is good, pass on
                 if good:
                     if val != d[key]:
+                        dels = {}
                         if type(val) == list:
                             chgs, dels, = self._list_diff(val, d[key])
-                            if dels:
-                                deletions[key] = dels
+                        elif type(val) == dict and type(d[key]) == dict:
+                            for d_key in d[key].keys():
+                                if d_key not in c[key].keys():
+                                    dels[d_key] = "DELETE"
+                        if dels:
+                            deletions[key] = dels
                         changes[key] = val
                     c[key] = val
 
@@ -731,6 +729,10 @@ class CantoCursesConfig(SubThread):
 
                     changes[key] = d[key]
                     c[key] = d[key]
+
+        for key in list(d.keys()):
+            if key not in c and key not in v:
+                deletions[key] = "DELETE"
 
         return changes, deletions
 

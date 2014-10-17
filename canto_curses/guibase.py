@@ -13,7 +13,7 @@ from canto_next.remote import assign_to_dict, access_dict
 from .command import CommandHandler, register_commands, register_arg_types, unregister_all, _string, register_aliases, commands, command_help
 from .tagcore import tag_updater
 from .parser import prep_for_display
-from .config import needs_eval
+from .config import needs_eval, config
 
 import logging
 
@@ -52,6 +52,7 @@ class GuiBase(CommandHandler):
             "destroy": (self.cmd_destroy, [], "Destroy this %s" % self.get_opt_name()),
             "set" : (self.cmd_set, ["config-option", "string"], "Set configuration options"),
             "set browser.path" : (lambda x : self.cmd_set("browser.path", x), ["executable"], "Set desired browser"),
+            "reset-config" : (self.cmd_reset_config, [], "Reset canto-curses config (won't touch daemon / feed settings)")
         }
 
         help_cmds = {
@@ -435,3 +436,7 @@ class GuiBase(CommandHandler):
             log.error("Full conf: %s" % conf)
         else:
             log.info("%s = %s" % (opt, val))
+
+    def cmd_reset_config(self):
+        log.info("Resetting to defaults")
+        self.callbacks["set_conf"](config.template_config)
