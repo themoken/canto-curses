@@ -194,7 +194,7 @@ class GuiBase(CommandHandler):
         remote_cmds = [ "help", "addfeed", "listfeeds", "delfeed",
                 "force-update", "config", "one-config", "export",
                 "import", "kill" ]
-        return (remote_cmds, lambda x : (x in remote_cmds, x))
+        return (remote_cmds, lambda x : (True, x))
 
     def _remote_argv(self, argv):
         loc_args = self.callbacks["get_var"]("location")
