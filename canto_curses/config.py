@@ -291,8 +291,6 @@ class CantoCursesConfig(SubThread):
                 {
                     "space" : "foritem & item-state read & reader",
                     "g" : "foritems & goto & item-state read & clearitems",
-                    "E" : "toggle taglist.tags_enumerated",
-                    "e" : "toggle story.enumerated",
                     "R" : "item-state read *",
                     "U" : "item-state -read *",
                     "r" : "tag-state read",
@@ -303,7 +301,6 @@ class CantoCursesConfig(SubThread):
                     "j" : "next-item",
                     "up" : "prev-item",
                     "k" : "prev-item",
-                    "C-u" : "unset-cursor",
                     "+" : "promote",
                     "-" : "demote",
                     "J" : "next-tag",
