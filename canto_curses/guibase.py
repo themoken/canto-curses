@@ -206,15 +206,16 @@ class GuiBase(CommandHandler):
         # check_output return bytes, we must decode.
         out = subprocess.check_output(argv).decode()
 
-        log.debug("Output:")
-        log.debug(out.rstrip())
+        if out:
+            log.debug("Output:")
+            log.debug(out.rstrip())
 
-        # Strip anything that could be misconstrued as style
-        # from remote output.
+            # Strip anything that could be misconstrued as style
+            # from remote output.
 
-        out = out.replace("%","\\%")
+            out = out.replace("%","\\%")
 
-        log.info(out.rstrip())
+            log.info(out.rstrip())
 
     def _remote(self, args):
         args = "canto-remote " + args
