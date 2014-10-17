@@ -59,16 +59,11 @@ def commands():
     return c
 
 def command_help(command, detailed=False):
-    if command in aliases:
-        if aliases[command][-1][1] in cmds:
-            working_cmd = cmds[aliases[command][-1][1]]
-        else:
-            return "%s - alias of '%s'" % (command, aliases[command][-1][1])
-    else:
-        working_cmd = cmds[command]
+    lookup = shlex.split(command)
+    working_cmd = _get_max_sig(lookup)
 
     if not detailed:
-        s = "%s - %s" % (command, working_cmd[-1][3])
+        s = "%s" % working_cmd[-1][3]
         if '\n' in s:
             s = s[:s.index('\n')]
     else:

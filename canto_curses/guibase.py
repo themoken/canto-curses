@@ -326,8 +326,14 @@ class GuiBase(CommandHandler):
             gc = commands()
             for group in sorted(gc.keys()):
                 log.info("%B" + group + "%b\n")
-                for c in sorted(gc[group]):
-                    log.info(command_help(c))
+                tmp = {}
+                for c in gc[group]:
+                    tmp[c] = command_help(c)
+
+                maxcmdl = max([ len(x) for x in tmp ])
+                for c in sorted(tmp.keys()):
+                    ceff = c + (" " * (maxcmdl - len(c)))
+                    log.info("%s - %s" % (ceff, tmp[c]))
                 log.info("")
         else:
             log.info(command_help(cmd, True))
