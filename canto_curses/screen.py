@@ -431,6 +431,7 @@ class Screen(CommandHandler):
 
         # Cleanup any window objects that will be destroyed.
         for w in self.windows:
+            log.debug("die to %s" % w)
             w.die()
 
         self.floats = []
@@ -724,12 +725,14 @@ class Screen(CommandHandler):
 
     def get_key(self, flush=True):
         self.input_lock.acquire()
-        if flush:
-            curses.flushinp()
         try:
             r = self.pseudo_input_box.get_wch()
         except Exception as e:
             r = self.pseudo_input_box.getch()
+
+        if flush and r != curses.KEY_RESIZE:
+            curses.flushinp()
+
         self.input_lock.release()
         if type(r) == str:
             r = ord(r)
