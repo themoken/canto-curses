@@ -313,10 +313,10 @@ class GuiBase(CommandHandler):
 
             config = self.callbacks["get_conf"]()
 
-            for optname in [ "main", "taglist", "reader" ]:
+            for optname in [ "main", "infobox", "taglist", "reader" ]:
                 if "key" in config[optname] and list(config[optname]["key"].keys()) != []:
                     maxbindl = max([ len(x) for x in config[optname]["key"].keys() ]) + 1
-                    log.info("\n%B" + optname + "%b\n")
+                    log.info("\n%B" + optname.title() + "%b\n")
                     for bind in sorted(config[optname]["key"]):
                         bindeff = prep_for_display(bind + (" " * (maxbindl - len(bind))))
                         cmd = prep_for_display(config[optname]["key"][bind])
