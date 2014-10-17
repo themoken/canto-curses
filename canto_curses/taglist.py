@@ -377,9 +377,6 @@ class TagList(GuiBase):
         if attributes:
             tag_updater.set_attributes(attributes)
 
-    def cmd_unset_cursor(self, **kwargs):
-        self._set_cursor(None, 0)
-
     def _iterate_forward(self, start):
         ns = start.next_sel
         o = start

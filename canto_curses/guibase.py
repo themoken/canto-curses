@@ -190,52 +190,6 @@ class GuiBase(CommandHandler):
         # Just in case.
         sys.exit(0)
 
-    def _edit(self, text):
-        if not self.editor:
-            self.editor = os.getenv("EDITOR")
-        if not self.editor:
-            self.editor = self.input("editor: ")
-
-        # No editor, or cancelled dialog, no change.
-        if not self.editor:
-            return text
-
-        self.callbacks["pause_interface"]()
-
-        # Setup tempfile to edit.
-        fd, path = tempfile.mkstemp(text=True)
-
-        f = os.fdopen(fd, "w")
-        f.write(text)
-        f.close()
-
-        # Invoke editor
-        logging.info("Invoking editor on %s" % path)
-        pid = self._fork(self.editor + " %u", path, True)
-        pid, status = os.waitpid(pid, 0)
-
-        if status == 0:
-            f = open(path, "r")
-            r = f.read()
-            f.close()
-        else:
-            self.callbacks["set_var"]("error_msg",
-                    "Editor failed! Status = %d" % (status,))
-            r = text
-
-        # Cleanup temp file.
-        os.unlink(path)
-
-        self.callbacks["unpause_interface"]()
-
-        return r
-
-    def cmd_edit(self, **kwargs):
-        t = self.callbacks["get_opt"](kwargs["opt"])
-        r = self._edit(t)
-        log.info("Edited %s to %s" % (kwargs["opt"], r))
-        self.callbacks["set_opt"](kwargs["opt"], r)
-
     def type_remote_cmd(self):
         remote_cmds = [ "help", "addfeed", "listfeeds", "delfeed",
                 "force-update", "config", "one-config", "export",

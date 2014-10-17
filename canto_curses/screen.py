@@ -633,9 +633,6 @@ class Screen(CommandHandler):
             c.redraw()
         curses.doupdate()
 
-    def cmd_resize(self, **kwargs):
-        self.resize()
-
     # Typical curses resize, endwin and re-setup.
     def resize(self):
         try:
@@ -652,28 +649,9 @@ class Screen(CommandHandler):
         self.refresh()
         self.redraw()
 
-    # Focus idx-th window.
-    def cmd_focus(self, **kwargs):
-        self._focus_abs(kwargs["idx"])
-
     def _focus_abs(self, idx):
         focus_order = self.tiles + self.floats
         focus_order.reverse()
-        l = len(focus_order)
-
-        if idx < 0:
-            idx = -1 * (idx % l)
-        else:
-            idx %= l
-
-        self._focus(focus_order[idx])
-
-    def cmd_focus_rel(self, **kwargs):
-        focus_order = [w for w in self.tiles + self.floats if not w.is_input()]
-        log.debug("focus_order: %s" % focus_order)
-        focus_order.reverse()
-
-        idx = focus_order.index(self.focused) + kwargs["idx"]
         l = len(focus_order)
 
         if idx < 0:
