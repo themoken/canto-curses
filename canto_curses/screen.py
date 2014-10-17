@@ -517,23 +517,28 @@ class Screen(CommandHandler):
     def die_callback(self, window):
         sync_lock.acquire_write()
 
-        # Call the window's die function
-        window.die()
-
         # Remove window from both window_types and the general window list
-        idx = self.windows.index(window)
-        del self.windows[idx]
-        del self.window_types[idx]
 
-        # Regenerate layout with remaining windows.
-        self.subwindows()
+        try:
+            idx = self.windows.index(window)
+        except:
+            pass
+        else:
+            # Call the window's die function
+            window.die()
 
-        self.refresh()
+            del self.windows[idx]
+            del self.window_types[idx]
 
-        # Force a doupdate because refresh doesn't, but we have possibly
-        # uncovered part of the screen that isn't handled by any other window.
+            # Regenerate layout with remaining windows.
+            self.subwindows()
 
-        curses.doupdate()
+            self.refresh()
+
+            # Force a doupdate because refresh doesn't, but we have possibly
+            # uncovered part of the screen that isn't handled by any other window.
+
+            curses.doupdate()
 
         sync_lock.release_write()
 
