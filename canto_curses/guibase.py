@@ -102,10 +102,18 @@ class GuiBase(CommandHandler):
     def type_executable(self):
         executables = []
         for path_dir in os.environ["PATH"].split(os.pathsep):
-            for f in os.listdir(path_dir):
-                fullpath = os.path.join(path_dir, f)
-                if os.path.isfile(fullpath) and os.access(fullpath, os.X_OK):
-                    executables.append(f)
+            try:
+                for f in os.listdir(path_dir):
+                    fullpath = os.path.join(path_dir, f)
+                    if os.path.isfile(fullpath) and os.access(fullpath, os.X_OK):
+                        executables.append(f)
+
+            # PATH directories aren't guaranteed to exist and a myriad of other
+            # errors should just silently move on. Worst case is incomplete
+            # list of completions.
+
+            except:
+                pass
 
         return (executables, lambda x : (True, x))
 
