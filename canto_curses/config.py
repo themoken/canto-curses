@@ -410,6 +410,8 @@ class CantoCursesConfig(SubThread):
                     "q" : "quit",
                     "?" : "help",
                     "\\" : "refresh",
+                    "f5" : "refresh",
+                    "C-r" : "refresh",
                 }
             },
 
