@@ -60,7 +60,7 @@ class InputBox(GuiBase):
         prefix = self._get_prefix()
         if not complist or oldpref != prefix:
             r = cmd_complete_info()
-            if not r:
+            if not r or not r[2]:
                 complist = []
             else:
                 complist = [ x[len(prefix):] for x in r[2] if x.startswith(prefix) ]
