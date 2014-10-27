@@ -37,7 +37,6 @@ class Reader(TextBox):
 
         cmds = {
             "goto" : (self.cmd_goto, ["link-list"], "Goto a specific link"),
-            "fetch" : (self.cmd_fetch, ["link-list"], "Fetch a specific link"),
             "destroy" : (self.cmd_destroy, [], "Destroy this window"),
             "show-links" : (self.cmd_show_links, [], "Toggle link list display"),
             "show-summary" : (self.cmd_show_desc, [], "Toggle summary display"),
@@ -213,11 +212,6 @@ class Reader(TextBox):
         # link = ( type, url, text )
         hrefs = [ l[1] for l in links ]
         self._goto(hrefs)
-
-    def cmd_fetch(self, links):
-        # link = ( type, url, text )
-        hrefs = [ l[1] for l in links ]
-        self._fetch(hrefs)
 
     def _toggle_cmd(self, opt):
         c = self.callbacks["get_conf"]()

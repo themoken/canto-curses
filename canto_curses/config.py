@@ -256,7 +256,6 @@ class CantoCursesConfig(SubThread):
                     "l" : "show-links",
                     "e" : "show-enclosures",
                     "g" : "goto",
-                    "f" : "fetch",
                     "down" : "scroll-down",
                     "up" : "scroll-up",
                     "j" : "scroll-down",

@@ -118,52 +118,12 @@ class GuiBase(CommandHandler):
 
         return (executables, lambda x : (True, x))
 
-    def _fork(self, path, href, text, fetch=False):
-
-        # Prepare temporary files, if fetch.
-
-        if fetch:
-            # Get a path (sans query strings, etc.) for the URL
-            tmppath = urllib.parse.urlparse(href).path
-
-            # Return just the basename of the path (no directories)
-            fname = os.path.basename(tmppath)
-
-            # Grab a temporary directory. This allows us to create a file with
-            # an unperturbed filename so scripts can freely use regex /
-            # extension matching in addition to mimetype detection.
-
-            tmpdir = tempfile.mkdtemp(prefix="canto-")
-            tmpnam = tmpdir + '/' + fname
-
-            on_hook("curses_exit", lambda : (os.unlink(tmpnam)))
-            on_hook("curses_exit", lambda : (os.rmdir(tmpdir)))
-
+    def _fork(self, path, href, text):
         pid = os.fork()
 
         # Parents can now bail.
         if pid:
             return pid
-
-        if fetch:
-            tmp = open(tmpnam, 'w+b')
-
-            # Grab the HTTP info / prepare to read.
-            response = urllib.request.urlopen(href)
-
-            # Grab in kilobyte chunks to avoid wasting memory on something
-            # that's going to be immediately written to disk.
-
-            while True:
-                r = response.read(1024)
-                if not r:
-                    break
-                tmp.write(r)
-
-            response.close()
-            tmp.close()
-
-            href = tmpnam
 
         # Make sure that we quote href such that malicious URLs like
         # "http://example.com & rm -rf ~/" won't be interpreted by the shell.
@@ -231,7 +191,7 @@ class GuiBase(CommandHandler):
     def cmd_remote(self, remote_cmd, args):
         self._remote("%s %s" % (remote_cmd, args))
 
-    def _goto(self, urls, fetch=False):
+    def _goto(self, urls):
         browser = self.callbacks["get_conf"]()["browser"]
 
         if not browser["path"]:
@@ -242,17 +202,12 @@ class GuiBase(CommandHandler):
             self.callbacks["pause_interface"]()
 
         for url in urls:
-            pid = self._fork(browser["path"], url, browser["text"], fetch)
+            pid = self._fork(browser["path"], url, browser["text"])
             if browser["text"]:
                 os.waitpid(pid, 0)
 
         if browser["text"]:
             self.callbacks["unpause_interface"]()
-
-    # Like goto, except download the file to /tmp before executing browser.
-
-    def _fetch(self, urls):
-        self._goto(urls, True)
 
     def cmd_transform(self, transform):
         tag_updater.transform("user", transform)
