@@ -140,6 +140,7 @@ class GuiBase(CommandHandler):
         if not text:
             os.setpgid(os.getpid(), os.getpid())
             os.dup2(fd, sys.stdout.fileno())
+            os.dup2(fd, sys.stdin.fileno())
 
         if "%u" in path:
             path = path.replace("%u", href)
