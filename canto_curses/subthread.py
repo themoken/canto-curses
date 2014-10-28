@@ -20,6 +20,7 @@ class SubThread(object):
         self.backend = backend
 
         self.wlock = Lock()
+        self.rlock = Lock()
 
         # Start up our own connection
         self.conn = backend.connect()
@@ -43,7 +44,10 @@ class SubThread(object):
         self.wlock.release()
 
     def read(self):
-        return self.backend.do_read(self.conn)
+        self.rlock.acquire()
+        r = self.backend.do_read(self.conn)
+        self.rlock.release()
+        return r
 
     def pthread(self):
         self.alive = True
