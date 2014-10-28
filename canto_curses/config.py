@@ -231,7 +231,7 @@ class CantoCursesConfig(SubThread):
                 "auto" :
                 {
                     "interval" : 20,
-                    "enabled" : True
+                    "enabled" : False
                 }
             },
 
