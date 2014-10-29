@@ -96,7 +96,7 @@ class CantoCurses(CantoClient):
         log.info(version)
 
         # Evaluate anything in the target /plugins directory.
-        try_plugins(self.conf_dir, self.plugin_default, self.disabled_plugins,
+        self.plugin_errors = try_plugins(self.conf_dir, self.plugin_default, self.disabled_plugins,
                 self.enabled_plugins)
 
 
@@ -210,6 +210,9 @@ class CantoCurses(CantoClient):
         finalize_eval_settings()
 
         call_hook("curses_start", [])
+
+        if self.plugin_errors:
+            log.error("The following error occurred loading plugins:\n\n%s" % self.plugin_errors)
 
         while self.gui.alive:
             self.gui.tick()
