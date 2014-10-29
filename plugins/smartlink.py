@@ -13,6 +13,9 @@ HANDLERS = [
     },
     { "match-file" : "image data",
       "handler" : "feh",
+    },
+    { "match-file" : "PDF",
+      "handler" : "evince",
     }
 ]
 
