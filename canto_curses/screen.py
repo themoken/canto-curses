@@ -64,7 +64,7 @@ class Screen(CommandHandler):
         self.pseudo_input_box = curses.newpad(1,1)
 
         self.pseudo_input_box.keypad(1)
-        self.pseudo_input_box.nodelay(0)
+        self.pseudo_input_box.nodelay(1)
         self.input_lock = Lock()
 
         set_redisplay_callback(self.readline_redisplay)
@@ -117,6 +117,7 @@ class Screen(CommandHandler):
             curses.start_color()
             curses.use_default_colors()
             curses.typeahead(-1)
+            curses.halfdelay(5)
         except Exception as e:
             log.error("Curses setup failed: %s" % e.msg)
             return -1
@@ -552,7 +553,11 @@ class Screen(CommandHandler):
         log.debug("Pausing interface.")
         sync_lock.acquire_write()
 
+        curses.raw()
+
         self.input_lock.acquire()
+
+        curses.endwin()
 
     def unpause_interface_callback(self):
         log.debug("Unpausing interface.")
@@ -560,7 +565,6 @@ class Screen(CommandHandler):
 
         # All of our window information could be stale.
         self.resize()
-
         sync_lock.release_write()
 
     def add_window_callback(self, cls):
@@ -647,7 +651,7 @@ class Screen(CommandHandler):
             pass
 
         self.pseudo_input_box.keypad(1)
-        self.pseudo_input_box.nodelay(0)
+        self.pseudo_input_box.nodelay(1)
         self.stdscr.refresh()
 
         self.curses_setup()
@@ -729,16 +733,19 @@ class Screen(CommandHandler):
         return [ self, self.focused ]
 
     def get_key(self, flush=True):
-        self.input_lock.acquire()
-        try:
-            r = self.pseudo_input_box.get_wch()
-        except Exception as e:
-            r = self.pseudo_input_box.getch()
+        while True:
+            self.input_lock.acquire()
+            try:
+                r = self.pseudo_input_box.get_wch()
+            except Exception as e:
+                r = self.pseudo_input_box.getch()
+            self.input_lock.release()
+            if r != -1:
+                break
 
         if flush and r != curses.KEY_RESIZE:
             curses.flushinp()
 
-        self.input_lock.release()
         if type(r) == str:
             r = ord(r)
         return r
