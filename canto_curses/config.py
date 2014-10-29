@@ -32,6 +32,7 @@ from threading import Thread
 import traceback
 import logging
 import curses   # Colors
+import json
 import re
 
 log = logging.getLogger("CONFIG")
@@ -737,7 +738,6 @@ class CantoCursesConfig(SubThread):
 
     @write_lock(config_lock)
     def prot_listtags(self, tags):
-        log.debug("listtags: %s" % tags)
         self.vars["strtags"] = tags
         self.config["tagorder"] = tags
 
@@ -751,7 +751,7 @@ class CantoCursesConfig(SubThread):
 
     @write_lock(config_lock)
     def prot_configs(self, given, write = False):
-        log.debug("prot_configs given: %s" % given)
+        log.debug("prot_configs given:\n%s\n" % json.dumps(given, indent=4, sort_keys=True))
 
         if "tags" in given:
             for tag in list(given["tags"].keys()):
@@ -907,7 +907,7 @@ class CantoCursesConfig(SubThread):
         # If evaluated tags differ, we need to let other know.
 
         if prevtags != self.vars["curtags"]:
-            log.debug("Evaluated Tags Changed: %s" % [ t.tag for t in self.vars["curtags"]])
+            log.debug("Evaluated Tags Changed:\n%s\n" % json.dumps([ t.tag for t in self.vars["curtags"]], indent=4))
             call_hook("curses_eval_tags_changed", [])
 
     # This needs to hold var lock, but we also want to avoid calling the var
