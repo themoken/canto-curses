@@ -141,7 +141,7 @@ class SmartLinkThread(Thread):
         # the temporary file path, and got_handler telling us what to invoke an
         # how.
 
-        #log.info("Opening %s with %s" % (self.href, got_handler["handler"]))
+        log.info("Opening %s with %s" % (self.href, got_handler["handler"]))
 
         # Make sure that we quote href such that malicious URLs like
         # "http://example.com & rm -rf ~/" won't be interpreted by the shell.
