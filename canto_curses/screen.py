@@ -730,7 +730,13 @@ class Screen(CommandHandler):
         self.resize()
 
     def get_focus_list(self):
-        return [ self, self.focused ]
+
+        # self.focused might be None, if this is getting called during a
+        # subwindows() call.
+
+        if self.focused:
+            return [ self, self.focused ]
+        return [ self ]
 
     def get_key(self, flush=True):
         while True:
