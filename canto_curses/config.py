@@ -842,6 +842,11 @@ class CantoCursesConfig(SubThread):
                 self.vars["strtags"].append(tag)
                 newtags.append(tag)
 
+        # If there aren't really any tags we didn't know about, no bail.
+
+        if not newtags:
+            return
+
         self.set_conf(c)
 
         for tag in newtags:
@@ -849,7 +854,6 @@ class CantoCursesConfig(SubThread):
             call_hook("curses_new_tag", [ tag ])
 
         self.eval_tags()
-
 
     @write_lock(config_lock)
     def prot_deltags(self, tags):
