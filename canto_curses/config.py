@@ -798,11 +798,15 @@ class CantoCursesConfig(SubThread):
             if write:
                 self.write("SETCONFIGS", { "defaults" : self.daemon_defaults })
 
+            call_hook("curses_def_opt_change", [ given["defaults"] ])
+
         if "feeds" in given:
 
             self.daemon_feedconf = given["feeds"]
             if write:
                 self.write("SETCONFIGS", { "feeds" : self.daemon_feedconf })
+
+            call_hook("curses_feed_opt_change", [ given["feeds"] ])
 
         self.initd = True
 
