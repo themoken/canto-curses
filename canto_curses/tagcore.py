@@ -134,6 +134,7 @@ class TagUpdater(SubThread):
 
         on_hook("curses_new_tag", self.on_new_tag)
         on_hook("curses_stories_removed", self.on_stories_removed)
+        on_hook("curses_def_opt_change", self.on_def_opt_change)
 
         config_lock.release_read()
 
@@ -148,6 +149,14 @@ class TagUpdater(SubThread):
             if item.id in self.attributes:
                 del self.attributes[item.id]
         self.lock.release_write()
+
+    # Changes to global filters should force a full refresh.
+
+    def on_def_opt_change(self, defaults):
+        if 'global_transform' in defaults:
+            log.debug("global_transform changed, forcing reset + update")
+            self.reset(True)
+            self.update()
 
     def prot_attributes(self, d):
         if self.discard:
