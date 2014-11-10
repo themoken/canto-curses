@@ -75,7 +75,7 @@ class CantoCursesConfig(SubThread):
     # No __init__ because we want this to be global, but init must be called
     # with a connection to the daemon, so we call .init() manually.
 
-    def init(self, backend):
+    def init(self, backend, compatible_version):
         SubThread.init(self, backend)
 
         self.initd = False
@@ -467,6 +467,9 @@ class CantoCursesConfig(SubThread):
 
         self.start_pthread()
 
+        self.version = None
+        self.write("VERSION", [])
+
         self.write("WATCHNEWTAGS", [])
         self.write("WATCHDELTAGS", [])
         self.write("LISTTAGS", "")
@@ -477,8 +480,16 @@ class CantoCursesConfig(SubThread):
         # takes virtually no time and makes it so that we don't have to 
         # check if we're init'd before using *_opt functions.
 
+        while (not self.version):
+            pass
+
+        if self.version != compatible_version:
+            return False
+
         while(not self.initd):
             pass
+
+        return True
 
     def validate_uint(self, val, d):
         if type(val) == int and val >= 0:
@@ -740,6 +751,9 @@ class CantoCursesConfig(SubThread):
     def prot_listtags(self, tags):
         self.vars["strtags"] = tags
         self.config["tagorder"] = tags
+
+    def prot_version(self, version):
+        self.version = version
 
     # configs accepts any changes, calls the opt_change hooks and if write is
     # set, sends those changes to the daemon. It's called both when receving

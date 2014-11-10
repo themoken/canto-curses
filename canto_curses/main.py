@@ -6,6 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+CANTO_PROTOCOL_COMPATIBLE = 0.9
+
 from canto_next.client import CantoClient
 from canto_next.plugins import try_plugins
 from canto_next.rwlock import alllocks
@@ -192,7 +194,13 @@ class CantoCurses(CantoClient):
         signal.signal(signal.SIGUSR1, self.sigusr1)
 
         # Get config from daemon
-        config.init(self)
+        if not config.init(self, CANTO_PROTOCOL_COMPATIBLE):
+            print("Invalid daemon version")
+            print("Wanted: %s" % CANTO_PROTOCOL_COMPATIBLE)
+            print("Got: %s" % config.version)
+            sys.exit(-1)
+        else:
+            log.info("Version check passed: %s" % CANTO_PROTOCOL_COMPATIBLE)
 
         # Make TagCores for each tag
         tag_updater.init(self)
