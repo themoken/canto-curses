@@ -319,6 +319,9 @@ class GuiBase(CommandHandler):
         conf = self.callbacks["get_conf"]()
 
         possibles = self._get_current_config_options(conf, [])
+        possibles.extend(self._get_current_config_options(config.daemon_defaults, ["defaults"]))
+        possibles.extend(self._get_current_config_options(config.tag_template_config, ["tag"]))
+        possibles.extend(self._get_current_config_options({ "rate" : 10, "keep_time" : 86400, "keep_unread" : False}, ["feed"]))
         possibles.sort()
 
         return (possibles, lambda x : (True, x))
