@@ -95,7 +95,7 @@ class CantoCursesGui(CommandHandler):
 
         self.alive = True
         self.sync_timer = 1
-        self.sync_requested = False
+        self.sync_requested = True
 
         self.screen = Screen(self.callbacks)
         self.screen.refresh()
