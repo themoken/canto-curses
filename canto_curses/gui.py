@@ -113,6 +113,7 @@ class CantoCursesGui(CommandHandler):
         rootlog.addHandler(self.glog_handler)
 
         register_command(self, "refresh", self.cmd_refresh, [], "Refetch everything from the daemon")
+        register_command(self, "update", self.cmd_update, [], "Sync with daemon")
         register_command(self, "quit", self.cmd_quit, [], "Quit canto-curses")
         register_alias(self, "q", "quit")
 
@@ -150,6 +151,9 @@ class CantoCursesGui(CommandHandler):
         if tag_updater.reset():
             tag_updater.update()
             self.force_sync()
+
+    def cmd_update(self):
+        self.force_sync()
 
     def cmd_quit(self):
         self.alive = False
