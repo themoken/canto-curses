@@ -87,10 +87,10 @@ class Tag(PluginHandler, list):
         self.post_format = ""
 
         # Global indices (for enumeration)
-        self.item_offset = None
-        self.visible_tag_offset = None
-        self.tag_offset = None
-        self.sel_offset = None
+        self.item_offset = 0
+        self.visible_tag_offset = 0
+        self.tag_offset = 0
+        self.sel_offset = 0
 
         on_hook("curses_opt_change", self.on_opt_change)
         on_hook("curses_tag_opt_change", self.on_tag_opt_change)
