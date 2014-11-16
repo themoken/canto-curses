@@ -236,16 +236,6 @@ class TagUpdater(SubThread):
         if self.item_removes:
             self.item_tag.remove_items(self.item_removes)
 
-        # If we're using the maintain update style, reorder the feed
-        # properly. Append style requires no extra work (add_items does
-        # it by default).
-
-        conf = config.get_conf()
-
-        if conf["update"]["style"] == "maintain":
-            log.debug("Re-ordering items (update style maintain)")
-            self.item_tag.reorder(self.item_buf)
-
         self.item_tag = None
         self.item_buf = []
         self.item_removes = []

@@ -133,6 +133,7 @@ class CantoCurses(CantoClient):
 
     def sigusr1(self, a = None, b = None):
         import threading
+
         held_locks = {}
         code = {}
         curthreads = threading.enumerate()
