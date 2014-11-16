@@ -23,19 +23,18 @@ import logging
 
 log = logging.getLogger("GUI")
 
-deferred_logs = []
-
 class GraphicalLog(logging.Handler):
     def __init__(self, callbacks, screen):
         logging.Handler.__init__(self)
         self.callbacks = callbacks
         self.screen = screen
+        self.deferred_logs = []
 
     def _emit(self, var, window_type, record):
 
         r = sync_lock.acquire_write(False)
         if not r:
-            deferred_logs.append(record)
+            self.deferred_logs.append(record)
             return
 
         if window_type not in self.screen.window_types:
@@ -55,6 +54,11 @@ class GraphicalLog(logging.Handler):
             self._emit("info_msg", InfoBox, record)
         elif record.levelno == logging.ERROR:
             self._emit("error_msg", ErrorBox, record)
+
+    def flush_deferred_logs(self):
+        for record in self.deferred_logs:
+            self.glog_handler.emit(record)
+            self.deferred_logs = []
 
 class GuiPlugin(Plugin):
     pass
@@ -235,13 +239,7 @@ class CantoCursesGui(CommandHandler):
 
             sync_lock.acquire_write()
 
-            # Handle any deferred logs (stuff that would create windows, but
-            # couldn't get sync_lock at the time)
-
-            global deferred_logs
-            for record in deferred_logs:
-                self.glog_handler.emit(record)
-            deferred_logs = []
+            self.glog_handler.flush_deferred_logs()
 
             if self.sync_requested:
                 log.debug("sync!")
