@@ -57,7 +57,7 @@ class GraphicalLog(logging.Handler):
 
     def flush_deferred_logs(self):
         for record in self.deferred_logs:
-            self.glog_handler.emit(record)
+            self.emit(record)
             self.deferred_logs = []
 
 class GuiPlugin(Plugin):
@@ -104,11 +104,12 @@ class CantoCursesGui(CommandHandler):
         self.screen = Screen(self.callbacks)
         self.screen.refresh()
 
+        self.glog_handler = GraphicalLog(self.callbacks, self.screen)
+
         self.graphical_thread = Thread(target = self.run_gui)
         self.graphical_thread.daemon = True
         self.graphical_thread.start()
 
-        self.glog_handler = GraphicalLog(self.callbacks, self.screen)
         rootlog = logging.getLogger()
         rootlog.addHandler(self.glog_handler)
 
