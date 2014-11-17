@@ -4,6 +4,8 @@
 
 # Allow links to be fetched to disk and then run a smarter handler on it
 
+# Use :fetch instead of :goto to use these handlers.
+
 # HANDLERS is a list of handlers, specified like:
 
 HANDLERS = [
@@ -71,7 +73,7 @@ import sys
 import re
 import os
 
-log = logging.getLogger("MIME")
+log = logging.getLogger("SMARTLINK")
 
 class SmartLinkThread(Thread):
     def __init__(self, base_obj, href):
