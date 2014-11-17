@@ -113,10 +113,9 @@ class CantoCursesGui(CommandHandler):
         rootlog = logging.getLogger()
         rootlog.addHandler(self.glog_handler)
 
-        register_command(self, "refresh", self.cmd_refresh, [], "Refetch everything from the daemon")
-        register_command(self, "update", self.cmd_update, [], "Sync with daemon")
-        register_command(self, "quit", self.cmd_quit, [], "Quit canto-curses")
-        register_alias(self, "q", "quit")
+        register_command(self, "refresh", self.cmd_refresh, [], "Refetch everything from the daemon", "Base")
+        register_command(self, "update", self.cmd_update, [], "Sync with daemon", "Base")
+        register_command(self, "quit", self.cmd_quit, [], "Quit canto-curses", "Base")
 
         self.input_thread = Thread(target = self.run)
         self.input_thread.daemon = True
