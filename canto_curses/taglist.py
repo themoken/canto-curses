@@ -120,6 +120,7 @@ class TagList(GuiBase):
             "goto": (self.cmd_goto, ["item-list"], "Open story links in browser"),
             "reader": (self.cmd_reader, ["item-list"], "Open the built-in reader"),
             "tag-item" : (self.cmd_tag_item, ["user-tag", "item-list"], "Add a tag to individual items"),
+            "tags": (self.cmd_tags, ["item-list"], "Show tag of selected items"),
             "item-state": (self.cmd_item_state, ["item-state", "item-list"], "Set item state (i.e. 'item-state read .')"),
             "tag-state": (self.cmd_tag_state, ["item-state", "tag-list"], "Set item state for all items in tag (i.e. 'tag-state read .')"),
         }
@@ -376,6 +377,20 @@ class TagList(GuiBase):
 
         if attributes:
             tag_updater.set_attributes(attributes)
+
+    def cmd_tags(self, items):
+        for item in items:
+            if "title" in item.content:
+                log.info("'%s' in tags:\n" % item.content["title"])
+
+            log.info(item.parent_tag.tag)
+
+            if "canto-tags" in item.content:
+                for tag in item.content["canto-tags"]:
+                    if tag.startswith("user:"):
+                        log.info(tag[5:])
+                    else:
+                        log.info(tag)
 
     def _iterate_forward(self, start):
         ns = start.next_sel
