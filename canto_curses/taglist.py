@@ -866,6 +866,18 @@ class TagList(GuiBase):
             else:
                 log.info("%s - %s" % (tag, " ".join(categories)))
 
+        popped_cats = []
+        for tag in alltagcores:
+            if tag.tag.startswith("category:"):
+                popped_cats.append(tag.tag[9:])
+
+        if popped_cats:
+            log.info("\nAvailable categories:")
+            for cat in popped_cats:
+                log.info(cat)
+        else:
+            log.info("\nNo categories available.")
+
     def cmd_show_category(self, category):
         if category:
             tag_updater.transform("categories", "InTags(\'" + shlex.quote(category) + "\')")
