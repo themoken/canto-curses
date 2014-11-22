@@ -68,6 +68,11 @@ class SubThread(object):
                 protfunc = "prot_" + cmd.lower()
                 if hasattr(self, protfunc):
                     getattr(self, protfunc)(args)
+
+                    # For test-suite
+                    if hasattr(self.backend, "processed"):
+                        self.backend.processed(cmd, args)
+
                 else:
                     log.error("Unknown response?")
                     log.error("%s - %s" % (cmd, args))
