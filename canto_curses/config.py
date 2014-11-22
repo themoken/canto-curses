@@ -72,16 +72,13 @@ def needs_eval(option):
 
 class CantoCursesConfig(SubThread):
 
-    # No __init__ because we want this to be global, but init must be called
-    # with a connection to the daemon, so we call .init() manually.
+    # The object init just sets up the default settings, doesn't
+    # actually do any communication or setup. That's left to init()
+    # or, in testing, is ignored.
 
-    def init(self, backend, compatible_version):
-        SubThread.init(self, backend)
-
-        self.initd = False
-
+    def __init__(self):
         self.vars = {
-            "location" : backend.location_args,
+            "location" : None,
             "error_msg" : "No error.",
             "info_msg" : "No info.",
             "dispel_msg" : False,
@@ -465,11 +462,18 @@ class CantoCursesConfig(SubThread):
         self.daemon_defaults = {}
         self.daemon_feedconf = []
 
+        self.initd = False
+
+    def init(self, backend, compatible_version):
+        self.vars["location"] = backend.location_args
+
+        SubThread.init(self, backend)
+
         self.start_pthread()
 
         self.version = None
-        self.write("VERSION", [])
 
+        self.write("VERSION", [])
         self.write("WATCHNEWTAGS", [])
         self.write("WATCHDELTAGS", [])
         self.write("LISTTAGS", "")
@@ -484,6 +488,7 @@ class CantoCursesConfig(SubThread):
             pass
 
         if self.version != compatible_version:
+            self.alive = False # Let the subthread die
             return False
 
         while(not self.initd):
