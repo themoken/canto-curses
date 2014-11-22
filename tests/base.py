@@ -19,6 +19,7 @@ class TestBackend(object):
 
         self.lock = Lock()
         self.responses = []
+        self.procd = []
 
         self.script = script
 
@@ -65,10 +66,27 @@ class TestBackend(object):
         print("%s read %s" % (self.prefix, r))
         return r
 
+    def processed(self, cmd, args):
+        self.lock.acquire()
+        self.procd.append((cmd, args))
+        self.lock.release()
+
     def inject(self, cmd, args):
         self.lock.acquire()
-        self.responses.append({ cmd : args })
+        self.responses.append((cmd, args))
         self.lock.release()
+
+        while True:
+            got_it = False
+            self.lock.acquire()
+            if self.procd != []:
+                if self.procd[0] == (cmd, args):
+                    got_it = True
+                self.procd = self.procd[1:]
+            self.lock.release()
+
+            if got_it:
+                return
 
 class Test(object):
     def __init__(self, name):
