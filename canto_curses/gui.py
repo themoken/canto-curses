@@ -115,7 +115,6 @@ class CantoCursesGui(CommandHandler):
         self.input_thread.daemon = True
         self.input_thread.start()
 
-
     def force_sync(self):
         self.sync_requested = True
         self.sync_timer = 0

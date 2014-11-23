@@ -877,7 +877,6 @@ class CantoCursesConfig(SubThread):
 
     @write_lock(config_lock)
     def prot_deltags(self, tags):
-
         if not self.initd:
             for tag in tags:
                 if tag in self.vars["strtags"]:
@@ -885,7 +884,6 @@ class CantoCursesConfig(SubThread):
                 if tag in self.config["tagorder"]:
                     self.config["tagorder"].append(tag)
             return
-
 
         for tag in tags:
             if tag in self.vars["strtags"]:
