@@ -9,6 +9,7 @@
 from canto_next.plugins import Plugin
 from canto_next.format import escsplit
 
+from .tag import alltags
 from .tagcore import tag_updater
 
 from .locks import sync_lock
@@ -240,7 +241,7 @@ class CantoCursesGui(CommandHandler):
 
             if self.sync_requested:
                 log.debug("sync!")
-                for tag in self.callbacks["get_var"]("alltags"):
+                for tag in alltags:
                     tag.sync()
 
                 self.sync_requested = False

@@ -133,6 +133,7 @@ class TagUpdater(SubThread):
             TagCore(tag)
 
         on_hook("curses_new_tag", self.on_new_tag)
+        on_hook("curses_del_tag", self.on_del_tag)
         on_hook("curses_stories_removed", self.on_stories_removed)
         on_hook("curses_def_opt_change", self.on_def_opt_change)
 
@@ -141,6 +142,12 @@ class TagUpdater(SubThread):
     def on_new_tag(self, tag):
         self.prot_tagchange(tag)
         call_hook("curses_new_tagcore", [ TagCore(tag) ])
+
+    def on_del_tag(self, tag):
+        for tagcore in alltagcores:
+            if tagcore.tag == tag:
+                tagcore.reset()
+        call_hook("curses_del_tagcore", [ tagcore ])
 
     # Once they've been removed from the GUI, their attributes can be forgotten
     def on_stories_removed(self, tag, items):

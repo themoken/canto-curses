@@ -95,7 +95,6 @@ class CantoCursesConfig(SubThread):
             "target_offset" : 0,
             "strtags" : [],
             "curtags" : [],
-            "alltags" : [],
             "needs_refresh" : False,
             "needs_redraw" : False,
             "needs_resize" : False,
@@ -494,6 +493,8 @@ class CantoCursesConfig(SubThread):
         while(not self.initd):
             pass
 
+        self.eval_tags()
+
         return True
 
     def validate_uint(self, val, d):
@@ -885,29 +886,18 @@ class CantoCursesConfig(SubThread):
                     self.config["tagorder"].append(tag)
             return
 
-        c = self.get_conf()
 
         for tag in tags:
             if tag in self.vars["strtags"]:
-                new_alltags = self.vars["alltags"]
-
-                i, tagobj = [ x for x in enumerate(new_alltags) if x[1].tag == tag ][0]
-                tagobj.die()
-
-                # Remove it from our vars.
-                del new_alltags[i]
-                self.vars["alltags"] = new_alltags
+                c = self.get_conf()
+                if tag in c["tagorder"]:
+                    c["tagorder"] = [ x for x in self.config["tagorder"] if x != tag ]
+                    self.set_conf(c)
                 self.vars["strtags"].remove(tag)
-
-                call_hook("curses_del_tag", tag)
+                call_hook("curses_del_tag", [ tag ])
+                self.eval_tags()
             else:
                 log.debug("Got DELTAG for non-existent tag!")
-
-            if tag in c["tagorder"]:
-                c["tagorder"] = [ x for x in self.config["tagorder"] if x != tag ]
-
-        self.set_conf(c)
-        self.eval_tags()
 
     @write_lock(config_lock)
     def eval_tags(self):
@@ -915,15 +905,16 @@ class CantoCursesConfig(SubThread):
 
         sorted_tags = []
         r = re.compile(self.config["tags"])
-        for tag in self.vars["alltags"]:
+
+        for tag in self.vars["strtags"]:
 
             # This can happen between the time that a tag is removed from the config
             # and the time that we receive a DELTAG event.
-            if tag.tag not in self.config["tagorder"]:
+            if tag not in self.config["tagorder"]:
                 continue
 
-            elif r.match(tag.tag):
-                sorted_tags.append((self.config["tagorder"].index(tag.tag), tag))
+            elif r.match(tag):
+                sorted_tags.append((self.config["tagorder"].index(tag), tag))
         sorted_tags.sort()
 
         self.set_var("curtags", [ x for (i, x) in sorted_tags ])
@@ -934,7 +925,7 @@ class CantoCursesConfig(SubThread):
         # If evaluated tags differ, we need to let other know.
 
         if prevtags != self.vars["curtags"]:
-            log.debug("Evaluated Tags Changed:\n%s\n" % json.dumps([ t.tag for t in self.vars["curtags"]], indent=4))
+            log.debug("Evaluated Tags Changed:\n%s\n" % json.dumps(self.vars["curtags"], indent=4))
             call_hook("curses_eval_tags_changed", [])
 
     # This needs to hold var lock, but we also want to avoid calling the var

@@ -31,6 +31,8 @@ log = logging.getLogger("TAG")
 class TagPlugin(Plugin):
     pass
 
+alltags = []
+
 class Tag(PluginHandler, list):
     def __init__(self, tagcore, callbacks):
         list.__init__(self)
@@ -99,11 +101,7 @@ class Tag(PluginHandler, list):
         # Upon creation, this Tag adds itself to the
         # list of all tags.
 
-        config_lock.acquire_write()
-        callbacks["get_var"]("alltags").append(self)
-
-        config.eval_tags()
-        config_lock.release_write()
+        alltags.append(self)
 
         self.sync(True)
 
@@ -111,12 +109,15 @@ class Tag(PluginHandler, list):
         self.update_plugin_lookups()
 
     def die(self):
+        log.debug("tag %s die()" % self.tag)
         # Reset so items get die() called and everything
         # else is notified about items disappearing.
 
         for s in self:
             s.die()
         del self[:]
+
+        alltags.remove(self)
 
         unhook_all(self)
 

@@ -14,7 +14,7 @@ from .tagcore import tag_updater, alltagcores
 from .locks import config_lock
 from .guibase import GuiBase
 from .reader import Reader
-from .tag import Tag
+from .tag import Tag, alltags
 
 import logging
 import curses
@@ -62,8 +62,8 @@ class TagList(GuiBase):
         # Keep in mind TagList may be instantiated more than once.
 
         for tagcore in alltagcores:
-            for created_tag in callbacks["get_var"]("alltags"):
-                if tagcore.tag == created_tag.tag:
+            for tagobj in alltags:
+                if tagobj.tag == tagcore.tag:
                     break
             else:
                 log.debug("Instantiating Tag() for %s" % tagcore.tag)
@@ -79,6 +79,7 @@ class TagList(GuiBase):
         on_hook("curses_opt_change", self.on_opt_change, self)
         on_hook("curses_new_tagcore", self.on_new_tagcore, self)
         on_hook("curses_update_complete", self.on_update_complete, self)
+        on_hook("curses_del_tagcore", self.on_del_tagcore, self)
 
         config_lock.release_write()
 
@@ -288,9 +289,16 @@ class TagList(GuiBase):
         log.debug("Instantiating Tag() for %s" % tagcore.tag)
         Tag(tagcore, self.callbacks)
 
-    def on_eval_tags_changed(self):
+    def on_del_tagcore(self, tagcore):
+        log.debug("taglist on_del_tag")
+        for tagobj in alltags:
+            if tagobj.tag == tagcore.tag:
+                tagobj.die()
+
         self.callbacks["set_var"]("needs_refresh", True)
-        self.callbacks["release_gui"]()
+
+    def on_eval_tags_changed(self):
+        self.callbacks["force_sync"]()
 
     # Called without sync_lock
     def on_items_added(self, tagcore, items):
@@ -331,9 +339,9 @@ class TagList(GuiBase):
         sa = self.callbacks["get_opt"]("taglist.search_attributes")
 
         # Make sure that we have all attributes needed for a search.
-        for tag in self.callbacks["get_var"]("alltags"):
+        for tag in alltagcores:
             for item in tag:
-                tag_updater.need_attributes(item.id, sa)
+                tag_updater.need_attributes(item, sa)
 
     def cmd_goto(self, items):
         log.debug("GOTO: %s" % items)
@@ -659,6 +667,8 @@ class TagList(GuiBase):
             # Re-order tags and update internal list order.
             self.callbacks["switch_tags"](tag, visible_tags[curidx - 1])
 
+        self.callbacks["set_var"]("needs_refresh", True)
+
     def cmd_demote(self, tags):
         for tag in tags:
 
@@ -672,6 +682,8 @@ class TagList(GuiBase):
 
             curidx = visible_tags.index(tag)
             self.callbacks["switch_tags"](tag, visible_tags[curidx + 1])
+
+        self.callbacks["set_var"]("needs_refresh", True)
 
     def _collapse_tag(self, tag):
         log.debug("Collapsing %s\n", tag.tag)
@@ -918,7 +930,16 @@ class TagList(GuiBase):
         self.first_sel = None
         self._set_cursor(None, 0)
 
-        self.tags = self.callbacks["get_var"]("curtags")
+        curtags = self.callbacks["get_var"]("curtags")
+        self.tags = []
+
+        # Make sure to honor the order of tags in curtags.
+
+        for tag in curtags:
+            for tagobj in alltags:
+                if tagobj.tag == tag:
+                    self.tags.append(tagobj)
+
         hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")
 
         cur_item_offset = 0
