@@ -885,17 +885,22 @@ class CantoCursesConfig(SubThread):
                     self.config["tagorder"].append(tag)
             return
 
+        c = self.get_conf()
+        changes = False
+
         for tag in tags:
             if tag in self.vars["strtags"]:
-                c = self.get_conf()
                 if tag in c["tagorder"]:
                     c["tagorder"] = [ x for x in self.config["tagorder"] if x != tag ]
-                    self.set_conf(c)
+                    changes = True
                 self.vars["strtags"].remove(tag)
                 call_hook("curses_del_tag", [ tag ])
                 self.eval_tags()
             else:
                 log.debug("Got DELTAG for non-existent tag!")
+
+        if changes:
+            self.set_conf(c)
 
     @write_lock(config_lock)
     def eval_tags(self):
