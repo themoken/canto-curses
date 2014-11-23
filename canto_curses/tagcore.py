@@ -258,6 +258,7 @@ class TagUpdater(SubThread):
         if self.still_updating:
             self.still_updating -= 1
             if not self.still_updating:
+                log.debug("Calling curses_update_complete")
                 call_hook("curses_update_complete", [])
 
     def prot_tagchange(self, tag):

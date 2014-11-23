@@ -239,12 +239,11 @@ class CantoCursesGui(CommandHandler):
 
             self.glog_handler.flush_deferred_logs()
 
-            if self.sync_requested:
-                log.debug("sync!")
-                for tag in alltags:
+            for tag in alltags:
+                if self.sync_requested or (len(tag) == 0 and len(tag.tagcore) != 0):
                     tag.sync()
 
-                self.sync_requested = False
+            self.sync_requested = False
 
             # Resize implies a refresh and redraw
             if self.callbacks["get_var"]("needs_resize"):

@@ -297,11 +297,14 @@ class TagList(GuiBase):
 
         self.callbacks["set_var"]("needs_refresh", True)
 
-    def on_eval_tags_changed(self):
-        self.callbacks["force_sync"]()
+    # We really shouldn't care about item being added (it's a TagCore event)
+    # but we do need to release the gui thread so that it can handle sync
+    # caused by an empty Tag's TagCore getting items.
 
-    # Called without sync_lock
     def on_items_added(self, tagcore, items):
+        self.callbacks["release_gui"]()
+
+    def on_eval_tags_changed(self):
         self.callbacks["force_sync"]()
 
     def on_update_complete(self):
