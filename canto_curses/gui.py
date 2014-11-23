@@ -149,8 +149,8 @@ class CantoCursesGui(CommandHandler):
 
     def cmd_refresh(self):
         if tag_updater.reset():
+            # Will trigger a hook on completion that will cause refresh
             tag_updater.update()
-            self.force_sync()
 
     def cmd_update(self):
         self.force_sync()

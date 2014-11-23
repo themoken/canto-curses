@@ -220,9 +220,6 @@ class TagUpdater(SubThread):
             self.item_adds = []
             return
 
-        if self.still_updating:
-            self.still_updating -= 1
-
         if self.item_adds:
             self.item_tag.add_items(self.item_adds)
 
@@ -240,6 +237,11 @@ class TagUpdater(SubThread):
         self.item_buf = []
         self.item_removes = []
         self.item_adds = []
+
+        if self.still_updating:
+            self.still_updating -= 1
+            if not self.still_updating:
+                call_hook("curses_update_complete", [])
 
     def prot_tagchange(self, tag):
         self.write("ITEMS", [ tag ])

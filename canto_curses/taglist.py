@@ -78,6 +78,7 @@ class TagList(GuiBase):
         on_hook("curses_stories_removed", self.on_stories_removed)
         on_hook("curses_opt_change", self.on_opt_change)
         on_hook("curses_new_tagcore", self.on_new_tagcore)
+        on_hook("curses_update_complete", self.on_update_complete)
 
         config_lock.release_write()
 
@@ -298,6 +299,9 @@ class TagList(GuiBase):
 
     # Called without sync_lock
     def on_items_added(self, tagcore, items):
+        self.callbacks["force_sync"]()
+
+    def on_update_complete(self):
         self.callbacks["force_sync"]()
 
     # Called with sync_lock, so we are unrestricted.
