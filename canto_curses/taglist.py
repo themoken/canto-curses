@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto_next.hooks import on_hook, remove_hook
+from canto_next.hooks import on_hook, remove_hook, unhook_all
 from canto_next.plugins import Plugin
 
 from .command import register_commands, register_arg_types, unregister_all, _int_range, _int_check, _string
@@ -72,13 +72,13 @@ class TagList(GuiBase):
         self.update_tag_lists()
 
         # Hooks
-        on_hook("curses_eval_tags_changed", self.on_eval_tags_changed)
-        on_hook("curses_items_added", self.on_items_added)
-        on_hook("curses_stories_added", self.on_stories_added)
-        on_hook("curses_stories_removed", self.on_stories_removed)
-        on_hook("curses_opt_change", self.on_opt_change)
-        on_hook("curses_new_tagcore", self.on_new_tagcore)
-        on_hook("curses_update_complete", self.on_update_complete)
+        on_hook("curses_eval_tags_changed", self.on_eval_tags_changed, self)
+        on_hook("curses_items_added", self.on_items_added, self)
+        on_hook("curses_stories_added", self.on_stories_added, self)
+        on_hook("curses_stories_removed", self.on_stories_removed, self)
+        on_hook("curses_opt_change", self.on_opt_change, self)
+        on_hook("curses_new_tagcore", self.on_new_tagcore, self)
+        on_hook("curses_update_complete", self.on_update_complete, self)
 
         config_lock.release_write()
 
@@ -167,12 +167,7 @@ class TagList(GuiBase):
 
     def die(self):
         log.debug("Cleaning up hooks...")
-        remove_hook("curses_eval_tags_changed", self.on_eval_tags_changed)
-        remove_hook("curses_items_added", self.on_items_added)
-        remove_hook("curses_stories_added", self.on_stories_added)
-        remove_hook("curses_stories_removed", self.on_stories_removed)
-        remove_hook("curses_opt_change", self.on_opt_change)
-        remove_hook("curses_new_tagcore", self.on_new_tagcore)
+        unhook_all(self)
         unregister_all(self)
 
     def tag_by_item(self, item):
@@ -202,7 +197,7 @@ class TagList(GuiBase):
         if not self.callbacks["get_opt"]("story.enumerated"):
             self.callbacks["set_opt"]("story.enumerated", True)
             self.callbacks["release_gui"]()
-            on_hook("curses_var_change", self.unhook_item_list)
+            on_hook("curses_var_change", self.unhook_item_list, self)
 
     def type_item_list(self):
         all_items = []
@@ -260,7 +255,7 @@ class TagList(GuiBase):
         if not self.callbacks["get_opt"]("taglist.tags_enumerated"):
             self.callbacks["set_opt"]("taglist.tags_enumerated", True)
             self.callbacks["release_gui"]()
-            on_hook("curses_var_change", self.unhook_tag_list)
+            on_hook("curses_var_change", self.unhook_tag_list, self)
 
     def type_tag_list(self):
         vtags = self.callbacks["get_var"]("taglist_visible_tags")

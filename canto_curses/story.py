@@ -7,7 +7,7 @@
 #   published by the Free Software Foundation.
 
 from canto_next.plugins import Plugin, PluginHandler
-from canto_next.hooks import on_hook, remove_hook
+from canto_next.hooks import on_hook, unhook_all
 
 from .theme import FakePad, WrapPad, theme_print, theme_len, theme_reset, theme_border
 from .parser import try_parse, try_eval, prep_for_display
@@ -65,9 +65,9 @@ class Story(PluginHandler):
         # This should exist before the hook is setup, or the hook will fail.
         self.content = {}
 
-        on_hook("curses_opt_change", self.on_opt_change)
-        on_hook("curses_tag_opt_change", self.on_tag_opt_change)
-        on_hook("curses_attributes", self.on_attributes)
+        on_hook("curses_opt_change", self.on_opt_change, self)
+        on_hook("curses_tag_opt_change", self.on_tag_opt_change, self)
+        on_hook("curses_attributes", self.on_attributes, self)
 
         # Grab initial content, if any, the rest will be handled by the
         # attributes hook
@@ -80,9 +80,7 @@ class Story(PluginHandler):
 
     def die(self):
         self.parent_tag = None
-        remove_hook("curses_opt_change", self.on_opt_change)
-        remove_hook("curses_tag_opt_change", self.on_tag_opt_change)
-        remove_hook("curses_attributes", self.on_attributes)
+        unhook_all(self)
 
     def __eq__(self, other):
         if not other:

@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto_next.hooks import call_hook, on_hook, remove_hook
+from canto_next.hooks import call_hook, on_hook, unhook_all
 from canto_next.plugins import Plugin, PluginHandler
 from canto_next.rwlock import read_lock
 
@@ -92,9 +92,9 @@ class Tag(PluginHandler, list):
         self.tag_offset = 0
         self.sel_offset = 0
 
-        on_hook("curses_opt_change", self.on_opt_change)
-        on_hook("curses_tag_opt_change", self.on_tag_opt_change)
-        on_hook("curses_attributes", self.on_attributes)
+        on_hook("curses_opt_change", self.on_opt_change, self)
+        on_hook("curses_tag_opt_change", self.on_tag_opt_change, self)
+        on_hook("curses_attributes", self.on_attributes, self)
 
         # Upon creation, this Tag adds itself to the
         # list of all tags.
@@ -118,9 +118,7 @@ class Tag(PluginHandler, list):
             s.die()
         del self[:]
 
-        remove_hook("curses_opt_change", self.on_opt_change)
-        remove_hook("curses_tag_opt_change", self.on_tag_opt_change)
-        remove_hook("curses_attributes", self.on_attributes)
+        unhook_all(self)
 
     def on_item_state_change(self, item):
         self.need_redraw()

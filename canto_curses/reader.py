@@ -7,7 +7,7 @@
 #   published by the Free Software Foundation.
 
 from canto_next.plugins import Plugin
-from canto_next.hooks import on_hook, remove_hook
+from canto_next.hooks import on_hook, remove_hook, unhook_all
 
 from .command import register_commands, register_arg_types, unregister_all, _int_range
 from .parser import prep_for_display
@@ -28,8 +28,8 @@ class Reader(TextBox):
         TextBox.init(self, pad, callbacks)
 
         self.quote_rgx = re.compile("[\\\"](.*?)[\\\"]")
-        on_hook("curses_opt_change", self.on_opt_change)
-        on_hook("curses_var_change", self.on_var_change)
+        on_hook("curses_opt_change", self.on_opt_change, self)
+        on_hook("curses_var_change", self.on_var_change, self)
 
         args = {
             "link-list" : ("", self.type_link_list),
@@ -50,8 +50,7 @@ class Reader(TextBox):
         self.update_plugin_lookups()
 
     def die(self):
-        remove_hook("curses_opt_change", self.on_opt_change)
-        remove_hook("curses_var_change", self.on_var_change)
+        unhook_all(self)
         unregister_all(self)
 
     def on_opt_change(self, change):
@@ -116,7 +115,7 @@ class Reader(TextBox):
                 if attr not in sel.content:
                     tag_updater.request_attributes(sel.id, l)
                     s += "%BWaiting for content...%b\n"
-                    on_hook("curses_attributes", self.on_attributes)
+                    on_hook("curses_attributes", self.on_attributes, self)
                     break
             else:
                 # Grab text content over description, as it's likely got more

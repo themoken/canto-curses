@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto_next.hooks import on_hook, remove_hook
+from canto_next.hooks import on_hook, unhook_all
 
 from .theme import FakePad, WrapPad, theme_print, theme_lstrip, theme_border, theme_reset
 from .command import register_commands, unregister_command
@@ -213,7 +213,7 @@ class VarBox(TextBox):
         self.var = var
         self.value = self.callbacks["get_var"](var)
 
-        on_hook("curses_var_change", self.on_var_change)
+        on_hook("curses_var_change", self.on_var_change, self)
 
     def on_var_change(self, change):
         if self.var in change:
@@ -223,7 +223,7 @@ class VarBox(TextBox):
             self.callbacks["set_var"]("needs_refresh", True)
 
     def cmd_destroy(self):
-        remove_hook("curses_var_change", self.on_var_change)
+        unhook_all(self)
         TextBox.cmd_destroy(self)
 
 class InfoBox(VarBox):
