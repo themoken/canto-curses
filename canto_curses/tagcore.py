@@ -161,8 +161,19 @@ class TagUpdater(SubThread):
 
     # Once they've been removed from the GUI, their attributes can be forgotten
     def on_stories_removed(self, tag, items):
+        tagcore = None
+        for tc in alltagcores:
+            if tc.tag == tag.tag:
+                tagcore = tc
+                break
+        else:
+            log.warn("Couldn't find tagcore for removed story tag %s" % tag.tag)
+
         self.lock.acquire_write()
         for item in items:
+            if tagcore and item.id in tc:
+                log.debug("%s still in tagcore, not removing" % item.id)
+                continue
             if item.id in self.attributes:
                 del self.attributes[item.id]
         self.lock.release_write()
