@@ -24,7 +24,10 @@ class TagCore(list):
     def __init__(self, tag):
         list.__init__(self)
         self.tag = tag
+
         self.changes = False
+        self.was_reset = False
+
         self.lock = RWLock("lock: %s" % tag)
         alltagcores.append(self)
 
@@ -72,6 +75,13 @@ class TagCore(list):
     # Remove all stories from this tag.
 
     def reset(self):
+
+        # Tag should be sorted on sync if we were reset, regardless of whether
+        # a sync was done when the tag was empty, so keep track of this and
+        # the Tag object will clear it on sync.
+
+        self.was_reset = True
+
         self.lock.acquire_write()
 
         call_hook("curses_items_removed", [ self, self[:] ])

@@ -381,7 +381,8 @@ class Tag(PluginHandler, list):
             call_hook("curses_stories_added", [ self, added_stories ])
 
             conf = config.get_conf()
-            if conf["update"]["style"] == "maintain":
+            if conf["update"]["style"] == "maintain" or self.tagcore.was_reset:
+                self.tagcore.was_reset = False
                 current_stories.sort()
 
             current_stories = [ x[1] for x in current_stories ]
