@@ -84,7 +84,8 @@ class TagCore(list):
 
         self.lock.acquire_write()
 
-        call_hook("curses_items_removed", [ self, self[:] ])
+        if len(self):
+            call_hook("curses_items_removed", [ self, self[:] ])
         del self[:]
 
         self.changed()
