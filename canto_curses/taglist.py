@@ -658,7 +658,7 @@ class TagList(GuiBase):
                 return
 
             # Re-order tags and update internal list order.
-            self.callbacks["switch_tags"](tag, visible_tags[curidx - 1])
+            self.callbacks["switch_tags"](tag.tag, visible_tags[curidx - 1].tag)
 
         self.callbacks["set_var"]("needs_refresh", True)
 
@@ -674,7 +674,7 @@ class TagList(GuiBase):
                 return
 
             curidx = visible_tags.index(tag)
-            self.callbacks["switch_tags"](tag, visible_tags[curidx + 1])
+            self.callbacks["switch_tags"](tag.tag, visible_tags[curidx + 1].tag)
 
         self.callbacks["set_var"]("needs_refresh", True)
 

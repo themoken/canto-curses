@@ -1038,11 +1038,11 @@ class CantoCursesConfig(SubThread):
     def switch_tags(self, tag1, tag2):
         c = self.get_conf()
 
-        t1_idx = c["tagorder"].index(tag1.tag)
-        t2_idx = c["tagorder"].index(tag2.tag)
+        t1_idx = c["tagorder"].index(tag1)
+        t2_idx = c["tagorder"].index(tag2)
 
-        c["tagorder"][t1_idx] = tag2.tag
-        c["tagorder"][t2_idx] = tag1.tag
+        c["tagorder"][t1_idx] = tag2
+        c["tagorder"][t2_idx] = tag1
 
         self.set_conf(c)
 
