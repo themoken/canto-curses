@@ -7,7 +7,6 @@ from canto_curses.main import CANTO_PROTOCOL_COMPATIBLE
 from canto_curses.config import config
 
 from canto_next.hooks import on_hook
-from canto_next.remote import access_dict
 
 OPT_CHANGE = 1
 TAG_OPT_CHANGE = 2
@@ -53,25 +52,6 @@ class TestConfigFunction(Test):
 
     def on_eval_tags_changed(self):
         self.flags |= EVAL_TAGS
-
-    def compare_flags(self, value):
-        if self.flags != value:
-            raise Exception("Expected flags %d - got %d" % (value, self.flags))
-
-    def compare_config(self, config, var, evalue):
-        ok, got = access_dict(config, var)
-        if not ok:
-            raise Exception("Couldn't get %s?" % var)
-        if got != evalue:
-            raise Exception("Expected %s == %s - got %s" % (var, evalue, got))
-
-    def compare_var(self, var, evalue):
-        if hasattr(self, var):
-            val = getattr(self, var)
-            if val != evalue:
-                raise Exception("Expected self.%s == %s - got %s" % (var, evalue, val))
-        else:
-            raise Exception("Couldn't get self.%s?" % var)
 
     def check(self):
         script = {
