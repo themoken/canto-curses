@@ -31,12 +31,6 @@ class GraphicalLog(logging.Handler):
         self.deferred_logs = []
 
     def _emit(self, var, window_type, record):
-
-        r = sync_lock.acquire_write(False)
-        if not r:
-            self.deferred_logs.append(record)
-            return
-
         if window_type not in self.screen.window_types:
             self.callbacks["set_var"](var, record.message)
             self.screen.add_window_callback(window_type)
@@ -45,20 +39,19 @@ class GraphicalLog(logging.Handler):
             cur += "\n" + record.message
             self.callbacks["set_var"](var, cur)
 
-        sync_lock.release_write()
-
         self.callbacks["set_var"]("needs_refresh", True)
 
     def emit(self, record):
-        if record.levelno == logging.INFO:
-            self._emit("info_msg", InfoBox, record)
-        elif record.levelno == logging.ERROR:
-            self._emit("error_msg", ErrorBox, record)
+        self.deferred_logs.append(record)
 
+    # Call with sync_lock
     def flush_deferred_logs(self):
         for record in self.deferred_logs:
-            self.emit(record)
-            self.deferred_logs = []
+            if record.levelno == logging.INFO:
+                self._emit("info_msg", InfoBox, record)
+            elif record.levelno == logging.ERROR:
+                self._emit("error_msg", ErrorBox, record)
+        self.deferred_logs = []
 
 class GuiPlugin(Plugin):
     pass
