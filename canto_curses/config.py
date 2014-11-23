@@ -803,6 +803,9 @@ class CantoCursesConfig(SubThread):
                 self.config = new_config
                 call_hook("curses_opt_change", [ changes ])
 
+                if "tags" in changes:
+                    self.eval_tags()
+
                 if write:
                     self.write("SETCONFIGS", { "CantoCurses" : changes })
 
