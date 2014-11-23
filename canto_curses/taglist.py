@@ -88,7 +88,7 @@ class TagList(GuiBase):
             "item-state": ("[item-state]: Any word, can be inverted with minus ex: '-read' or 'marked'", self.type_item_state),
             "tag-list": ("[tag-list]: List of tag indices (tab complete to show)\n  Simple: 1,3,6,5\n  Ranges: 1-100\n  Selected tag: .\n  All: *", self.type_tag_list, self.hook_tag_list),
             # string because tag-item will manually bash in user: prefix
-            "user-tag" : ("[user-tag]: Any string, like 'favorite', or 'cool'", _string),
+            "user-tag" : ("[user-tag]: Any string, like 'favorite', or 'cool'", self.type_user_tag),
             "category" : ("[category]: Any string, like 'news' or 'comics'", self.type_category),
         }
 
@@ -829,15 +829,27 @@ class TagList(GuiBase):
 
         self._set_cursor(cur, curpos)
 
-    # Just like "string" but prepend "user:"
+    def type_user_tag(self):
+        utags = []
+        for tag in alltagcores:
+            if tag.tag.startswith("user:"):
+                utags.append(tag.tag[5:])
+
+        return (utags, lambda x : (True, x))
 
     def type_category(self):
         def category_validator(x):
             if x.lower() == "none":
                 return (True, None)
             else:
-                return (True, "category:" + x)
-        return (None, category_validator)
+                return (True, x)
+
+        categories = []
+        for tag in alltagcores:
+            if tag.tag.startswith("category:"):
+                categories.append(tag.tag[9:])
+
+        return (categories, category_validator)
 
     def cmd_categorize(self, category, tags):
         if not category:
@@ -845,10 +857,11 @@ class TagList(GuiBase):
         for tag in tags:
             tc = self.callbacks["get_tag_conf"](tag.tag)
 
-            if category not in tc["extra_tags"]:
-                tc["extra_tags"].append(category)
+            fullcat = "category:" + category
+            if fullcat not in tc["extra_tags"]:
+                tc["extra_tags"].append(fullcat)
                 self.callbacks["set_tag_conf"](tag.tag, tc)
-                log.info("%s is now in category %s" % (tag, category[9:]))
+                log.info("%s is now in category %s" % (tag, category))
 
     def cmd_remove_category(self, category, tags):
         if not category:
@@ -856,10 +869,11 @@ class TagList(GuiBase):
         for tag in tags:
             tc = self.callbacks["get_tag_conf"](tag.tag)
 
-            if category in tc["extra_tags"]:
-                tc["extra_tags"].remove(category)
+            fullcat = "category:" + category
+            if fullcat in tc["extra_tags"]:
+                tc["extra_tags"].remove(fullcat)
                 self.callbacks["set_tag_conf"](tag.tag, tc)
-                log.info("%s is no longer in category %s" % (tag, category[9:]))
+                log.info("%s is no longer in category %s" % (tag, category))
 
     def cmd_categories(self, tags):
         for tag in tags:
