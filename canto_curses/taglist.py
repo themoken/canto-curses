@@ -316,16 +316,6 @@ class TagList(GuiBase):
         # Items being added implies we need to remap them
         self.callbacks["set_var"]("needs_refresh", True)
 
-        # If our selections have appeared, reref them
-        sel = self.callbacks["get_var"]("selected")
-        if sel:
-            if sel == tag:
-                self.callbacks["set_var"]("selected", tag)
-            elif sel in items:
-                self.callbacks["set_var"]("selected", items[items.index(sel)])
-
-            self._set_cursor(sel, self.callbacks["get_var"]("target_offset"))
-
     # Called with sync_lock, so we are unrestricted.
 
     def on_stories_removed(self, tag, items):
