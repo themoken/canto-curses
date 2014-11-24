@@ -3,6 +3,7 @@ from canto_next.remote import access_dict
 from threading import Lock
 import traceback
 import logging
+import json
 
 logging.basicConfig(
     format = "%(message)s",
@@ -10,6 +11,37 @@ logging.basicConfig(
 )
 
 import time
+
+def generate_item_script(num_tags, items_per_tag, tagid_template, storyid_template, content_template):
+    r = {}
+
+    r["ATTRIBUTES"] = {}
+    attributes = {}
+    for i in range(num_tags):
+        for j in range(items_per_tag):
+            sid = storyid_template % (i, j)
+            c = eval(repr(content_template))
+            for key in c.keys():
+                if c[key] and type(c[key]) == str:
+                    c[key] = c[key] % (i, j)
+            c["id"] = sid
+            attributes[sid] = c
+            r["ATTRIBUTES"][repr([sid])] = [("ATTRIBUTES", c)]
+
+    r["ITEMS"] = {}
+    for i in range(num_tags):
+        tag_id = tagid_template % i
+        s = []
+        item_attributes = {}
+        for j in range(items_per_tag):
+            sid = storyid_template % (i,j)
+            item_attributes[sid] = attributes[sid]
+            s.append(sid)
+
+        r["ITEMS"][repr([tag_id])] = [("ITEMS", { tag_id : s }),("ITEMSDONE", {}),
+                ("ATTRIBUTES", item_attributes)]
+
+    return eval(repr(r))
 
 # Like main.py, except instead of communicating with a real server, it reads
 # from a script.
@@ -29,6 +61,9 @@ class TestBackend(object):
         return 0
 
     def do_write(self, conn, cmd, args):
+        if not args.__hash__:
+            args = repr(args)
+
         print("%s write %s - %s" % (self.prefix, cmd, args))
         
         found_response = False
@@ -37,7 +72,7 @@ class TestBackend(object):
         for key in self.script.keys():
             if key == cmd:
                 responses = self.script[key]
-                if repr(args) in responses:
+                if args in responses:
                     found_response = True
                     resps.extend(responses[args])
                     break
