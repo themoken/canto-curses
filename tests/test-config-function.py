@@ -55,8 +55,8 @@ class TestConfigFunction(Test):
 
     def check(self):
         script = {
-            'VERSION' : { '*' : ('VERSION', CANTO_PROTOCOL_COMPATIBLE) },
-            'CONFIGS' : { '*' : ('CONFIGS', { "CantoCurses" : config.template_config }) },
+            'VERSION' : { '*' : [('VERSION', CANTO_PROTOCOL_COMPATIBLE)] },
+            'CONFIGS' : { '*' : [('CONFIGS', { "CantoCurses" : config.template_config })] },
                 
         }
 

@@ -8,7 +8,7 @@ from canto_curses.config import config
 
 class VersionCheckTest(Test):
     def check(self):
-        version_check_script = { 'VERSION' : { '*' : ('VERSION', 0.1) } }
+        version_check_script = { 'VERSION' : { '*' : [('VERSION', 0.1)] } }
 
         backend = TestBackend("config", version_check_script)
 

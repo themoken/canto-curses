@@ -63,8 +63,8 @@ class TestTagCoreFunction(Test):
 
     def check(self):
         config_script = {
-            'VERSION' : { '*' : ('VERSION', CANTO_PROTOCOL_COMPATIBLE) },
-            'CONFIGS' : { '*' : ('CONFIGS', { "CantoCurses" : config.template_config }) },
+            'VERSION' : { '*' : [('VERSION', CANTO_PROTOCOL_COMPATIBLE)] },
+            'CONFIGS' : { '*' : [('CONFIGS', { "CantoCurses" : config.template_config })] },
                 
         }
 

@@ -32,26 +32,26 @@ class TestBackend(object):
         print("%s write %s - %s" % (self.prefix, cmd, args))
         
         found_response = False
-        r = None
+        resps = []
 
         for key in self.script.keys():
             if key == cmd:
                 responses = self.script[key]
                 if repr(args) in responses:
                     found_response = True
-                    r = responses[args]
+                    resps.extend(responses[args])
                     break
                 elif "*" in responses:
                     found_response = True
-                    r = responses["*"]
+                    resps.extend(responses["*"])
                     break
         if not found_response:
             return
 
-        print(" -> queued response %s" % (r,))
-
         self.lock.acquire()
-        self.responses.append(r)
+        for r in resps:
+            print(" -> queued response %s" % (r,))
+            self.responses.append(r)
         self.lock.release()
 
     def do_read(self, conn):
