@@ -158,7 +158,8 @@ class TagUpdater(SubThread):
         for tagcore in alltagcores:
             if tagcore.tag == tag:
                 tagcore.reset()
-        call_hook("curses_del_tagcore", [ tagcore ])
+                call_hook("curses_del_tagcore", [ tagcore ])
+                return
 
     # Once they've been removed from the GUI, their attributes can be forgotten
     def on_stories_removed(self, tag, items):
