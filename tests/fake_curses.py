@@ -33,10 +33,12 @@ class CursesPad():
         self.width = width
 
         self.pad = []
-        _wide = [ " " ] * width
+        _wide = [ { "attrs" : 0, "char" : " " } ] * width
 
         for i in range(self.height):
             self.pad.append(_wide[:])
+
+        self.attrs = 0
 
         self.x = 0
         self.y = 0
@@ -52,10 +54,10 @@ class CursesPad():
         pass
 
     def attron(self, attr):
-        pass
+        self.attrs |= attr
 
     def attroff(self, attr):
-        pass
+        self.attrs ^= attr
 
     def clrtoeol(self):
         y = self.y
@@ -64,10 +66,12 @@ class CursesPad():
 
     def waddch(self, ch):
         if type(ch) == bytes:
-            self.pad[self.y][self.x] = ch.decode("UTF-8")
+            val = { "char" : ch.decode("UTF-8"), "attrs" : self.attrs }
+            self.pad[self.y][self.x] = val
             self.x += wcwidth(ch)
         else:
-            self.pad[self.y][self.x] = ch
+            val = { "char" : ch, "attrs" : self.attrs }
+            self.pad[self.y][self.x] = val
             self.x += wcwidth(ch.encode("UTF-8"))
 
         if self.x >= self.width:
@@ -99,7 +103,7 @@ class CursesPad():
     def erase(self):
         for i in range(self.height):
             for j in range(self.width):
-                self.pad[i][j] = " "
+                self.pad[i][j] = { "char" : " ", "attrs" : self.attrs }
 
     def move(self, y, x):
         self.y = y
@@ -107,7 +111,7 @@ class CursesPad():
 
     def dump(self):
         for i in range(self.height):
-            print("%02d %s-" % (i, "".join(self.pad[i])))
+            print("%02d %s-" % (i, "".join([x["char"] for x in self.pad[i]])))
 
 def newpad(y, x):
     return CursesPad(y, x)
@@ -119,7 +123,7 @@ def init_pair(pair, fg, bg):
     pairs[pair][1] = bg
 
 def color_pair(pair):
-    return (pairs[pair][0], pairs[pair][1])
+    return pair << 8
 
 def doupdate():
     pass
