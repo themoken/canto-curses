@@ -23,7 +23,7 @@ from canto_next.remote import assign_to_dict, access_dict
 
 DEFAULT_FSTRING = "%1%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})%?{m}(%{marked}:%{unmarked})%{pre}%t%{post}%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})%0"
 
-DEFAULT_TAG_FSTRING = "%1%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%{pre} %t %{post} [%B%2%n%1%b]%?{sel}(%{selected_end}:%{unselected_end})%0"
+DEFAULT_TAG_FSTRING = "%1%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%{pre} %t %{post} [%B%2%n%1%b]% %?{pending}([%8%B%{pending}%b%0]:)%?{sel}(%{selected_end}:%{unselected_end})%0"
 
 from .locks import config_lock
 from .subthread import SubThread
@@ -431,7 +431,7 @@ class CantoCursesConfig(SubThread):
                     "fg" : curses.COLOR_WHITE,
                     "bg" : curses.COLOR_RED,
                 },
-                "7" : curses.COLOR_WHITE,
+                "7" : curses.COLOR_BLACK,
             },
 
             "kill_daemon_on_exit" : False

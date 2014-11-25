@@ -41,6 +41,7 @@ class Tag(PluginHandler, list):
         self.tagcore = tagcore
         self.tag = tagcore.tag
         self.is_tag = True
+        self.updates_pending = 0
 
         self.pad = None
         self.footpad = None
@@ -97,6 +98,7 @@ class Tag(PluginHandler, list):
         on_hook("curses_opt_change", self.on_opt_change, self)
         on_hook("curses_tag_opt_change", self.on_tag_opt_change, self)
         on_hook("curses_attributes", self.on_attributes, self)
+        on_hook("curses_items_added", self.on_items_added, self)
 
         # Upon creation, this Tag adds itself to the
         # list of all tags.
@@ -151,6 +153,11 @@ class Tag(PluginHandler, list):
             if s.id in attributes:
                 self.need_redraw()
                 break
+
+    def on_items_added(self, tagcore, added):
+        if tagcore == self.tagcore:
+            self.updates_pending += len(added)
+            self.need_redraw()
 
     # We override eq so that empty tags don't evaluate
     # as equal and screw up things like enumeration.
@@ -269,6 +276,7 @@ class Tag(PluginHandler, list):
                     'n' : unread,
                     "extra_tags" : extra_tags,
                     'tag' : self,
+                    'pending' : self.updates_pending,
                     'prep' : prep_for_display}
 
         # Prep all text values for display.
@@ -411,3 +419,4 @@ class Tag(PluginHandler, list):
             s.sync()
 
         self.tagcore.ack_changes()
+        self.updates_pending = 0
