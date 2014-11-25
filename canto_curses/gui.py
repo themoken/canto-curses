@@ -244,20 +244,36 @@ class CantoCursesGui(CommandHandler):
 
             self.sync_requested = False
 
+            needs_resize = self.callbacks["get_var"]("needs_resize")
+            needs_refresh = self.callbacks["get_var"]("needs_refresh")
+            needs_redraw = self.callbacks["get_var"]("needs_redraw")
+
+            self.callbacks["set_var"]("needs_resize", False)
+            self.callbacks["set_var"]("needs_refresh", False)
+            self.callbacks["set_var"]("needs_redraw", False)
+
             # Resize implies a refresh and redraw
-            if self.callbacks["get_var"]("needs_resize"):
+            if needs_resize:
+                needs_refresh = False
+                needs_redraw = False
                 self.screen.resize()
-                self.callbacks["set_var"]("needs_resize", False)
-                self.callbacks["set_var"]("needs_refresh", False)
-                self.callbacks["set_var"]("needs_redraw", False)
 
-            if self.callbacks["get_var"]("needs_refresh"):
+            elif needs_refresh:
                 self.screen.refresh()
-                self.callbacks["set_var"]("needs_refresh", False)
+                needs_redraw = False
 
-            if self.callbacks["get_var"]("needs_redraw"):
+            elif needs_redraw:
                 self.screen.redraw()
-                self.callbacks["set_var"]("needs_redraw", False)
+
+            needs_resize = self.callbacks["get_var"]("needs_resize")
+            needs_refresh = self.callbacks["get_var"]("needs_refresh")
+            needs_redraw = self.callbacks["get_var"]("needs_redraw")
+
+            # If we weren't able to clear the condition, then
+            # we'll drop locks and immediately go again.
+
+            if needs_resize or needs_refresh or needs_redraw:
+                self.do_gui.set()
 
             sync_lock.release_write()
 
