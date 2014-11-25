@@ -914,15 +914,6 @@ class TagList(GuiBase):
         sel = self.callbacks["get_var"]("selected")
         toffset = self.callbacks["get_var"]("target_offset")
 
-        # We unset selection selection because we're unsure that the selection
-        # will still be visible, and we needn't have gotten an
-        # on_items_removed call.
-
-        # We may restore the selection later, if possible.
-
-        self.first_sel = None
-        self._set_cursor(None, 0)
-
         curtags = self.callbacks["get_var"]("curtags")
         self.tags = []
 
@@ -955,17 +946,7 @@ class TagList(GuiBase):
                 cur_sel_offset += len(tag)
                 cur_item_offset += len(tag)
 
-            # Maintain item selection
-            if sel in tag:
-                newsel = tag[tag.index(sel)]
-                self._set_cursor(newsel, toffset)
-
             t.append(tag)
-
-        # Restore selected tag, if it exists
-
-        if sel and sel.is_tag and sel in t:
-            self._set_cursor(sel, toffset)
 
         self.callbacks["set_var"]("taglist_visible_tags", t)
 
