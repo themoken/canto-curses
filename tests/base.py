@@ -54,6 +54,7 @@ class TestBackend(object):
         self.lock = Lock()
         self.responses = []
         self.procd = []
+        self.output = []
 
         self.script = script
 
@@ -61,6 +62,8 @@ class TestBackend(object):
         return 0
 
     def do_write(self, conn, cmd, args):
+        self.output.append((cmd, args))
+
         if not args.__hash__:
             args = repr(args)
 
