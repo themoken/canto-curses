@@ -116,7 +116,11 @@ class CursesPad():
 def newpad(y, x):
     return CursesPad(y, x)
 
-pairs = [ [ 1, 0 ] ] * 256
+def_pair = [ 1, 0 ]
+
+pairs = []
+for i in range(256):
+    pairs.append(def_pair[:])
 
 def init_pair(pair, fg, bg):
     pairs[pair][0] = fg
