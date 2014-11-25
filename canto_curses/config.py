@@ -21,9 +21,9 @@ from canto_next.hooks import call_hook
 from canto_next.rwlock import RWLock, write_lock, read_lock
 from canto_next.remote import assign_to_dict, access_dict
 
-DEFAULT_FSTRING = "%1%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})%?{m}(%{marked}:%{unmarked})%{pre}%t%{post}%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})%0"
+DEFAULT_FSTRING = "%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})%?{m}(%{marked}:%{unmarked})%{pre}%t%{post}%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})"
 
-DEFAULT_TAG_FSTRING = "%1%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%{pre} %t %{post} [%B%2%n%1%b]% %?{pending}([%8%B%{pending}%b%0]:)%?{sel}(%{selected_end}:%{unselected_end})%0"
+DEFAULT_TAG_FSTRING = "%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%{pre} %t %{post} [%B%1%n%0%b]% %?{pending}([%8%B%{pending}%b%0]:)%?{sel}(%{selected_end}:%{unselected_end})"
 
 from .locks import config_lock
 from .subthread import SubThread
@@ -331,11 +331,11 @@ class CantoCursesConfig(SubThread):
                 "unselected": "",
                 "selected_end": "%r",
                 "unselected_end": "",
-                "read": "%3",
-                "unread": "%2%B",
+                "read": "%2",
+                "unread": "%1%B",
                 "read_end": "%0",
                 "unread_end": "%b%0",
-                "marked": "*%8%B",
+                "marked": "*%7%B",
                 "unmarked": "",
                 "marked_end": "%b%0",
                 "unmarked_end": "",

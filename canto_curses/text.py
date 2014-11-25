@@ -108,13 +108,13 @@ class TextBox(GuiBase):
 
         lc = " "
         if lb:
-            lc = "%1%C" + theme_border("tl") + "%c%0"
+            lc = "%C" + theme_border("tl") + "%c"
 
         rc = " "
         if rb:
-            rc = "%1%C" + theme_border("tr") + "%c%0"
+            rc = "%C" + theme_border("tr") + "%c"
 
-        mainbar = "%1%C" + (theme_border("ts") * (self.width - 1)) + "%0%c"
+        mainbar = "%C" + (theme_border("ts") * (self.width - 1)) + "%c"
         theme_print(pad, mainbar, self.width, lc, rc)
 
     def render_bottom_border(self, pad):
@@ -122,13 +122,13 @@ class TextBox(GuiBase):
 
         lc = " "
         if lb:
-            lc = "%1%C" + theme_border("bl") + "%c%0"
+            lc = "%C" + theme_border("bl") + "%c"
 
         rc = " "
         if rb:
-            rc = "%1%C" + theme_border("br") + "%c%0"
+            rc = "%C" + theme_border("br") + "%c"
 
-        mainbar = "%1%C" + (theme_border("ts") * (self.width - 1)) + "%0%c"
+        mainbar = "%C" + (theme_border("ts") * (self.width - 1)) + "%c"
         theme_print(pad, mainbar, self.width, lc, rc)
 
     def render(self, pad):
@@ -147,10 +147,10 @@ class TextBox(GuiBase):
 
         l = " "
         if lb:
-            l = "%1%C" + theme_border("ls") + " %c%0"
+            l = "%C" + theme_border("ls") + " %c"
         r = " "
         if rb:
-            r = "%1%C " + theme_border("rs") + "%c%0"
+            r = "%C " + theme_border("rs") + "%c"
 
         # Render main content
 
@@ -231,7 +231,7 @@ class InfoBox(VarBox):
         VarBox.init(self, pad, callbacks, "info_msg")
 
     def update_text(self):
-        self.text = "%1" + self.value + "%0"
+        self.text = self.value
 
     def get_opt_name(self):
         return "infobox"

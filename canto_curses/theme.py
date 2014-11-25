@@ -136,16 +136,20 @@ def theme_print_one(pad, uni, width):
         elif code:
             # Turn on color 1 - 8
             if c in "12345678":
+                if len(color_stack):
+                    pad.attroff(curses.color_pair(color_stack[-1]))
                 color_stack.append(ord(c) - ord('0'))
                 pad.attron(curses.color_pair(color_stack[-1]))
-
             # Return to previous color
             elif c == '0':
+                pad.attroff(curses.color_pair(color_stack[-1]))
+
                 if len(color_stack) >= 2:
                     pad.attron(curses.color_pair(color_stack[-2]))
                     color_stack = color_stack[0:-1]
                 else:
                     pad.attron(curses.color_pair(0))
+                    color_stack = []
 
             # Turn attributes on / off
             elif c in "BbDdRrSsUu":

@@ -99,7 +99,7 @@ class Reader(TextBox):
         if sel:
             self.links = [("link",sel.content["link"],"mainlink")]
 
-            s = "%1%B" + prep_for_display(sel.content["title"]) + "%b\n"
+            s = "%B" + prep_for_display(sel.content["title"]) + "%b\n"
 
             # Make sure the story has the most recent info before we check it.
             sel.sync()
@@ -183,7 +183,7 @@ class Reader(TextBox):
                 self.links += links
 
                 if reader_conf['show_description']:
-                    s += self.quote_rgx.sub("%6\"\\1\"%0", content)
+                    s += self.quote_rgx.sub("%5\"\\1\"%0", content)
 
                 if reader_conf['enumerate_links']:
                     s += "\n\n"
@@ -196,9 +196,9 @@ class Reader(TextBox):
                                 text + "]: " + url + "\n\n"
 
                         if t == "link":
-                            link_text = "%5" + link_text + "%0"
-                        elif t == "image":
                             link_text = "%4" + link_text + "%0"
+                        elif t == "image":
+                            link_text = "%3" + link_text + "%0"
 
                         s += link_text
 

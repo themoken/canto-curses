@@ -149,8 +149,8 @@ class Screen(CommandHandler):
                     bg = color_conf['defbg']
 
             try:
-                curses.init_pair(i + 1, fg, bg)
-                log.debug("color pair %s : %s %s" % (i + 1, fg, bg))
+                curses.init_pair(i, fg, bg)
+                log.debug("color pair %s : %s %s" % (i, fg, bg))
             except:
                 log.debug("color pair failed!: %d fg: %d bg: %d" %
                         (i + 1, fg, bg))
@@ -683,21 +683,21 @@ class Screen(CommandHandler):
         return (None, ci)
 
     def type_color(self):
+        colors = {
+            'white' : curses.COLOR_WHITE,
+            'black' : curses.COLOR_BLACK,
+            'red' : curses.COLOR_RED,
+            'blue' : curses.COLOR_BLUE,
+            'green' : curses.COLOR_GREEN,
+            'yellow' : curses.COLOR_YELLOW,
+            'cyan' : curses.COLOR_CYAN,
+            'magenta' : curses.COLOR_MAGENTA,
+            'pink' : curses.COLOR_MAGENTA,
+        }
         def c(x):
             if x == '':
                 return (True, -1)
 
-            colors = {
-                'white' : curses.COLOR_WHITE,
-                'black' : curses.COLOR_BLACK,
-                'red' : curses.COLOR_RED,
-                'blue' : curses.COLOR_BLUE,
-                'green' : curses.COLOR_GREEN,
-                'yellow' : curses.COLOR_YELLOW,
-                'cyan' : curses.COLOR_CYAN,
-                'magenta' : curses.COLOR_MAGENTA,
-                'pink' : curses.COLOR_MAGENTA,
-            }
             if x in colors:
                 return (True, colors[x])
             try:
@@ -707,11 +707,12 @@ class Screen(CommandHandler):
                 return (False, None)
             except:
                 return (False, None)
-        return (None, c)
+        return (list(colors.keys()), c)
 
     def cmd_color(self, idx, fg, bg):
         conf = self.callbacks["get_conf"]()
 
+        log.debug(":COLOR IDX: %s" % idx)
         if idx in ['deffg', 'defbg']:
             conf["color"][idx] = fg  # Ignore second color pair
         else:
