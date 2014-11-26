@@ -68,6 +68,7 @@ class CantoCursesGui(CommandHandler):
         self.update_interval = 0
 
         self.do_gui = Event()
+        self.do_gui.set()
 
         self.callbacks = {
             "set_var" : config.set_var,
@@ -97,6 +98,7 @@ class CantoCursesGui(CommandHandler):
 
         self.screen = Screen(self.callbacks)
         self.screen.refresh()
+        self.screen.redraw()
 
         self.glog_handler = GraphicalLog(self.callbacks, self.screen)
 
