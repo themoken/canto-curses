@@ -64,6 +64,7 @@ class CantoCursesGui(CommandHandler):
         self.update_plugin_lookups()
 
         self.backend = backend
+        self.winched = False
 
         self.update_interval = 0
 
@@ -139,7 +140,7 @@ class CantoCursesGui(CommandHandler):
                 self.release_gui()
 
     def winch(self):
-        self.callbacks["set_var"]("needs_resize",  True)
+        self.winched = True
         self.release_gui()
 
     def cmd_refresh(self):
@@ -246,7 +247,7 @@ class CantoCursesGui(CommandHandler):
 
             self.sync_requested = False
 
-            needs_resize = self.callbacks["get_var"]("needs_resize")
+            needs_resize = self.callbacks["get_var"]("needs_resize") or self.winched
             needs_refresh = self.callbacks["get_var"]("needs_refresh")
             needs_redraw = self.callbacks["get_var"]("needs_redraw")
 
@@ -258,6 +259,7 @@ class CantoCursesGui(CommandHandler):
             if needs_resize:
                 needs_refresh = False
                 needs_redraw = False
+                self.winched = False
                 self.screen.resize()
 
             elif needs_refresh:
@@ -267,7 +269,7 @@ class CantoCursesGui(CommandHandler):
             elif needs_redraw:
                 self.screen.redraw()
 
-            needs_resize = self.callbacks["get_var"]("needs_resize")
+            needs_resize = self.callbacks["get_var"]("needs_resize") or self.winched
             needs_refresh = self.callbacks["get_var"]("needs_refresh")
             needs_redraw = self.callbacks["get_var"]("needs_redraw")
 
