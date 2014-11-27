@@ -142,7 +142,8 @@ def theme_print_one(pad, uni, width):
                 pad.attron(curses.color_pair(color_stack[-1]))
             # Return to previous color
             elif c == '0':
-                pad.attroff(curses.color_pair(color_stack[-1]))
+                if len(color_stack):
+                    pad.attroff(curses.color_pair(color_stack[-1]))
 
                 if len(color_stack) >= 2:
                     pad.attron(curses.color_pair(color_stack[-2]))
