@@ -21,7 +21,7 @@ from canto_next.hooks import call_hook
 from canto_next.rwlock import RWLock, write_lock, read_lock
 from canto_next.remote import assign_to_dict, access_dict
 
-DEFAULT_FSTRING = "%?{sel}(%{selected}:%{unselected})%?{rd}(%{read}:%{unread})%?{m}(%{marked}:%{unmarked})%{pre}%t%{post}%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})"
+DEFAULT_FSTRING = "%?{sel}(%{selected}:%{unselected})%?{m}(%{marked}:%{unmarked})%?{rd}(%{read}:%{unread})%{pre}%t%{post}%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})"
 
 DEFAULT_TAG_FSTRING = "%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%{pre} %t %{post} [%B%1%n%0%b]% %?{pending}([%8%B%{pending}%b%0]:)%?{sel}(%{selected_end}:%{unselected_end})"
 
@@ -335,9 +335,9 @@ class CantoCursesConfig(SubThread):
                 "unread": "%1%B",
                 "read_end": "%0",
                 "unread_end": "%b%0",
-                "marked": "*%7%B",
+                "marked": "%B[*] ",
                 "unmarked": "",
-                "marked_end": "%b%0",
+                "marked_end": "%b",
                 "unmarked_end": "",
             },
 
