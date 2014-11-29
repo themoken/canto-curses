@@ -4,10 +4,12 @@ from threading import Lock
 import traceback
 import logging
 import json
+import sys
 
 logging.basicConfig(
     format = "%(message)s",
-    level = logging.DEBUG
+    level = logging.DEBUG,
+    stream = sys.stdout
 )
 
 import time
