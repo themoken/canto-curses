@@ -149,9 +149,30 @@ class TestScreen(Test):
             return obj.tag
         return obj.id
 
-    def summarize_taglist(self, taglist):
-        target_object = self._summarize_object(config.vars["target_object"])
+    # Generate an easy to read summary of the taglist, following a certain
+    # attribute from a certain object so that large chains of items can be
+    # easily referenced by index instead of the linked list version that the
+    # taglist actually uses. Always starts with target_object / target_offset
+    # as these are integral to proper rendering.
+
+    def summarize_taglist(self, starting_object, follow_attr):
+        target_object = self._summarize_object(config.vars["target_obj"])
         target_offset = config.vars["target_offset"]
+
+        rest = []
+        while starting_object:
+            # Record current position, or -1 if off screen.
+            pos = -1
+            if hasattr(starting_object, "curpos"):
+                pos = starting_object.curpos
+
+            rest.append((self._summarize_object(starting_object), pos))
+
+            if not hasattr(starting_object, follow_attr):
+                raise Exception("Couldn't find follow_attr %s" % follow_attr)
+            starting_object = getattr(starting_object, follow_attr)
+
+        return [(target_object, target_offset)] + rest
 
     def test_command(self, command, test_func):
         self.gui.issue_cmd(command)
@@ -170,8 +191,42 @@ class TestScreen(Test):
         if self._summarize_object(config.vars["selected"]) != "Story(2,0)":
             raise Exception("Failed to set selection!")
 
+    # Test :collapse by seeing if the summary of next_sel properly skips from
+    # the first tag (affected by the :collapse call) to the next tag without
+    # any of the intervening stories.
+
     def test_collapse(self):
-        pass
+        taglist = self.get_taglist()
+        summ = self.summarize_taglist(taglist.first_sel, "next_sel")
+
+        # Target should be tag @ 0, as should the first sel
+        if summ[0] != ("maintag:Tag(2)", 0):
+            raise Exception("Failed to properly set target on :collapse")
+        if summ[1] != ("maintag:Tag(2)", 0):
+            raise Exception("Failed to properly set first_sel on :collapse")
+
+        # The selection after that should be the first story of the next
+        # (uncollapsed) tag.
+
+        # XXX: This will fail if we decide to change widths such that the tag
+        # header takes more than one line.
+
+        # XXX: Also hold off on this until we can guarantee order without +/-
+
+        #if summ[2] != ("Story(1,0)", 2):
+        #    raise Exception("Failed to properly set first_sel on :collapse: %s" % (summ[2],))
+
+    def test_uncollapse(self):
+        taglist = self.get_taglist()
+        summ = self.summarize_taglist(taglist.first_sel, "next_sel")
+
+        # Should be story since we went from first sel.
+        # NOTE: This 1 is width sensitive.
+
+        if summ[0] != ("Story(2,0)", 1):
+            raise Exception("Failed to properly set target on :uncollapse")
+        if summ[1] != ("Story(2,0)", 1):
+            raise Exception("Failed to properly set first_sel on :uncollapse")
 
     def test_color(self):
         self.compare_output(self.config_backend, ('SETCONFIGS', {'CantoCurses': {'color': {'8': {'bg': 0, 'fg': 0}}}}))
@@ -189,6 +244,7 @@ class TestScreen(Test):
 
         self.test_command("rel-set-cursor 1", self.test_rel_set_cursor)
         self.test_command("collapse", self.test_collapse)
+        self.test_command("uncollapse", self.test_uncollapse)
         self.test_command("color 8 black black", self.test_color)
 
         self.check_taglist()
