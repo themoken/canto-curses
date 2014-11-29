@@ -1168,7 +1168,7 @@ class TagList(GuiBase):
         # If there are only tags on screen, first_sel could be None
 
         self.first_sel = obj
-        while self.first_sel in self.tags:
+        while self.first_sel.is_tag:
 
             if self.callbacks["get_tag_opt"](obj.tag, "collapsed"):
                 break
