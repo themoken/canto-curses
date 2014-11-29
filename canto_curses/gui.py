@@ -71,6 +71,8 @@ class CantoCursesGui(CommandHandler):
         self.do_gui = Event()
         self.do_gui.set()
 
+        self.working = False
+
         self.callbacks = {
             "set_var" : config.set_var,
             "get_var" : config.get_var,
@@ -251,6 +253,7 @@ class CantoCursesGui(CommandHandler):
             needs_refresh = self.callbacks["get_var"]("needs_refresh")
             needs_redraw = self.callbacks["get_var"]("needs_redraw")
 
+            self.working = True
             self.callbacks["set_var"]("needs_resize", False)
             self.callbacks["set_var"]("needs_refresh", False)
             self.callbacks["set_var"]("needs_redraw", False)
@@ -278,6 +281,8 @@ class CantoCursesGui(CommandHandler):
 
             if needs_resize or needs_refresh or needs_redraw:
                 self.do_gui.set()
+            else:
+                self.working = False
 
             sync_lock.release_write()
 
