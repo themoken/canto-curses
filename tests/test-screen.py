@@ -78,8 +78,9 @@ class TestScreen(Test):
             ref = config.vars["needs_refresh"]
             red = config.vars["needs_redraw"]
             res = config.vars["needs_resize"]
-            print("ref red res - %s %s %s" % (ref, red, res))
-            if not (ref or red or res):
+            wrk = self.gui.working
+            print("ref red res wrk - %s %s %s %s" % (ref, red, res, wrk))
+            if not (ref or red or res or wrk):
                 return
             time.sleep(0.1)
 
