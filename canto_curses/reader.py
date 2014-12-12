@@ -15,6 +15,7 @@ from .html import htmlparser
 from .text import TextBox
 from .tagcore import tag_updater
 
+import traceback
 import logging
 import re
 
