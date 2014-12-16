@@ -247,13 +247,13 @@ class CantoCursesGui(CommandHandler):
                 if self.sync_requested or (len(tag) == 0 and len(tag.tagcore) != 0):
                     tag.sync()
 
+            self.working = True
             self.sync_requested = False
 
             needs_resize = self.callbacks["get_var"]("needs_resize") or self.winched
             needs_refresh = self.callbacks["get_var"]("needs_refresh")
             needs_redraw = self.callbacks["get_var"]("needs_redraw")
 
-            self.working = True
             self.callbacks["set_var"]("needs_resize", False)
             self.callbacks["set_var"]("needs_refresh", False)
             self.callbacks["set_var"]("needs_redraw", False)
