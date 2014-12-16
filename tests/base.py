@@ -43,6 +43,8 @@ def generate_item_script(num_tags, items_per_tag, tagid_template, storyid_templa
         r["ITEMS"][repr([tag_id])] = [("ITEMS", { tag_id : s }),("ITEMSDONE", {}),
                 ("ATTRIBUTES", item_attributes)]
 
+    r["PING"] = { '*' : [("PONG", {})]}
+
     return eval(repr(r))
 
 # Like main.py, except instead of communicating with a real server, it reads
