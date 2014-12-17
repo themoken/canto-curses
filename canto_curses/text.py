@@ -241,7 +241,7 @@ class ErrorBox(VarBox):
         VarBox.init(self, pad, callbacks, "error_msg")
 
     def update_text(self):
-        self.text = "%7" + self.value + "%0"
+        self.text = "%6" + self.value + "%0"
 
     def get_opt_name(self):
         return "errorbox"
