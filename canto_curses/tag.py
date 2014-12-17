@@ -368,10 +368,19 @@ class Tag(PluginHandler, list):
 
             self.tagcore.lock.acquire_read()
 
+            self.tagcore.ack_changes()
+
             for story in self:
                 if story.id in self.tagcore:
                     current_stories.append((self.tagcore.index(story.id), story))
                 elif story == sel:
+
+                    # If we preserve the selection in an "undead" state, then
+                    # we keep set tagcore changed so that the next sync operation
+                    # will re-evaluate it.
+
+                    self.tagcore.changed()
+
                     if current_stories:
                         place = max([ x[0] for x in current_stories ]) + .5
                     else:
@@ -418,5 +427,4 @@ class Tag(PluginHandler, list):
         for s in self:
             s.sync()
 
-        self.tagcore.ack_changes()
         self.updates_pending = 0
