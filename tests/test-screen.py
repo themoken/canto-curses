@@ -16,6 +16,7 @@ from canto_curses.tagcore import tag_updater, alltagcores
 from canto_curses.gui import CantoCursesGui # to Screen to curses
 from canto_curses.locks import sync_lock
 from canto_curses.taglist import TagList
+from canto_curses.tag import alltags
 
 from canto_next.hooks import on_hook, call_hook
 
@@ -79,8 +80,9 @@ class TestScreen(Test):
             red = config.vars["needs_redraw"]
             res = config.vars["needs_resize"]
             wrk = self.gui.working
-            print("ref red res wrk - %s %s %s %s" % (ref, red, res, wrk))
-            if not (ref or red or res or wrk):
+            sr = self.gui.sync_requested
+            print("ref red res wrk sr - %s %s %s %s %s" % (ref, red, res, wrk, sr))
+            if not (ref or red or res or wrk or sr):
                 return
             time.sleep(0.1)
 
@@ -93,11 +95,9 @@ class TestScreen(Test):
 
     def check_taglist_obj(self, taglist, target_object, recurse_attr=""):
         if not target_object:
-            print("Checking None")
             return
 
         summary = self._summarize_object(target_object)
-        print("Checking %s" % summary)
 
         if target_object == config.vars["selected"] and not target_object.selected:
             raise Exception("Object %s should know it's selected" % summary)
@@ -174,14 +174,17 @@ class TestScreen(Test):
 
         return [(target_object, target_offset)] + rest
 
-    def test_command(self, command, test_func):
+    def test_command(self, command, test_func, no_check=False):
+        print("Issuing %s" % command)
         self.gui.issue_cmd(command)
         self.gui.release_gui()
         self.wait_on_update()
 
         sync_lock.acquire_write()
-        self.check_taglist()
-        test_func()
+        if not no_check:
+            self.check_taglist()
+        if test_func:
+            test_func()
         sync_lock.release_write()
 
     def test_rel_set_cursor(self):
@@ -228,6 +231,75 @@ class TestScreen(Test):
         if summ[1] != ("Story(2,0)", 1):
             raise Exception("Failed to properly set first_sel on :uncollapse")
 
+    def test_sel_disappear(self):
+        tagcore_script = generate_item_script(2, 20, "maintag:Tag(%d)", "Story(%d,%d)",
+                { "title" : "%d,%d - title", "link" : "http://example.com/%d/%d",
+                    "description" : "Description(%d,%d)", "canto-tags" : "",
+                    "canto-state" : "" }
+        )
+
+        # Stub in an empty tag
+
+        tagcore_script["ITEMS"]["['maintag:Tag(2)']"] = [("ITEMS", {'maintag:Tag(2)': [] }), ("ITEMSDONE", {}) ]
+
+        self.tag_backend.script = tagcore_script
+        self.tag_backend.inject("TAGCHANGE", "maintag:Tag(2)")
+
+        taglist = self.get_taglist()
+        summ = self.summarize_taglist(taglist.first_sel, "next_sel")
+
+        # With just the items removed from the TagCores, selection and friends
+        # shouldn't have changed at all.
+
+        if summ[0] != ("Story(2,0)", 1):
+            raise Exception("target_obj changed on ITEMS")
+        if summ[1] != ("Story(2,0)", 1):
+            raise Exception("sel changed on ITEMS")
+        if summ[2] != ("Story(2,1)", 2):
+            raise Exception("Improper follow up!")
+
+        # XXX: This is a hack, but we need to yield long enough for the tagcore
+        # thread to actually process the ITEMS response from TAGCHANGE
+
+        time.sleep(1)
+
+        # After an update, it should actually change. Add no_check, so that we
+        # don't throw an exception when we discover that the selection is no
+        # longer in TagCore.
+
+        self.test_command("update", self.post_update_sel_should_not_disappear, True)
+
+        self.test_command("next-item", None, True)
+
+        self.test_command("update", self.post_update_oldsel_should_be_gone, True)
+
+    def post_update_sel_should_not_disappear(self):
+        taglist = self.get_taglist()
+        summ = self.summarize_taglist(taglist.first_sel, "next_sel")
+
+        # Now sel should still be there, but should be the only one in the tag.
+
+        if summ[0] != ("Story(2,0)", 1):
+            raise Exception("target_obj changed on ITEMS")
+        if summ[1] != ("Story(2,0)", 1):
+            raise Exception("sel changed on ITEMS")
+        if summ[2] == ("Story(2,1)", 2):
+            raise Exception("Improper follow up!")
+
+    def post_update_oldsel_should_be_gone(self):
+        taglist = self.get_taglist()
+        summ = self.summarize_taglist(taglist.first_sel, "next_sel")
+
+        for tag in alltags:
+            print("%s" % tag.tag)
+            for story in tag:
+                print("%s" % story)
+
+        if summ[0] == ("Story(2,0)", 1):
+            raise Exception("Failed to be rid of dead selection (target)")
+        if summ[1] == ("Story(2,0)", 1):
+            raise Exception("Failed to be rid of dead selection (first_sel)")
+
     def test_color(self):
         self.compare_output(self.config_backend, ('SETCONFIGS', {'CantoCurses': {'color': {'8': {'bg': 0, 'fg': 0}}}}))
 
@@ -246,6 +318,8 @@ class TestScreen(Test):
         self.test_command("collapse", self.test_collapse)
         self.test_command("uncollapse", self.test_uncollapse)
         self.test_command("color 8 black black", self.test_color)
+
+        self.test_sel_disappear()
 
         self.check_taglist()
 
