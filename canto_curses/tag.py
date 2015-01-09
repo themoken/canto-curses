@@ -155,8 +155,11 @@ class Tag(PluginHandler, list):
                 break
 
     def on_items_added(self, tagcore, added):
+        cur_ids = self.get_ids()
         if tagcore == self.tagcore:
-            self.updates_pending += len(added)
+            for story_id in added:
+                if story_id not in cur_ids:
+                    self.updates_pending += 1
             self.need_redraw()
 
     # We override eq so that empty tags don't evaluate
