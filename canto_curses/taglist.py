@@ -1195,6 +1195,14 @@ class TagList(GuiBase):
             obj.lines(self.width)
             obj.curpos = curpos
 
+            # If we're outside of the render window, then skip the actual
+            # rendering, but stub in curpos.
+
+            if w_offset >= self.height:
+                obj.curpos = self.height
+                obj = obj.next_obj
+                continue
+
             # Copy item into window
             w_offset, curpos = self._partial_render(obj, w_offset, curpos)
 
@@ -1231,9 +1239,6 @@ class TagList(GuiBase):
                 # broken.
 
                 rendered_header = True
-
-            if w_offset >= self.height:
-                break
 
             obj = obj.next_obj
 
