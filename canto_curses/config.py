@@ -814,14 +814,21 @@ class CantoCursesConfig(SubThread):
 
         if "defaults" in given:
 
-            # We don't honor any default settings, so just record them
-            # and pass them on to the daemon if write
+            changes = {}
 
-            self.daemon_defaults.update(given["defaults"])
+            for key in given["defaults"]:
+                if key in self.daemon_defaults:
+                    if given["defaults"][key] != self.daemon_defaults[key]:
+                        changes[key] = given["defaults"][key]
+                else:
+                    changes[key] = given["defaults"][key]
+
+            self.daemon_defaults.update(changes)
+
             if write:
                 self.write("SETCONFIGS", { "defaults" : self.daemon_defaults })
 
-            call_hook("curses_def_opt_change", [ given["defaults"] ])
+            call_hook("curses_def_opt_change", [ changes ])
 
         if "feeds" in given:
 
