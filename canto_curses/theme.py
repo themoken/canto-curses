@@ -57,7 +57,11 @@ class FakePad():
         pass
 
     def waddch(self, ch):
-        self.x += wcwidth(ch)
+        cwidth = wcwidth(ch)
+        if cwidth < 0:
+            return
+
+        self.x += cwidth
         if self.x >= self.width:
             self.y += 1
             self.x -= self.width
@@ -120,9 +124,12 @@ def theme_print_one(pad, uni, width):
 
     for i, c in enumerate(uni):
         ec = encoder(c)
+        cwidth = wcwidth(ec)
+        if cwidth < 0:
+            continue
+
         if escaped:
             # No room
-            cwidth = wcwidth(ec)
             if cwidth > width:
                 return "\\" + uni[i:]
 
@@ -212,8 +219,6 @@ def theme_print_one(pad, uni, width):
                 if wwidth <= max_width and wwidth >= width:
                     return uni[i + 1:]
 
-            cwidth = wcwidth(ec)
-
             # Character too long (should be handled above).
             if cwidth > width:
                 return uni[i:]
@@ -221,7 +226,7 @@ def theme_print_one(pad, uni, width):
             try:
                 pad.waddch(ec)
             except Exception as e:
-                log.debug("Can't print ec: %s in: %s" % (ec, uni))
+                log.debug("Can't print ec: %s in: %s" % (ec, repr(encoder(uni))))
                 log.debug("Exception: %s" % e)
 
             width -= cwidth
@@ -272,8 +277,13 @@ def theme_len(uni):
 
     for c in uni:
         ec = encoder(c)
+
+        cwidth = wcwidth(ec)
+        if cwidth < 0:
+            continue
+
         if escaped:
-            length += wcwidth(ec)
+            length += cwidth
             escaped = False
         elif code:
             code = False
@@ -282,7 +292,7 @@ def theme_len(uni):
         elif c == "%":
             code = True
         else:
-            width = wcwidth(ec)
+            width = cwidth
             if width >= 0:
                 length += width
     return length

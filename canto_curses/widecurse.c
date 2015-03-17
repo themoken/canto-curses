@@ -20,9 +20,9 @@ static PyObject *py_wcwidth(PyObject * self, PyObject * args)
 	if (!PyArg_ParseTuple(args, "et", &m_enc, &message))
 		return NULL;
 
-	bytes = mbtowc(dest, &message[0], 3);
-	if (bytes <= 0)
-		ret = 0;
+	bytes = mbtowc(dest, &message[0], strlen(message));
+	if (bytes < 0)
+		ret = bytes;
 	else
 		ret = wcwidth(dest[0]);
 
@@ -57,7 +57,7 @@ static PyObject *py_waddch(PyObject * self, PyObject * args)
 		wchar_t dest[2];
 		int bytes;
 
-		bytes = mbtowc(dest, &message[0], 3);
+		bytes = mbtowc(dest, &message[0], strlen(message));
 
 		if (bytes > 0) {
 			waddwstr(win, dest);
