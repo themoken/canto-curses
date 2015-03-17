@@ -840,8 +840,10 @@ class CantoCursesConfig(SubThread):
 
         if not self.initd:
             for tag in tags:
-                self.vars["strtags"].append(tag)
-                self.config["tagorder"].append(tag)
+                if tag not in self.vars["strtags"]:
+                    self.vars["strtags"].append(tag)
+                if tag not in self.config["tagorder"]:
+                    self.config["tagorder"].append(tag)
             return
 
         c = self.get_conf()
