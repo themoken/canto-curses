@@ -58,7 +58,7 @@ class FakePad():
 
     def waddch(self, ch):
         cwidth = wcwidth(ch)
-        if cwidth < 0:
+        if cwidth < 0 and not ch.is_space():
             return
 
         self.x += cwidth
@@ -125,7 +125,7 @@ def theme_print_one(pad, uni, width):
     for i, c in enumerate(uni):
         ec = encoder(c)
         cwidth = wcwidth(ec)
-        if cwidth < 0:
+        if cwidth < 0 and not ec.isspace():
             continue
 
         if escaped:
@@ -279,7 +279,7 @@ def theme_len(uni):
         ec = encoder(c)
 
         cwidth = wcwidth(ec)
-        if cwidth < 0:
+        if cwidth < 0 and not ec.isspace():
             continue
 
         if escaped:
