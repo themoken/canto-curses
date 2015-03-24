@@ -341,7 +341,7 @@ class Tag(PluginHandler, list):
 
             if not self.collapsed and self.border:
                 theme_print(pad, theme_border("ts") * (width - 2), width,\
-                        "%B%1"+ theme_border("tl"), theme_border("tr") + "%0%b")
+                        "%B"+ theme_border("tl"), theme_border("tr") + "%b")
                 lines += 1
         except Exception as e:
             tb = traceback.format_exc()
@@ -355,7 +355,7 @@ class Tag(PluginHandler, list):
     def render_footer(self, width, pad):
         if not self.collapsed and self.border:
             theme_print(pad, theme_border("bs") * (width - 2), width,\
-                    "%B%1" + theme_border("bl"), theme_border("br") + "%0%b")
+                    "%B" + theme_border("bl"), theme_border("br") + "%b")
             theme_reset()
             return 1
         return 0

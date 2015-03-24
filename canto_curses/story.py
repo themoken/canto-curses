@@ -329,9 +329,9 @@ class Story(PluginHandler):
         taglist_conf = self.callbacks["get_opt"]("taglist")
 
         if taglist_conf["border"]:
-            self.left = "%C%B%1" + theme_border("ls") + "%0%b %c"
-            self.left_more = "%C%B%1" + theme_border("ls") + "%0%b     %c"
-            self.right = "%C %B%1" + theme_border("rs") + "%0%b%c"
+            self.left = "%C%B" + theme_border("ls") + "%b %c"
+            self.left_more = "%C%B" + theme_border("ls") + "%b     %c"
+            self.right = "%C %B" + theme_border("rs") + "%b%c"
         else:
             self.left = "%C %c"
             self.left_more = "%C     %c"

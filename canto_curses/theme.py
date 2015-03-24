@@ -32,6 +32,7 @@ attr_map = { "B" : curses.A_BOLD,
 #   %0      turns on the previously enabled color
 
 color_stack = []
+color_stack_suspended = []
 
 # Return length of next string of non-space characters
 # or 0 if next character *is* a space.
@@ -176,12 +177,23 @@ def theme_print_one(pad, uni, width):
             elif c == "C":
                 for attr in attr_map:
                     pad.attroff(attr_map[attr])
+                for color in reversed(color_stack):
+                    pad.attroff(curses.color_pair(color))
+                pad.attron(curses.color_pair(0))
+                color_stack_suspended = color_stack
+                color_stack = []
 
             # Restore attributes
             elif c == "c":
                 for attr in attr_map:
                     if attr_count[attr]:
                         pad.attron(attr_map[attr])
+                color_stack = color_stack_suspended
+                color_stack_suspended = []
+                if color_stack:
+                    pad.attron(curses.color_pair(color_stack[-1]))
+                else:
+                    pad.attron(curses.color_pair(0))
             elif c == "[":
                 long_code = True
             code = False
