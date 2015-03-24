@@ -91,7 +91,7 @@ class Screen(CommandHandler):
         }
 
         register_arg_types(self, args)
-        register_commands(self, cmds)
+        register_commands(self, cmds, "Theme")
 
         on_hook("curses_opt_change", self.screen_opt_change)
 
