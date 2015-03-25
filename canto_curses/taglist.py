@@ -410,7 +410,7 @@ class TagList(GuiBase):
         # start and next sel.
 
         while o and o != ns:
-            lines += o.lines(self.width) + o.extra_lines
+            lines += o.lines(self.width)
             o = o.next_obj
 
         return (ns, lines)
@@ -431,7 +431,7 @@ class TagList(GuiBase):
 
         while o and o != ps:
             o = o.prev_obj
-            lines += o.lines(self.width) + o.extra_lines
+            lines += o.lines(self.width)
 
         return (ps, lines)
 
@@ -1129,7 +1129,7 @@ class TagList(GuiBase):
 
         while curpos > 0:
             if obj.prev_obj:
-                curpos -= (obj.prev_obj.lines(self.width) + obj.prev_obj.extra_lines)
+                curpos -= obj.prev_obj.lines(self.width)
                 obj = obj.prev_obj
 
             # If there aren't enough items to render before this item and

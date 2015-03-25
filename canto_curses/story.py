@@ -254,7 +254,7 @@ class Story(PluginHandler):
 
     def lines(self, width):
         if width == self.width and not self.changed:
-            return self.lns
+            return self.lns + self.extra_lines
 
         # Make sure we actually have all of the attributes needed
         # to complete the render.
