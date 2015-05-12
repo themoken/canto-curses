@@ -7,13 +7,15 @@
 from canto_curses.taglist import TagListPlugin
 from canto_curses.command import register_commands
 
+from subprocess import Popen, PIPE
 from os import system
 import logging
 
 log = logging.getLogger("YANK")
 
 def yank(content):
-    system('echo -n %s | xclip' % (content,))
+    p = Popen(["xclip"], stdin=PIPE)
+    p.communicate(content.encode("utf-8"))
 
 class TagListYank(TagListPlugin):
     def __init__(self, taglist):
@@ -30,6 +32,6 @@ class TagListYank(TagListPlugin):
 
     def cmd_yank_link(self, items):
         yank(items[0].content["link"])
-        
+
     def cmd_yank_title(self, items):
         yank(items[0].content["title"])
