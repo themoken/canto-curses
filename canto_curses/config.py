@@ -81,6 +81,7 @@ class CantoCursesConfig(SubThread):
             "location" : None,
             "error_msg" : "No error.",
             "info_msg" : "No info.",
+            "quiet" : False,
             "dispel_msg" : False,
             "input_prompt" : "",
             "input_do_completions" : True,

@@ -36,5 +36,7 @@ class AutoCmdGui(GuiPlugin):
         on_hook("curses_start", self.do_cmds)
 
     def do_cmds(self):
+        self.gui.callbacks["set_var"]("quiet", True)
         for cmd in cmds:
             self.gui.issue_cmd(cmd)
+        self.gui.callbacks["set_var"]("quiet", False)

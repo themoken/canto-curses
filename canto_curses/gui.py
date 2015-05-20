@@ -43,6 +43,9 @@ class GraphicalLog(logging.Handler):
         self.callbacks["set_var"]("needs_refresh", True)
 
     def emit(self, record):
+        quiet = self.callbacks["get_var"]("quiet")
+        if record.levelno == logging.INFO and quiet:
+            return
         self.deferred_logs.append(record)
 
     # Call with sync_lock
