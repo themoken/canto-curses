@@ -599,16 +599,10 @@ class Screen(CommandHandler):
             self.input_box.rotate_completions()
             return
 
-        # Accept current completion
-        if chr(r) in " \b\n" and do_comp:
-            comp = self.input_box.break_completion()
-            if comp:
-                log.debug("inserting: %s" % comp)
-                readline.insert_text(comp)
-
-        # Discard current completion
-        else:
-            self.input_box.break_completion()
+        comp = self.input_box.break_completion()
+        if comp:
+            log.debug("inserting: %s" % comp)
+            readline.insert_text(comp)
 
         log.debug("KEY: %s" % r)
         return r
