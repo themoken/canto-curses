@@ -390,6 +390,8 @@ class CantoCursesConfig(SubThread):
                 {
                     "down" : "scroll-down",
                     "up" : "scroll-up",
+                    "j" : "scroll-down",
+                    "k" : "scroll-up",
                     "npage" : "page-down",
                     "ppage" : "page-up",
                     "space" : "destroy",
