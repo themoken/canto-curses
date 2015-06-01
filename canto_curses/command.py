@@ -24,11 +24,38 @@ cmds = {}
 arg_types = {}
 aliases = {}
 
+# These objects don't really need to be objects, but they're cleaner than
+# tossing around a zillion tuples.
+
+class CantoCommand(object):
+    def __init__(self, obj, name, func, args, help_txt, group):
+        self.name = name
+        self.obj = obj              # 0
+        self.func = func            # 1
+        self.args = args            # 2
+        self.help_txt = help_txt    # 3
+        self.group = group          # 4
+
+class CantoArgType():
+    def __init__(self, obj, name, help_txt, validator, hook):
+        self.name = name
+        self.obj = obj                  # 0
+        self.help_txt = help_txt        # 1
+        self.validator = validator      # 2
+        self.hook = hook                # 3
+
+class CantoAlias():
+    def __init__(self, obj, alias, longform):
+        self.alias = alias
+        self.obj = obj              # 0
+        self.longform = longform    # 1
+
 def register_command(obj, name, func, args, help_txt, group="hidden"):
+    c = CantoCommand(obj, name, func, args, help_txt, group)
     if name not in cmds:
-        cmds[name] = [(obj, func, args, help_txt, group)]
+        cmds[name] = [ c ]
     else:
-        cmds[name].append((obj, func, args, help_txt, group))
+        cmds[name].append(c)
 
 def register_commands(obj, cmds, group="hidden"):
     for name in cmds:
@@ -39,9 +66,9 @@ def commands():
     c = {}
 
     for ck in cmds.keys():
-        group = cmds[ck][-1][4]
+        group = cmds[ck][-1].group
         for ak in aliases.keys():
-            if aliases[ak][-1][1] == ck:
+            if aliases[ak][-1].longform == ck:
                 if group in c:
                     c[group].append(ak)
                 else:
@@ -60,35 +87,37 @@ def commands():
 
 def command_help(command, detailed=False):
     lookup = shlex.split(command)
-    working_cmd = _get_max_sig(lookup)
+    working_cmd = _get_max_sig(lookup)[-1]
 
     if not detailed:
-        s = "%s" % working_cmd[-1][3]
+        s = "%s" % working_cmd.help_txt
         if '\n' in s:
             s = s[:s.index('\n')]
     else:
-        s = "%s %s\n" % (command, " ".join(["[" + x + "]" for x in working_cmd[-1][2]]))
-        s += "\n%s" % working_cmd[-1][3]
-        for arg in working_cmd[-1][2]:
+        s = "%s %s\n" % (command, " ".join(["[" + x + "]" for x in working_cmd.args]))
+        s += "\n%s" % working_cmd.help_txt
+        for arg in working_cmd.args:
             s += "\n\n"
-            s += arg_types[arg][-1][1]
+            s += arg_types[arg][-1].help_txt
     return s
 
 def register_arg_type(obj, name, help_txt, validator, hook=None):
+    at = CantoArgType(obj, name, help_txt, validator, hook)
     if name not in arg_types:
-        arg_types[name] = [(obj, help_txt, validator, hook)]
+        arg_types[name] = [ at ]
     else:
-        arg_types[name].append((obj, help_txt, validator, hook))
+        arg_types[name].append(at)
 
 def register_arg_types(obj, types):
     for name in types:
         register_arg_type(obj, name, *types[name])
 
 def register_alias(obj, alias, longform):
+    a = CantoAlias(obj, alias, longform)
     if alias in aliases:
-        aliases[alias].append((obj, longform))
+        aliases[alias].append(a)
     else:
-        aliases[alias] = [ (obj, longform) ]
+        aliases[alias] = [ a ]
 
 def register_aliases(obj, given):
     for alias in given:
@@ -113,7 +142,7 @@ register_arg_type(word, "word", "[word] Any word (no whitespace)", word)
 
 def _unregister(obj, dct, name):
     if name in dct:
-        dct[name] = [ x for x in dct[name] if x[0] != obj]
+        dct[name] = [ x for x in dct[name] if x.obj != obj]
         if not dct[name]:
             del dct[name]
 
@@ -137,7 +166,6 @@ def unregister_all(obj):
 # Take a split lookup and unalias the first argument
 
 def _unalias(lookup):
-
     longest_alias = ""
 
     # Re-combine to match across multiple tokens
@@ -160,7 +188,7 @@ def _unalias(lookup):
         return lookup
 
     # deref -1 for latest register, 1 for longform instead of obj
-    total = total.replace(longest_alias, aliases[longest_alias][-1][1], 1)
+    total = total.replace(longest_alias, aliases[longest_alias][-1].longform, 1)
 
     log.debug("Unaliased to: %s" % total)
 
@@ -216,11 +244,9 @@ def cmd_complete_info():
         if not sig:
             return None
 
-        c_obj, c_func, c_sig, c_hlp, c_grp = sig
-
         # No completing beyond end of arguments
 
-        if len(lookup) > len(c_sig):
+        if len(lookup) > len(sig.args):
             log.debug("completing too many args")
             return None
 
@@ -229,19 +255,18 @@ def cmd_complete_info():
         # validate that the arguments we're not completing are okay
         # so that we don't tab complete a broken command.
 
-        for i, typ in enumerate(c_sig[:len(lookup) - 1]):
-            obj, hlp, val, hook = arg_types[typ][-1]
-            completions, validator = val()
+        for i, typ in enumerate(sig.args[:len(lookup) - 1]):
+            completions, validator = arg_types[typ][-1].validator()
             if not validator(lookup[i]):
                 return None
 
         # now get completions for the actual terminating command
 
-        obj, hlp, val, hook = arg_types[c_sig[len(lookup) - 1]][-1]
-        if hook:
-            hook()
-        completions, validator = val()
-        return (c_hlp, hlp, completions)
+        at = arg_types[sig.args[len(lookup) - 1]][-1]
+        if at.hook:
+            at.hook()
+        completions, validator = at.validator()
+        return (sig.help_txt, at.help_txt, completions)
     return None
 
 def cmd_execute(cmd):
@@ -255,18 +280,16 @@ def cmd_execute(cmd):
     if not sig:
         return False
 
-    c_obj, c_func, c_sig, c_hlp, c_grp = sig
     args = []
 
-    for i, typ in enumerate(c_sig):
-        obj, hlp, val, hook = arg_types[typ][-1]
-        completions, validator = val()
+    for i, typ in enumerate(sig.args):
+        completions, validator = arg_types[typ][-1].validator()
 
         # If we're on the last part of the sig, and there's more than one
         # argument remaining, then smash them together in such a way that
         # shlex.split will properly reparse them.
 
-        if i == len(c_sig) - 1 and len(lookup) > (i + 1):
+        if i == len(sig.args) - 1 and len(lookup) > (i + 1):
             token = " ".join([ shlex.quote(x) for x in lookup[i:]])
         elif i < len(lookup):
             token = lookup[i]
@@ -280,7 +303,7 @@ def cmd_execute(cmd):
             return False
         args.append(r)
 
-    c_func(*args)
+    sig.func(*args)
     return True
 
 # Return a function taking a string definition of a list, with possible special
