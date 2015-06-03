@@ -13,7 +13,7 @@ from canto_next.rwlock import read_lock
 from .locks import sync_lock, config_lock
 from .parser import try_parse, try_eval, prep_for_display
 from .theme import FakePad, WrapPad, theme_print, theme_reset, theme_border
-from .config import config, DEFAULT_TAG_FSTRING
+from .config import config
 from .story import Story
 
 import traceback
@@ -233,18 +233,7 @@ class Tag(PluginHandler, list):
         self.changed = True
         self.callbacks["set_var"]("needs_redraw", True)
 
-    def lines(self, width):
-        if width == self.width and not self.changed:
-            return self.lns
-
-        tag_conf = self.callbacks["get_opt"]("tagobj")
-        taglist_conf = self.callbacks["get_opt"]("taglist")
-
-        # Values to pass on to render
-        self.collapsed = self.callbacks["get_tag_opt"]("collapsed")
-        self.border = taglist_conf["border"]
-        self.enumerated = taglist_conf["tags_enumerated"]
-        self.abs_enumerated = taglist_conf["tags_enumerated_absolute"]
+    def eval(self):
 
         # Make sure to strip out the category from category:name
         tag = self.tag.split(':', 1)[1]
@@ -253,51 +242,45 @@ class Tag(PluginHandler, list):
                 if "canto-state" not in s.content or\
                 "read" not in s.content["canto-state"]])
 
+        s = ""
+        if self.selected:
+            s += "%R"
+
+        if self.collapsed:
+            s += "[+]"
+        else:
+            s += "[-]"
+
+        s += " " + tag + " "
+
+        s += "[%B%1" + str(unread) + "%0%b]"
+        if self.updates_pending:
+            s += " [%8%B" + str(self.updates_pending) + "%b%0]"
+
+        if self.selected:
+            s += "%r"
+
+        return s
+
+    def lines(self, width):
+        if width == self.width and not self.changed:
+            return self.lns
+
+        taglist_conf = self.callbacks["get_opt"]("taglist")
+
+        self.collapsed = self.callbacks["get_tag_opt"]("collapsed")
+        self.border = taglist_conf["border"]
+        self.enumerated = taglist_conf["tags_enumerated"]
+        self.abs_enumerated = taglist_conf["tags_enumerated_absolute"]
+
         extra_tags = self.callbacks["get_tag_conf"](self.tag)['extra_tags']
-
-        # These are escapes that are handled in the theme_print
-        # lower in the function and should remain present after
-        # evaluation.
-
-        passthru = {}
-        for c in "RrDdUuBbSs012345678[":
-            passthru[c] = "%" + c
-
-        for attr in [ "selected", "unselected", "selected_end", "unselected_end" ]:
-            passthru[attr] = tag_conf[attr]
-
-        passthru['pre'] = self.pre_format
-        passthru['post'] = self.post_format
-
-        parsed = try_parse(tag_conf["format"], DEFAULT_TAG_FSTRING)
-        parsed_pre = try_parse(self.pre_format, "")
-        parsed_post = try_parse(self.post_format, "")
-
-        values = {  'c' : self.collapsed,
-                    't' : tag,
-                    'sel' : self.selected,
-                    'n' : unread,
-                    "extra_tags" : extra_tags,
-                    'tag' : self,
-                    'pending' : self.updates_pending,
-                    'prep' : prep_for_display}
-
-        # Prep all text values for display.
-
-        for value in list(values.keys()):
-            if type(values[value]) in [str, str]:
-                values[value] = prep_for_display(values[value])
-
-        values.update(passthru)
-
-        values["pre"] = try_eval(parsed_pre, values, "")
-        values["post"] = try_eval(parsed_post, values, "")
-        self.evald_string = try_eval(parsed, values, DEFAULT_TAG_FSTRING)
 
         self.pad = None
         self.footpad = None
         self.width = width
         self.changed = False
+
+        self.evald_string = self.eval()
 
         self.lns = self.render_header(width, FakePad(width))
         self.footlines = self.render_footer(width, FakePad(width))

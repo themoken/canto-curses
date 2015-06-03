@@ -9,10 +9,9 @@
 from canto_next.plugins import Plugin, PluginHandler
 from canto_next.hooks import on_hook, unhook_all
 
-from .theme import FakePad, WrapPad, theme_print, theme_len, theme_reset, theme_border
-from .parser import try_parse, try_eval, prep_for_display
-from .config import DEFAULT_FSTRING
+from .theme import FakePad, WrapPad, theme_print, theme_len, theme_reset, theme_border, prep_for_display
 from .tagcore import tag_updater
+from .config import story_needed_attrs
 
 import traceback
 import logging
@@ -252,6 +251,35 @@ class Story(PluginHandler):
         self.changed = True
         self.callbacks["set_var"]("needs_refresh", True)
 
+    def eval(self):
+        s = ""
+
+        if self.selected:
+            s += "%R"
+
+        if self.marked:
+            s += "%B[*]"
+
+        if "read" in self.content["canto-state"]:
+            s += "%2"
+        else:
+            s += "%1%B"
+
+        s += prep_for_display(self.content["title"])
+
+        if "read" in self.content["canto-state"]:
+            s += "%0"
+        else:
+            s += "%b%0"
+
+        if self.marked:
+            s += "%b"
+
+        if self.selected:
+            s += "%r"
+
+        return s
+
     def lines(self, width):
         if width == self.width and not self.changed:
             return self.lns + self.extra_lines
@@ -259,12 +287,10 @@ class Story(PluginHandler):
         # Make sure we actually have all of the attributes needed
         # to complete the render.
 
-        story_conf = self.callbacks["get_opt"]("story")
-
-        self.enumerated = story_conf["enumerated"]
+        self.enumerated = self.callbacks["get_opt"]("story.enumerated")
         self.rel_enumerated = self.callbacks["get_tag_opt"]("enumerated")
 
-        for attr in story_conf["format_attrs"]:
+        for attr in story_needed_attrs:
             if attr not in self.content:
 
                 # Not having needed info is a good reason to
@@ -285,46 +311,7 @@ class Story(PluginHandler):
                 self.lns = 1
                 return self.lns
 
-        parsed = try_parse(story_conf["format"], DEFAULT_FSTRING)
-        parsed_pre = try_parse(self.pre_format, "")
-        parsed_post = try_parse(self.post_format, "")
-
-        # These are escapes that are handled in the theme_print
-        # lower in the function and should remain present after
-        # evaluation.
-
-        passthru = {}
-        for c in "RrDdUuBbSs012345678[":
-            passthru[c] = "%" + c
-
-        # Add refactored themability variables:
-
-        for attr in [ "selected", "read", "marked" ]:
-            passthru[attr] = story_conf[attr]
-            passthru["un" + attr] = story_conf["un" + attr]
-            passthru[attr + "_end"] = story_conf[attr + "_end"]
-            passthru["un" + attr + "_end"] = story_conf["un" + attr + "_end"]
-
-        values = { 'sel' : self.selected,
-                    'm' : self.marked,
-                   'rd' : "read" in self.content["canto-state"],
-                   'ut' : self.content["canto-tags"],
-                    't' : self.content["title"],
-                    'l' : self.content["link"],
-                 'item' : self,
-                 'prep' : prep_for_display}
-
-        # Prep all text values for display.
-
-        for value in list(values.keys()):
-            if type(values[value]) == str:
-                values[value] = prep_for_display(values[value])
-
-        values.update(passthru)
-
-        values["pre"] = try_eval(parsed_pre, values, "")
-        values["post"] = try_eval(parsed_post, values, "")
-        self.evald_string = try_eval(parsed, values, DEFAULT_FSTRING)
+        self.evald_string = self.eval()
 
         taglist_conf = self.callbacks["get_opt"]("taglist")
 

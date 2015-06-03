@@ -10,7 +10,7 @@ from canto_next.plugins import Plugin
 from canto_next.hooks import on_hook, remove_hook, unhook_all
 
 from .command import register_commands, register_arg_types, unregister_all, _int_range
-from .parser import prep_for_display
+from .theme import prep_for_display
 from .html import htmlparser
 from .text import TextBox
 from .tagcore import tag_updater

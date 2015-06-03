@@ -21,10 +21,6 @@ from canto_next.hooks import call_hook
 from canto_next.rwlock import RWLock, write_lock, read_lock
 from canto_next.remote import assign_to_dict, access_dict
 
-DEFAULT_FSTRING = "%?{sel}(%{selected}:%{unselected})%?{m}(%{marked}:%{unmarked})%?{rd}(%{read}:%{unread})%{pre}%t%{post}%?{m}(%{marked_end}:%{unmarked_end})%?{rd}(%{read_end}:%{unread_end})%?{sel}(%{selected_end}:%{unselected_end})"
-
-DEFAULT_TAG_FSTRING = "%?{sel}(%{selected}:%{unselected})%?{c}([+]:[-])%{pre} %t %{post} [%B%1%n%0%b]% %?{pending}([%8%B%{pending}%b%0]:)%?{sel}(%{selected_end}:%{unselected_end})"
-
 from .locks import config_lock
 from .subthread import SubThread
 
@@ -70,6 +66,8 @@ def needs_eval(option):
             return True
     return False
 
+story_needed_attrs = [ "title" ]
+
 class CantoCursesConfig(SubThread):
 
     # The object init just sets up the default settings, doesn't
@@ -113,15 +111,6 @@ class CantoCursesConfig(SubThread):
             "tags" : self.validate_tags,
             "tagorder" : self.validate_tag_order,
 
-            "tagobj" :
-            {
-                "format" : self.validate_string,
-                "selected" : self.validate_string,
-                "unselected" : self.validate_string,
-                "selected_end" : self.validate_string,
-                "unselected_end" : self.validate_string,
-            },
-
             "update" :
             {
                 "style" : self.validate_update_style,
@@ -156,21 +145,6 @@ class CantoCursesConfig(SubThread):
             "story" :
             {
                 "enumerated" : self.validate_bool,
-                "format" : self.validate_string,
-                "format_attrs" : self.validate_string_list,
-
-                "selected": self.validate_string,
-                "unselected":  self.validate_string,
-                "selected_end": self.validate_string ,
-                "unselected_end": self.validate_string,
-                "read": self.validate_string,
-                "unread": self.validate_string,
-                "read_end": self.validate_string,
-                "unread_end": self.validate_string,
-                "marked": self.validate_string,
-                "unmarked": self.validate_string,
-                "marked_end": self.validate_string,
-                "unmarked_end": self.validate_string,
             },
 
             "input" : { "window" : self.validate_window },
@@ -213,15 +187,6 @@ class CantoCursesConfig(SubThread):
 
             "tags" : r"maintag:.*",
             "tagorder" : [],
-
-            "tagobj" :
-            {
-                "format" : DEFAULT_TAG_FSTRING,
-                "selected" : "%R",
-                "unselected" : "",
-                "selected_end" : "%r",
-                "unselected_end" : "",
-            },
 
             "update" :
             {
@@ -324,22 +289,6 @@ class CantoCursesConfig(SubThread):
             "story" :
             {
                 "enumerated" : False,
-                "format" : DEFAULT_FSTRING,
-                "format_attrs" : [ "title" ],
-
-                # Themability
-                "selected": "%R",
-                "unselected": "",
-                "selected_end": "%r",
-                "unselected_end": "",
-                "read": "%2",
-                "unread": "%1%B",
-                "read_end": "%0",
-                "unread_end": "%b%0",
-                "marked": "%B[*] ",
-                "unmarked": "",
-                "marked_end": "%b",
-                "unmarked_end": "",
             },
 
             "input" :

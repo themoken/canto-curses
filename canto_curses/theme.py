@@ -8,6 +8,7 @@
 
 from canto_next.encoding import encoder, locale_enc
 from .widecurse import waddch, wcwidth
+from .html import html_entity_convert, char_ref_convert
 
 import curses
 
@@ -397,3 +398,10 @@ def theme_border(code):
     if "UTF-8" in locale_enc:
         return utf_chars[code]
     return ascii_chars[code]
+
+def prep_for_display(s):
+    s = s.replace("\\", "\\\\")
+    s = s.replace("%", "\\%")
+    s = html_entity_convert(s)
+    s = char_ref_convert(s)
+    return s

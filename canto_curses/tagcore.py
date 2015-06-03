@@ -11,7 +11,7 @@ from canto_next.hooks import call_hook, on_hook
 
 from .subthread import SubThread
 from .locks import config_lock
-from .config import config
+from .config import config, story_needed_attrs
 
 import traceback
 import logging
@@ -116,13 +116,9 @@ class TagUpdater(SubThread):
 
         self.needed_attrs = [ "title", "canto-state", "canto-tags", "link", "enclosures" ]
 
-        # Make sure we grab attributes needed for the story
-        # format and story format.
-
-        sfa = config.get_opt("story.format_attrs")
         tsa = config.get_opt("taglist.search_attributes")
 
-        for attrlist in [ sfa, tsa ]:
+        for attrlist in [ story_needed_attrs, tsa ]:
             for sa in attrlist:
                 if sa not in self.needed_attrs:
                     self.needed_attrs.append(sa)

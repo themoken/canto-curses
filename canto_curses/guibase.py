@@ -12,7 +12,7 @@ from canto_next.remote import assign_to_dict, access_dict
 
 from .command import CommandHandler, register_commands, register_arg_types, unregister_all, _string, register_aliases, commands, command_help
 from .tagcore import tag_updater
-from .parser import prep_for_display
+from .theme import prep_for_display
 from .config import needs_eval, config
 
 import logging
