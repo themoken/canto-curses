@@ -97,21 +97,6 @@ class WrapPad():
     def move(self, x, y):
         return self.pad.move(x, y)
 
-def attr_debug(fn):
-    def debug_wrapper(*args):
-        log.debug("args: %s" % (args,))
-        log.debug("cstack: %s" % (color_stack,))
-        log.debug("attr_cnt: %s" % (attr_count,))
-
-        ret = fn(*args)
-
-        log.debug("args: %s" % (args,))
-        log.debug("cstack: %s" % (color_stack,))
-        log.debug("attr_cnt: %s" % (attr_count,))
-
-        return ret
-    return debug_wrapper
-
 def theme_print_one(pad, uni, width):
     global color_stack
     global attr_count
