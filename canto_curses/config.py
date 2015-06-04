@@ -364,25 +364,23 @@ class CantoCursesConfig(SubThread):
             {
                 "defbg" : -1,
                 "deffg" : -1,
-                "0" : curses.COLOR_WHITE,
-                "1" : curses.COLOR_BLUE,
-                "2" : curses.COLOR_YELLOW,
-                "3" : curses.COLOR_BLUE,
-                "4" : curses.COLOR_GREEN,
-                "5" : curses.COLOR_MAGENTA,
-                "6" :
-                {
-                    "fg" : curses.COLOR_WHITE,
-                    "bg" : curses.COLOR_RED,
-                },
-                "7" : curses.COLOR_BLACK,
+                "unread" : 5,
+                "read" : 4,
+                "pending" : 1,
+                "text" : 8,
+                "error" : 2,
+                "reader_quote" : 6,
+                "reader_link" : 3,
+                "reader_image_link" : 5,
+                "reader_italics" : 8,
+                "enum_hints" : 8,
             },
 
             "kill_daemon_on_exit" : False
         }
 
-        for i in range(8, 256):
-            self.template_config["color"][str(i)] = i
+        for i in range(1, 257):
+            self.template_config["color"][str(i)] = i - 1
 
         self.config = eval(repr(self.template_config))
 

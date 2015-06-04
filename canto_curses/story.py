@@ -12,6 +12,7 @@ from canto_next.hooks import on_hook, unhook_all
 from .theme import FakePad, WrapPad, theme_print, theme_len, theme_reset, theme_border, prep_for_display
 from .tagcore import tag_updater
 from .config import story_needed_attrs
+from .color import cc
 
 import traceback
 import logging
@@ -261,9 +262,9 @@ class Story(PluginHandler):
             s += "%B[*]"
 
         if "read" in self.content["canto-state"]:
-            s += "%2"
+            s += cc("read")
         else:
-            s += "%1%B"
+            s += cc("unread") + "%B"
 
         s += prep_for_display(self.content["title"])
 
@@ -361,9 +362,9 @@ class Story(PluginHandler):
                 if lines == 0:
                     header = ""
                     if self.enumerated:
-                        header += "%1[" + str(self.offset) + "]%0"
+                        header += cc("enum_hints") + "[" + str(self.offset) + "]%0"
                     if self.rel_enumerated:
-                        header += "%1[" + str(self.rel_offset) + "]%0"
+                        header += cc("enum_hints") + "[" + str(self.rel_offset) + "]%0"
                     if header:
                         pad.move(0, 0)
                         theme_print(pad, header, width, "","", False, False)

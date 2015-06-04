@@ -9,6 +9,7 @@
 from canto_next.encoding import encoder, locale_enc
 from .widecurse import waddch, wcwidth
 from .html import html_entity_convert, char_ref_convert
+from .config import config
 
 import curses
 

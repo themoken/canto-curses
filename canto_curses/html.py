@@ -10,6 +10,8 @@ from html.parser import HTMLParser
 import html.entities
 import re
 
+from .color import cc
+
 import logging
 
 log = logging.getLogger("HTML")
@@ -91,7 +93,7 @@ class CantoHTML(HTMLParser):
                     return
                 self.link_open = True
                 self.link_href = attrs["href"]
-                self.result += "%5"
+                self.result += cc("reader_link")
             else:
                 self.links.append(("link", self.link_href, self.link_text))
                 self.link_text = ""
@@ -106,7 +108,7 @@ class CantoHTML(HTMLParser):
                 if "alt" not in attrs:
                     attrs["alt"] = ""
                 self.links.append(("image", attrs["src"], attrs["alt"]))
-                self.handle_data_clean("%4" + attrs["alt"] +\
+                self.handle_data_clean(cc("reader_image_link") + attrs["alt"] +\
                         "[" + str(len(self.links)) + "]%0")
 
         elif tag in ["h" + str(x) for x in range(1,7)]:
@@ -160,9 +162,9 @@ class CantoHTML(HTMLParser):
 
         elif tag in ["i", "small", "em"]:
             if open:
-                self.result += "%6%B"
+                self.result += "%B" + cc("reader_italics")
             else:
-                self.result += "%b%0"
+                self.result += "%0%b"
         elif tag in ["b", "strong"]:
             if open:
                 self.result += "%B"

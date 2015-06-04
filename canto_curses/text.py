@@ -11,7 +11,7 @@ from canto_next.hooks import on_hook, unhook_all
 from .theme import FakePad, WrapPad, theme_print, theme_lstrip, theme_border, theme_reset
 from .command import register_commands, unregister_command
 from .guibase import GuiBase
-from .theme import theme_print
+from .color import cc
 
 import logging
 import curses
@@ -241,7 +241,7 @@ class ErrorBox(VarBox):
         VarBox.init(self, pad, callbacks, "error_msg")
 
     def update_text(self):
-        self.text = "%6" + self.value + "%0"
+        self.text = cc("error") + self.value + "%0"
 
     def get_opt_name(self):
         return "errorbox"

@@ -15,6 +15,7 @@ from .parser import try_parse, try_eval, prep_for_display
 from .theme import FakePad, WrapPad, theme_print, theme_reset, theme_border
 from .config import config
 from .story import Story
+from .color import cc
 
 import traceback
 import logging
@@ -234,7 +235,6 @@ class Tag(PluginHandler, list):
         self.callbacks["set_var"]("needs_redraw", True)
 
     def eval(self):
-
         # Make sure to strip out the category from category:name
         tag = self.tag.split(':', 1)[1]
 
@@ -253,9 +253,9 @@ class Tag(PluginHandler, list):
 
         s += " " + tag + " "
 
-        s += "[%B%1" + str(unread) + "%0%b]"
+        s += "[%B" + cc("unread") + str(unread) + "%0%b]"
         if self.updates_pending:
-            s += " [%8%B" + str(self.updates_pending) + "%b%0]"
+            s += " [%B" + cc("pending") + str(self.updates_pending) + "%0%b]"
 
         if self.selected:
             s += "%r"
@@ -310,9 +310,9 @@ class Tag(PluginHandler, list):
                 if lines == 0:
                     header = ""
                     if self.enumerated:
-                        header += "%1[" + str(self.visible_tag_offset) + "]%0"
+                        header += cc("enum_hints") + "[" + str(self.visible_tag_offset) + "]%0"
                     if self.abs_enumerated:
-                        header += "%1[" + str(self.tag_offset) + "]%0"
+                        header += cc("enum_hints") + "[" + str(self.tag_offset) + "]%0"
                     if header:
                         pad.move(0, 0)
                         theme_print(pad, header, width, "", "", False, False)
