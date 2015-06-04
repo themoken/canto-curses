@@ -165,18 +165,10 @@ class CantoCursesConfig(SubThread):
 
             "screen" : { "key" : self.validate_key },
 
-            "color" :
-            {
-                "defbg" : self.validate_color,
-                "deffg" : self.validate_color,
-                # See also setup for numeric settings below
-            },
+            "color" : self.validate_color_block,
 
             "kill_daemon_on_exit" : self.validate_bool
         }
-
-        for i in range(0, 256):
-            self.validators["color"][str(i)] = self.validate_color
 
         self.template_config = {
             "browser" :
@@ -580,6 +572,51 @@ class CantoCursesConfig(SubThread):
             return color_translate(val)
 
         return (False, False)
+
+    def validate_color_block(self, val, d):
+        if type(val) != dict:
+            return (False, False)
+
+        r = {}
+
+        for key in val.keys():
+            try:
+                num = int(key)
+                ok, k_v = self.validate_color(val[key], None)
+                if ok:
+                    r[key] = k_v
+                else:
+                    log.error("color.%s is invalid (%s)" % (key, val[key]))
+                    return (False, False)
+                continue
+            except:
+                pass
+
+            if key in ["deffg", "defbg"]:
+                ok, k_v = self.validate_color(val[key], None)
+                if ok:
+                    r[key] = k_v
+                else:
+                    log.error("color.%s is invalid (%s)" % (key, val[key]))
+                    return (False, False)
+            else:
+                try:
+                    pair = int(val[key])
+                    if pair >= 0 and pair <= 255:
+                        r[key] = pair
+                    else:
+                        log.error("color.%s must be >= 0 and <= 255 (%s)" % (key, pair))
+                        return (False, False)
+                except Exception as e:
+                    log.error(e)
+                    log.error("color.%s must be an integer, not %s" % (key, val[key]))
+                    return (False, False)
+
+        for key in d.keys():
+            if key not in r:
+                r[key] = d[key]
+
+        return (True, r)
 
     def validate_string_list(self, val, d):
         if type(val) != list:
