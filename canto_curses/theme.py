@@ -124,7 +124,7 @@ def theme_print_one(pad, uni, width):
             try:
                 pad.waddch(ec)
             except:
-                log.debug("Can't print escaped ec: %s in: %s" % (ec, uni))
+                log.debug("Can't print escaped ec: %s in: %s", ec, uni)
 
             width -= cwidth
             escaped = False
@@ -225,8 +225,8 @@ def theme_print_one(pad, uni, width):
             try:
                 pad.waddch(ec)
             except Exception as e:
-                log.debug("Can't print ec: %s in: %s" % (ec, repr(encoder(uni))))
-                log.debug("Exception: %s" % e)
+                log.debug("Can't print ec: %s in: %s", ec, repr(encoder(uni)))
+                log.debug("Exception: %s", e)
 
             width -= cwidth
 
@@ -252,7 +252,7 @@ def theme_print(pad, uni, mwidth, pre = "", post = "", cursorbash=True, clear=Tr
         try:
             pad.move(y, (mwidth - postl))
         except:
-            log.debug("move error: %d %d" % (y, mwidth - postl))
+            log.debug("move error: %d %d", y, mwidth - postl)
         theme_print_one(pad, post, postl)
 
     if cursorbash:

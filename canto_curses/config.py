@@ -486,7 +486,7 @@ class CantoCursesConfig(SubThread):
         # Ensure all settings exist
         for setting in [ "border", "maxwidth", "maxheight", "align", "float" ]:
             if setting not in val:
-                log.debug("Couldn't find %s setting" % setting)
+                log.debug("Couldn't find %s setting", setting)
                 val[setting] = d[setting]
 
         # Ensure all settings are in their correct range
@@ -758,7 +758,7 @@ class CantoCursesConfig(SubThread):
 
     @write_lock(config_lock)
     def prot_configs(self, given, write = False):
-        log.debug("prot_configs given:\n%s\n" % json.dumps(given, indent=4, sort_keys=True))
+        log.debug("prot_configs given:\n%s\n", json.dumps(given, indent=4, sort_keys=True))
 
         if "tags" in given:
             for tag in list(given["tags"].keys()):
@@ -855,7 +855,7 @@ class CantoCursesConfig(SubThread):
                 # tag already, substitute the default template.
 
                 if tag not in self.tag_config:
-                    log.debug("Using default tag config for %s" % tag)
+                    log.debug("Using default tag config for %s", tag)
                     self.tag_config[tag] = self.tag_template_config.copy()
 
                 self.vars["strtags"].append(tag)
@@ -869,7 +869,7 @@ class CantoCursesConfig(SubThread):
         self.set_conf(c)
 
         for tag in newtags:
-            log.debug("New tag %s" % tag)
+            log.debug("New tag %s", tag)
             call_hook("curses_new_tag", [ tag ])
 
         self.eval_tags()
@@ -927,7 +927,7 @@ class CantoCursesConfig(SubThread):
         # If evaluated tags differ, we need to let other know.
 
         if prevtags != self.vars["curtags"]:
-            log.debug("Evaluated Tags Changed:\n%s\n" % json.dumps(self.vars["curtags"], indent=4))
+            log.debug("Evaluated Tags Changed:\n%s\n", json.dumps(self.vars["curtags"], indent=4))
             call_hook("curses_eval_tags_changed", [])
 
     def set_var(self, tweak, value):
@@ -966,7 +966,7 @@ class CantoCursesConfig(SubThread):
 
         for f in d_f:
             if f["name"] == name:
-                log.debug("updating %s with %s" % (f, conf))
+                log.debug("updating %s with %s", f, conf)
                 f.update(conf)
                 break
         else:

@@ -200,7 +200,7 @@ class CantoCursesGui(CommandHandler):
                 continue
 
             cmds = self.cmdsplit(cmd)
-            log.debug("Resolved to %s" % cmds)
+            log.debug("Resolved to %s", cmds)
 
             # Now actually issue the commands
 
@@ -211,7 +211,7 @@ class CantoCursesGui(CommandHandler):
                 # Command is our one hardcoded command because it's special, and also shouldn't invoke itself.
                 if cmd == "command":
                     subcmd = self.screen.input_callback(':')
-                    log.debug("Got %s from user command" % subcmd)
+                    log.debug("Got %s from user command", subcmd)
                     subcmds = self.cmdsplit(subcmd)
                     for subcmd in subcmds:
                         okay = self.issue_cmd(subcmd)

@@ -190,7 +190,7 @@ def _unalias(lookup):
     # deref -1 for latest register, 1 for longform instead of obj
     total = total.replace(longest_alias, aliases[longest_alias][-1].longform, 1)
 
-    log.debug("Unaliased to: %s" % total)
+    log.debug("Unaliased to: %s", total)
 
     return shlex.split(total)
 
@@ -235,7 +235,7 @@ def cmd_complete_info():
         c = list(cmds.keys())
         c.extend(list(aliases.keys()))
         c.sort()
-        log.debug("CMDS: %s" % c)
+        log.debug("CMDS: %s", c)
         return ("", "", c)
     else:
         lookup, sig = _get_max_sig(lookup)
@@ -412,7 +412,7 @@ def _int_range(name, itrs, syms, fallback, s):
 
     if not rlist:
         rlist = fallback
-        log.debug("%s falling back to %s" % (rlist, fallback))
+        log.debug("%s falling back to %s", rlist, fallback)
 
     # If our fallback was empty, fail it.
     if not rlist:
@@ -481,7 +481,7 @@ class CommandHandler(PluginHandler):
             keyname += chr(k)
             optname += self.translate_key(keyname)
 
-        log.debug("trying key: %s" % optname)
+        log.debug("trying key: %s", optname)
 
         try:
             r = self.callbacks["get_opt"](optname)

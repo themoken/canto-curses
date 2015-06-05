@@ -66,7 +66,7 @@ class TagList(GuiBase):
                 if tagobj.tag == tagcore.tag:
                     break
             else:
-                log.debug("Instantiating Tag() for %s" % tagcore.tag)
+                log.debug("Instantiating Tag() for %s", tagcore.tag)
                 Tag(tagcore, self.callbacks)
 
         self.update_tag_lists()
@@ -289,7 +289,7 @@ class TagList(GuiBase):
         return (["read","marked","-read","-marked"], lambda x : (True, x))
 
     def on_new_tagcore(self, tagcore):
-        log.debug("Instantiating Tag() for %s" % tagcore.tag)
+        log.debug("Instantiating Tag() for %s", tagcore.tag)
         Tag(tagcore, self.callbacks)
 
     def on_del_tagcore(self, tagcore):
@@ -340,7 +340,7 @@ class TagList(GuiBase):
                 tag_updater.need_attributes(item, sa)
 
     def cmd_goto(self, items):
-        log.debug("GOTO: %s" % items)
+        log.debug("GOTO: %s", items)
         self._goto([item.content["link"] for item in items])
 
     def cmd_tag_state(self, state, tags):
@@ -647,7 +647,7 @@ class TagList(GuiBase):
     def cmd_promote(self, tags):
         for tag in tags:
 
-            log.debug("Promoting %s\n" % tag.tag)
+            log.debug("Promoting %s\n", tag.tag)
 
             # Refetch because a promote call will cause our eval_tag hook to
             # recreate visible_tags.
@@ -1083,7 +1083,7 @@ class TagList(GuiBase):
         return (main_offset, curpos + lines)
 
     def redraw(self):
-        log.debug("Taglist REDRAW (%s)!\n" % self.width)
+        log.debug("Taglist REDRAW (%s)!\n", self.width)
         self.pad.erase()
 
         target_obj = self.callbacks["get_var"]("target_obj")

@@ -112,7 +112,7 @@ class Tag(PluginHandler, list):
         self.update_plugin_lookups()
 
     def die(self):
-        log.debug("tag %s die()" % self.tag)
+        log.debug("tag %s die()", self.tag)
         # Reset so items get die() called and everything
         # else is notified about items disappearing.
 

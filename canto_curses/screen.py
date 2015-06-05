@@ -150,10 +150,10 @@ class Screen(CommandHandler):
 
             try:
                 curses.init_pair(i, fg, bg)
-                log.debug("color pair %s : %s %s" % (i, fg, bg))
+                log.debug("color pair %s : %s %s", i, fg, bg)
             except:
-                log.debug("color pair failed!: %d fg: %d bg: %d" %
-                        (i + 1, fg, bg))
+                log.debug("color pair failed!: %d fg: %d bg: %d", 
+                        i + 1, fg, bg)
         return 0
 
     def screen_opt_change(self, conf):
@@ -268,8 +268,8 @@ class Screen(CommandHandler):
         # Height + 1 to account for the last curses pad line
         # not being fully writable.
 
-        log.debug("h: %s w: %s" % (self.height, self.width))
-        log.debug("h: %s w: %s" % (height, width))
+        log.debug("h: %s w: %s", self.height, self.width)
+        log.debug("h: %s w: %s", height, width)
         pad = curses.newpad(height + 1, width)
 
         # Pass on callbacks we were given from CantoCursesGui
@@ -432,7 +432,7 @@ class Screen(CommandHandler):
 
         # Cleanup any window objects that will be destroyed.
         for w in self.windows:
-            log.debug("die to %s" % w)
+            log.debug("die to %s", w)
             w.die()
 
         self.floats = []
@@ -601,10 +601,10 @@ class Screen(CommandHandler):
 
         comp = self.input_box.break_completion()
         if comp:
-            log.debug("inserting: %s" % comp)
+            log.debug("inserting: %s", comp)
             readline.insert_text(comp)
 
-        log.debug("KEY: %s" % r)
+        log.debug("KEY: %s", r)
         return r
 
     def _exception_wrap(self, fn, *args):
@@ -667,7 +667,7 @@ class Screen(CommandHandler):
 
     def _focus(self, win):
         self.focused = win
-        log.debug("Focusing window (%s)" % (self.focused,))
+        log.debug("Focusing window (%s)", self.focused)
 
     def type_color_idx(self):
         def ci(x):
@@ -706,7 +706,7 @@ class Screen(CommandHandler):
     def cmd_color(self, idx, fg, bg):
         conf = self.callbacks["get_conf"]()
 
-        log.debug(":COLOR IDX: %s" % idx)
+        log.debug(":COLOR IDX: %s", idx)
         if idx in ['deffg', 'defbg']:
             conf["color"][idx] = fg  # Ignore second color pair
         else:
@@ -717,7 +717,7 @@ class Screen(CommandHandler):
                 color['bg'] = bg
             conf["color"][idx] = color
 
-        log.debug("color %s set: %s" % (idx, conf["color"][idx]))
+        log.debug("color %s set: %s", idx, conf["color"][idx])
 
         self.callbacks["set_conf"](conf)
 

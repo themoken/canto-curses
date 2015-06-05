@@ -88,7 +88,7 @@ class InputBox(GuiBase):
         if complist:
             s += complist[0]
 
-        log.debug("printing: '%s'" % s[-1 * (maxx - self.minx):])
+        log.debug("printing: '%s'", s[-1 * (maxx - self.minx):])
         try:
             self.pad.addstr(s[-1 * (maxx - self.minx):])
         except:

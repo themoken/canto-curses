@@ -130,7 +130,7 @@ class SmartLinkThread(Thread):
                         file_handlers = []
 
             for f_handler in file_handlers:
-                log.debug("f_handler: %s" % f_handler)
+                log.debug("f_handler: %s", f_handler)
                 got_handler = self.try_handler(f_handler, "file", fileoutput)
                 if got_handler:
                     self.href = tmpnam
@@ -220,7 +220,7 @@ class SmartLinkThread(Thread):
         tmpdir = tempfile.mkdtemp(prefix="canto-")
         tmpnam = tmpdir + '/' + fname
 
-        log.debug("Downloading %s to %s" % (self.href, tmpnam))
+        log.debug("Downloading %s to %s", self.href, tmpnam)
 
         on_hook("curses_exit", lambda : (os.unlink(tmpnam)))
         on_hook("curses_exit", lambda : (os.rmdir(tmpdir)))

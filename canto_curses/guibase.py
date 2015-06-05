@@ -162,7 +162,7 @@ class GuiBase(CommandHandler):
         loc_args = self.callbacks["get_var"]("location")
         argv = [argv[0]] + loc_args + argv[1:]
 
-        log.debug("Calling remote: %s" % argv)
+        log.debug("Calling remote: %s", argv)
 
         # check_output return bytes, we must decode.
         out = subprocess.check_output(argv).decode()
@@ -236,10 +236,10 @@ class GuiBase(CommandHandler):
                 return False
         else:
             if key in c[opt]["key"] and c[opt]["key"][key] and not overwrite:
-                log.debug("%s already bound to %s" % (key, c[opt]["key"][key]))
+                log.debug("%s already bound to %s", key, c[opt]["key"][key])
                 return False
 
-            log.debug("Binding %s.%s to %s" % (opt, key, cmd))
+            log.debug("Binding %s.%s to %s", opt, key, cmd)
 
             c[opt]["key"][key] = cmd
             self.callbacks["set_conf"](c)
@@ -327,7 +327,7 @@ class GuiBase(CommandHandler):
         return (possibles, lambda x : (True, x))
 
     def cmd_set(self, opt, val):
-        log.debug("SET: %s '%s'" % (opt, val))
+        log.debug("SET: %s '%s'", opt, val)
 
         evaluate = needs_eval(opt)
 

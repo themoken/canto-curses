@@ -62,7 +62,7 @@ class TagCore(list):
 
         for idx, id in enumerate(self[:]):
             if id in ids:
-                log.debug("removing: %s" % (id,))
+                log.debug("removing: %s", id)
 
                 list.remove(self, id)
                 removed.append(id)
@@ -170,7 +170,7 @@ class TagUpdater(SubThread):
         self.lock.acquire_write()
         for item in items:
             if tagcore and item.id in tc:
-                log.debug("%s still in tagcore, not removing" % item.id)
+                log.debug("%s still in tagcore, not removing", item.id)
                 continue
             if item.id in self.attributes:
                 del self.attributes[item.id]

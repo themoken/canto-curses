@@ -183,7 +183,7 @@ class CantoCurses(CantoClient):
                 pid, status = os.waitpid(-1, os.WNOHANG)
                 if pid == 0:
                     break
-                log.debug("CHLD %d has died: %d" % (pid, status))
+                log.debug("CHLD %d has died: %d", pid, status)
         except Exception as e:
             if e.errno == errno.ECHILD:
                 log.debug("CHLD no children?")

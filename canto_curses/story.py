@@ -133,7 +133,7 @@ class Story(PluginHandler):
                 if attr not in self.content:
                     needed_attrs.append(attr)
             if needed_attrs:
-                log.debug("%s needs: %s" % (self.id, needed_attrs))
+                log.debug("%s needs: %s", self.id, needed_attrs)
                 tag_updater.need_attributes(self.id, needed_attrs)
 
         # All other story options are formats / enumerations, redraw.
@@ -301,7 +301,7 @@ class Story(PluginHandler):
                 self.need_refresh()
                 self.callbacks["release_gui"]()
 
-                log.debug("%s still needs %s" % (self, attr))
+                log.debug("%s still needs %s", self, attr)
 
                 self.left = " "
                 self.left_more = " "

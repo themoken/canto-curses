@@ -49,7 +49,7 @@ class CantoHTML(HTMLParser):
             text = text.replace("\n", " ")
 
         if self.link_open:
-            log.debug("adding %s to link_text" % text)
+            log.debug("adding %s to link_text", text)
             self.link_text += text
 
         self.result += text
