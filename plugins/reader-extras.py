@@ -41,7 +41,7 @@ DEBUG_CONTENT = False
 from canto_next.hooks import on_hook, remove_hook
 from canto_curses.reader import ReaderPlugin
 from canto_curses.tagcore import tag_updater
-from canto_curses.parser import prep_for_display
+from canto_curses.theme import prep_for_display
 import pprint
 import re
 

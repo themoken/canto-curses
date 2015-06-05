@@ -11,8 +11,7 @@ from canto_next.plugins import Plugin, PluginHandler
 from canto_next.rwlock import read_lock
 
 from .locks import sync_lock, config_lock
-from .parser import try_parse, try_eval, prep_for_display
-from .theme import FakePad, WrapPad, theme_print, theme_reset, theme_border
+from .theme import FakePad, WrapPad, theme_print, theme_reset, theme_border, prep_for_display
 from .config import config
 from .story import Story
 from .color import cc
