@@ -81,13 +81,47 @@ class Screen(CommandHandler):
         self.subwindows()
 
         args = {
-            "color_idx" : ("[color idx] between 1 and 256 ( >8 will be ignored on 8 color terminals)", self.type_color_idx),
+            "color_name" : ("[color name] Either a pair number (0-255, >8 ignored on 8 color terminals), a default fore/background (deffg, defbg), or an arbitrary name to be used in themes (unread, pending, etc.)", self.type_color_name),
             "fg-color" : ("[fg-color] Foreground color", self.type_color),
             "bg-color" : ("[bg-color] Background color (optional)\n\nNamed colors: white black red yellow green blue magenta pink\nNumeric colors: 1-256", self.type_color),
         }
 
         cmds = {
-            "color": (self.cmd_color, ["color_idx", "fg-color", "bg-color"], "Change the color palette"),
+            "color": (self.cmd_color, ["color_name", "fg-color", "bg-color"],
+"""
+Change the color palette.
+
+Most like you want to use this to change a color used in the theme. For example,
+
+   :color unread green
+
+Will change the color of unread items to green, with the default background. The list of names used in the default theme are:
+
+    unread
+    read
+    marked
+    pending
+    error
+    reader_quote
+    reader_link
+    reader_image_link
+    reader_italics
+    enum_hints
+
+You can also change the defaults
+
+    :color deffg blue
+    :color defbg white
+
+Which will be used anywhere a color pair doesn't have an explicit foreground/background.
+
+Lastly you can change the color pairs themselves. This isn't recommended, they're initialized so each available color is available with the default background. If you change these pairs, the named colors above may not make any sense (i.e. green really turns on the color pair set aside for green, so if you change that pair to actually be yellow, don't expect this command to figure it out).
+
+    :color 1 white red
+
+Arguments:"""
+
+),
         }
 
         register_arg_types(self, args)
@@ -669,13 +703,6 @@ class Screen(CommandHandler):
         self.focused = win
         log.debug("Focusing window (%s)", self.focused)
 
-    def type_color_idx(self):
-        def ci(x):
-            if x in ["deffg","defbg"] + [ str(x) for x in range(0, 256) ]:
-                return (True, x)
-            return (False, None)
-        return (None, ci)
-
     def type_color(self):
         colors = {
             'white' : curses.COLOR_WHITE,
@@ -703,6 +730,19 @@ class Screen(CommandHandler):
                 return (False, None)
         return (list(colors.keys()), c)
 
+    def type_color_name(self):
+        color_conf = self.callbacks["get_opt"]("color")
+
+        completions = []
+        for key in color_conf:
+            try:
+                pair = int(key)
+                continue
+            except:
+                completions.append(key)
+
+        return (completions, lambda x : (True, x))
+
     def cmd_color(self, idx, fg, bg):
         conf = self.callbacks["get_conf"]()
 
@@ -710,12 +750,16 @@ class Screen(CommandHandler):
         if idx in ['deffg', 'defbg']:
             conf["color"][idx] = fg  # Ignore second color pair
         else:
-            color = {}
-            if fg != -1:
-                color['fg'] = fg
-            if bg != -1:
-                color['bg'] = bg
-            conf["color"][idx] = color
+            try:
+                pair = int(idx)
+                color = {}
+                if fg != -1:
+                    color['fg'] = fg
+                if bg != -1:
+                    color['bg'] = bg
+                conf["color"][idx] = color
+            except:
+                conf["color"][idx] = fg + 1 # +1 since the color pairs are offset
 
         log.debug("color %s set: %s", idx, conf["color"][idx])
 

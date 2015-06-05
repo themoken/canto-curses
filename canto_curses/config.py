@@ -369,6 +369,7 @@ class CantoCursesConfig(SubThread):
                 "pending" : 1,
                 "text" : 8,
                 "error" : 2,
+                "marked" : 8,
                 "reader_quote" : 6,
                 "reader_link" : 3,
                 "reader_image_link" : 5,

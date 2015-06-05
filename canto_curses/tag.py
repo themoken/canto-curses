@@ -137,6 +137,9 @@ class Tag(PluginHandler, list):
         if "tagobj" in opts:
             self.need_redraw()
 
+        if "color" in opts:
+            self.need_redraw()
+
     def on_tag_opt_change(self, opts):
         if self.tag in list(opts.keys()):
             tc = opts[self.tag]
