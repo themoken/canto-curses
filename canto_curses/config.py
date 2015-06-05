@@ -68,6 +68,8 @@ def needs_eval(option):
 
 story_needed_attrs = [ "title" ]
 
+CURRENT_CONFIG_VERSION = 1
+
 class CantoCursesConfig(SubThread):
 
     # The object init just sets up the default settings, doesn't
@@ -75,6 +77,7 @@ class CantoCursesConfig(SubThread):
     # or, in testing, is ignored.
 
     def __init__(self):
+        self.config_version = 0
         self.vars = {
             "location" : None,
             "error_msg" : "No error.",
@@ -572,6 +575,42 @@ class CantoCursesConfig(SubThread):
 
         return (False, False)
 
+    def migrate_color_block(self, val, d):
+        log.info("Migrating color config to use new color system")
+        log.info("See ':help color' if this butchers your colors")
+
+        r = { "1" : "unread",
+              "2" : "read",
+              "3" : "reader_link",
+              "4" : "reader_image_link",
+              "6" : "error",
+              "8" : "pending" }
+
+        for key in r:
+            if key not in val:
+                continue
+
+            # If the given color is a dict, it's fg/bg
+
+            if type(val[key]) == dict:
+                if "fg" in val[key] and val[key]["fg"] != -1:
+                    val[r[key]] = val[key]["fg"] + 1
+                else:
+                    log.warn("Ignoring old color %s", key)
+
+            # If the given color is simple, convert it to one of our default
+            # pairs
+
+            elif type(val[key]) == int:
+                val[r[key]] = val[key] + 1
+
+        # Reset all color pairs to their default
+
+        for i in range(1, 257):
+            val[str(i)] = i - 1
+
+        self.write("SETCONFIGS", { "CantoCurses" : {"color" : val }})
+
     def validate_color_block(self, val, d):
         if type(val) != dict:
             return (False, False)
@@ -610,6 +649,9 @@ class CantoCursesConfig(SubThread):
                     log.error(e)
                     log.error("color.%s must be an integer, not %s" % (key, val[key]))
                     return (False, False)
+
+        if self.config_version < 1:
+            self.migrate_color_block(r, d)
 
         for key in d.keys():
             if key not in r:
@@ -760,7 +802,6 @@ class CantoCursesConfig(SubThread):
     @write_lock(config_lock)
     def prot_configs(self, given, write = False):
         log.debug("prot_configs given:\n%s\n", json.dumps(given, indent=4, sort_keys=True))
-
         if "tags" in given:
             for tag in list(given["tags"].keys()):
                 ntc = given["tags"][tag]
@@ -783,9 +824,23 @@ class CantoCursesConfig(SubThread):
         if "CantoCurses" in given:
             new_config = given["CantoCurses"]
 
+            if "config_version" in new_config:
+                self.config_version = new_config["config_version"]
+
             changes, deletions =\
                     self.validate_config(new_config, self.config,\
                     self.validators)
+
+            if "config_version" not in new_config or\
+                    new_config["config_version"] != CURRENT_CONFIG_VERSION:
+
+                log.debug("Configuration migrated from %s to %s",\
+                        self.config_version, CURRENT_CONFIG_VERSION)
+
+                self.config_version = CURRENT_CONFIG_VERSION
+                new_config["config_version"] = CURRENT_CONFIG_VERSION
+                changes["config_version"] = CURRENT_CONFIG_VERSION
+                self.write("SETCONFIGS", { "CantoCurses" : {"config_version" : CURRENT_CONFIG_VERSION } })
 
             if changes:
                 self.config = new_config
