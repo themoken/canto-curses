@@ -57,6 +57,10 @@ HANDLERS = [
 
 # If you have no match-file handlers listed, the file will not be downloaded.
 
+from canto_next.plugins import check_program
+
+check_program("canto-curses")
+
 from canto_next.hooks import on_hook
 
 from canto_curses.taglist import TagListPlugin

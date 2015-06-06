@@ -5,8 +5,11 @@
 # Set to True if you want the selection title included.
 USE_TITLE=False
 
-from canto_next.hooks import on_hook
+from canto_next.plugins import check_program
 
+check_program("canto-curses")
+
+from canto_next.hooks import on_hook
 import locale
 import os
 

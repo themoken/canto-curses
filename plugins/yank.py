@@ -4,6 +4,10 @@
 
 # Requires xclip to be somewhere in $PATH
 
+from canto_next.plugins import check_program
+
+check_program("canto-curses")
+
 from canto_curses.taglist import TagListPlugin
 from canto_curses.command import register_commands
 

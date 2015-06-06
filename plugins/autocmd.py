@@ -25,6 +25,10 @@ else:
 
 # The actual plugin workings below.
 
+from canto_next.plugins import check_program
+
+check_program("canto-curses")
+
 from canto_curses.gui import GuiPlugin
 from canto_next.hooks import on_hook
 

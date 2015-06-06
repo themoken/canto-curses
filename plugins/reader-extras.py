@@ -38,6 +38,10 @@ hacks['authors'] = ('.*', authors_attrs, authors_extras)
 
 DEBUG_CONTENT = False
 
+from canto_next.plugins import check_program
+
+check_program("canto-curses")
+
 from canto_next.hooks import on_hook, remove_hook
 from canto_curses.reader import ReaderPlugin
 from canto_curses.tagcore import tag_updater

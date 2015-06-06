@@ -9,7 +9,7 @@
 CANTO_PROTOCOL_COMPATIBLE = 0.9
 
 from canto_next.client import CantoClient
-from canto_next.plugins import try_plugins
+from canto_next.plugins import try_plugins, set_program
 from canto_next.rwlock import alllocks
 from canto_next.hooks import call_hook
 
@@ -98,6 +98,7 @@ class CantoCurses(CantoClient):
         log.info(version)
 
         # Evaluate anything in the target /plugins directory.
+        set_program("canto-curses")
         self.plugin_errors = try_plugins(self.conf_dir, self.plugin_default, self.disabled_plugins,
                 self.enabled_plugins)
 

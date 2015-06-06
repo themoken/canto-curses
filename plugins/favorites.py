@@ -5,6 +5,10 @@
 # This plugin allows certain items to be tagged as 'user:favorite' and then a
 # custom style to be applied to those items.
 
+from canto_next.plugins import check_program
+
+check_program("canto-curses")
+
 from canto_curses.taglist import TagListPlugin
 from canto_curses.story import StoryPlugin
 from canto_curses.command import register_commands
