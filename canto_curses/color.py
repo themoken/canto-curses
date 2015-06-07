@@ -23,6 +23,8 @@ class CantoColorManager:
             self.color_conf = config["color"]
 
     def __call__(self, name):
+        if self.color_conf[name] > 8:
+            return "%[" + str(self.color_conf[name]) + "]"
         return "%" + str(self.color_conf[name])
 
 cc = CantoColorManager()
