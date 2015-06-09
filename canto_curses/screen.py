@@ -124,7 +124,9 @@ Arguments:"""
 
 ),
         "style": (self.cmd_style, ["color_name", "style"],
-"""Change the curses style of a named color. For example,
+"""Change the curses style of a named color.
+
+For example,
 
     :style selected underline
 
