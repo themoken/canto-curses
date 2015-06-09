@@ -136,7 +136,7 @@ class Tag(PluginHandler, list):
         if "tagobj" in opts:
             self.need_redraw()
 
-        if "color" in opts:
+        if "color" in opts or "style" in opts:
             self.need_redraw()
 
     def on_tag_opt_change(self, opts):
@@ -246,7 +246,7 @@ class Tag(PluginHandler, list):
 
         s = ""
         if self.selected:
-            s += "%R"
+            s += cc("selected")
 
         if self.collapsed:
             s += "[+]"
@@ -255,12 +255,12 @@ class Tag(PluginHandler, list):
 
         s += " " + tag + " "
 
-        s += "[%B" + cc("unread") + str(unread) + "%0%b]"
+        s += "[" + cc("unread") + str(unread) + cc.end("unread") + "]"
         if self.updates_pending:
-            s += " [%B" + cc("pending") + str(self.updates_pending) + "%0%b]"
+            s += " [" + cc("pending") + str(self.updates_pending) + cc.end("pending") + "]"
 
         if self.selected:
-            s += "%r"
+            s += cc.end("selected")
 
         return s
 

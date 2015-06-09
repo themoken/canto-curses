@@ -84,12 +84,12 @@ class Screen(CommandHandler):
             "color_name" : ("[color name] Either a pair number (0-255, >8 ignored on 8 color terminals), a default fore/background (deffg, defbg), or an arbitrary name to be used in themes (unread, pending, etc.)", self.type_color_name),
             "fg-color" : ("[fg-color] Foreground color", self.type_color),
             "bg-color" : ("[bg-color] Background color (optional)\n\nNamed colors: white black red yellow green blue magenta pink\nNumeric colors: 1-256", self.type_color),
+            "style" : ("[style] Curses style (normal, bold, dim, reverse, standout, underline)", self.type_style),
         }
 
         cmds = {
             "color": (self.cmd_color, ["color_name", "fg-color", "bg-color"],
-"""
-Change the color palette.
+"""Change the color palette.
 
 Most like you want to use this to change a color used in the theme. For example,
 
@@ -99,6 +99,7 @@ Will change the color of unread items to green, with the default background. The
 
     unread
     read
+    selected
     marked
     pending
     error
@@ -122,6 +123,28 @@ Lastly you can change the color pairs themselves. This isn't recommended, they'r
 Arguments:"""
 
 ),
+        "style": (self.cmd_style, ["color_name", "style"],
+"""Change the curses style of a named color. For example,
+
+    :style selected underline
+
+The names used in the default theme are:
+
+    unread
+    read
+    selected
+    marked
+    pending
+    error
+    reader_quote
+    reader_link
+    reader_image_link
+    reader_italics
+    enum_hints
+
+Changing other colors (numeric pairs or deffg/defbg) will have no effect as these are separate from the built in curses color system.
+
+Arguments:"""),
         }
 
         register_arg_types(self, args)
@@ -766,6 +789,30 @@ Arguments:"""
         self.callbacks["set_conf"](conf)
 
         # Cause curses to be re-init'd
+        self.resize()
+
+    def type_style(self):
+        styles = [ "normal", "bold", "dim", "reverse", "standout", "underline" ]
+        return (styles, lambda x: (x in styles, x))
+
+    def cmd_style(self, name, style):
+        conf = self.callbacks["get_opt"]("style")
+
+        styles = {
+            "bold" : "%B",
+            "normal" : "",
+            "dim" : "%D",
+            "standout" : "%S",
+            "reverse" : "%R",
+            "underline" : "%U",
+        }
+
+        conf[name] = styles[style]
+
+        log.debug("style %s set: %s", name, style)
+
+        self.callbacks["set_opt"]("style", conf)
+
         self.resize()
 
     def get_focus_list(self):

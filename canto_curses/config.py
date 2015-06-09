@@ -170,6 +170,8 @@ class CantoCursesConfig(SubThread):
 
             "color" : self.validate_color_block,
 
+            "style" : self.validate_style_block,
+
             "kill_daemon_on_exit" : self.validate_bool
         }
 
@@ -363,6 +365,22 @@ class CantoCursesConfig(SubThread):
                 }
             },
 
+            "style" :
+            {
+                "unread" : "%B",
+                "read" : "",
+                "pending" : "%B",
+                "error" : "",
+                "marked" : "%B",
+                "reader_quote" : "",
+                "reader_link" : "",
+                "reader_image_link" : "",
+                "reader_italics" : "",
+                "enum_hints" : "",
+                "selected" : "%R",
+
+            },
+
             "color" :
             {
                 "defbg" : -1,
@@ -370,7 +388,6 @@ class CantoCursesConfig(SubThread):
                 "unread" : 5,
                 "read" : 4,
                 "pending" : 1,
-                "text" : 8,
                 "error" : 2,
                 "marked" : 8,
                 "reader_quote" : 6,
@@ -378,6 +395,7 @@ class CantoCursesConfig(SubThread):
                 "reader_image_link" : 5,
                 "reader_italics" : 8,
                 "enum_hints" : 8,
+                "selected" : 5,
             },
 
             "kill_daemon_on_exit" : False
@@ -656,6 +674,23 @@ class CantoCursesConfig(SubThread):
         for key in d.keys():
             if key not in r:
                 r[key] = d[key]
+
+        return (True, r)
+
+    # We don't care if the styles actually make sense, only that they won't
+    # cause trouble when used as a string.
+
+    def validate_style_block(self, val, d):
+        if type(val) != dict:
+            return (False, False)
+
+        r = eval(repr(d))
+
+        for key in val:
+            if type(key) != str or type(val[key]) != str:
+                log.error("Ignoring style %s - %s", key, val[key])
+            else:
+                r[key] = val[key]
 
         return (True, r)
 

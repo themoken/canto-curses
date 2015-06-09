@@ -99,7 +99,7 @@ class CantoHTML(HTMLParser):
                 self.link_text = ""
                 self.link_href = ""
                 self.link_open = False
-                self.result += "[" + str(len(self.links)) + "]%0"
+                self.result += "[" + str(len(self.links)) + "]" + cc.end("reader_link")
 
         elif tag in ["img"]:
             if open:
@@ -109,7 +109,7 @@ class CantoHTML(HTMLParser):
                     attrs["alt"] = ""
                 self.links.append(("image", attrs["src"], attrs["alt"]))
                 self.handle_data_clean(cc("reader_image_link") + attrs["alt"] +\
-                        "[" + str(len(self.links)) + "]%0")
+                        "[" + str(len(self.links)) + "]" + cc.end("reader_image_link"))
 
         elif tag in ["h" + str(x) for x in range(1,7)]:
             if open:
@@ -162,9 +162,9 @@ class CantoHTML(HTMLParser):
 
         elif tag in ["i", "small", "em"]:
             if open:
-                self.result += "%B" + cc("reader_italics")
+                self.result += cc("reader_italics")
             else:
-                self.result += "%0%b"
+                self.result += cc.end("reader_italics")
         elif tag in ["b", "strong"]:
             if open:
                 self.result += "%B"

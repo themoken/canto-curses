@@ -185,7 +185,7 @@ class Reader(TextBox):
                 self.links += links
 
                 if reader_conf['show_description']:
-                    s += self.quote_rgx.sub(cc("reader_quote") + "\"\\1\"%0", content)
+                    s += self.quote_rgx.sub(cc("reader_quote") + "\"\\1\"" + cc.end("reader_quote"), content)
 
                 if reader_conf['enumerate_links']:
                     s += "\n\n"
@@ -198,9 +198,9 @@ class Reader(TextBox):
                                 text + "]: " + url + "\n\n"
 
                         if t == "link":
-                            link_text = cc("reader_link") + link_text + "%0"
+                            link_text = cc("reader_link") + link_text + cc.end("reader_link")
                         elif t == "image":
-                            link_text = cc("reader_image_link") + link_text + "%0"
+                            link_text = cc("reader_image_link") + link_text + cc.end("reader_image_link")
 
                         s += link_text
 

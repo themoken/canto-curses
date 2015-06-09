@@ -124,7 +124,7 @@ class Story(PluginHandler):
         if "taglist" in config and "border" in config["taglist"]:
             self.need_redraw()
 
-        if "color" in config:
+        if "color" in config or "style" in config:
             self.need_redraw()
 
         if "story" not in config:
@@ -259,28 +259,28 @@ class Story(PluginHandler):
         s = ""
 
         if self.selected:
-            s += "%R"
+            s += cc("selected")
 
         if self.marked:
-            s += "%B[*]" + cc("marked")
+            s += cc("marked") + "[*]"
 
         if "read" in self.content["canto-state"]:
             s += cc("read")
         else:
-            s += cc("unread") + "%B"
+            s += cc("unread")
 
         s += prep_for_display(self.content["title"])
 
         if "read" in self.content["canto-state"]:
-            s += "%0"
+            s += cc.end("read")
         else:
-            s += "%b%0"
+            s += cc.end("unread")
 
         if self.marked:
-            s += "%0%b"
+            s += cc.end("marked")
 
         if self.selected:
-            s += "%r"
+            s += cc.end("selected")
 
         return s
 
