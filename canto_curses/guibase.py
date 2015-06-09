@@ -251,9 +251,8 @@ class GuiBase(CommandHandler):
         def help_validator(x):
             if x in ["commands", "cmds"]:
                 return (True, 'commands')
-            for group in help_cmds:
-                if x in help_cmds[group]:
-                    return (True, x)
+            if x in help_cmds:
+                return (True, x)
             return (True, 'all')
 
         return (help_cmds, help_validator)

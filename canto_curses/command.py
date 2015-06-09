@@ -63,26 +63,19 @@ def register_commands(obj, cmds, group="hidden"):
         register_command(obj, name, func, args, help_text, group)
 
 def commands():
-    c = {}
+    c = []
 
     for ck in cmds.keys():
         group = cmds[ck][-1].group
+        if group == "hidden":
+            continue
+
         for ak in aliases.keys():
             if aliases[ak][-1].longform == ck:
-                if group in c:
-                    c[group].append(ak)
-                else:
-                    c[group] = [ak]
+                c.append(ak)
                 break
         else:
-            if group in c:
-                c[group].append(ck)
-            else:
-                c[group] = [ck]
-
-    if "hidden" in c:
-        del c["hidden"]
-
+                c.append(ck)
     return c
 
 def command_help(command, detailed=False):
