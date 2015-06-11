@@ -384,7 +384,8 @@ def _int_range(name, itrs, syms, fallback, s):
                 r = int(item)
                 idxlist.append((cur_iter, r))
             except:
-                log.warn("Invalid %s : %s" % (name, item))
+                if item or ( item == '' and not fallback ):
+                    log.warn("Invalid %s : '%s'" % (name, item))
 
     # Strip down to unique indices
 
