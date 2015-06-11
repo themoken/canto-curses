@@ -594,8 +594,8 @@ class CantoCursesConfig(SubThread):
         return (False, False)
 
     def migrate_color_block(self, val, d):
-        log.info("Migrating color config to use new color system")
-        log.info("See ':help color' if this butchers your colors")
+        log.warn("Migrating color config to use new color system")
+        log.warn("See ':help color' if this butchers your colors")
 
         r = { "1" : "unread",
               "2" : "read",

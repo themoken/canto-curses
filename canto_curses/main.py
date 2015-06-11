@@ -15,7 +15,7 @@ from canto_next.hooks import call_hook
 
 from .config import config, finalize_eval_settings
 from .tagcore import tag_updater, alltagcores
-from .gui import CantoCursesGui
+from .gui import CantoCursesGui, GraphicalLog
 
 from threading import Thread
 from queue import Queue
@@ -70,6 +70,8 @@ class CantoCurses(CantoClient):
 
         rootlog = logging.getLogger()
         rootlog.setLevel(max(rootlog.level - 10 * self.verbosity,0))
+
+        self.glog_handler = GraphicalLog()
 
         try:
             if self.port < 0:
@@ -208,7 +210,7 @@ class CantoCurses(CantoClient):
         tag_updater.init(self)
 
         # Create Tags for each TagCore
-        self.gui = CantoCursesGui(self)
+        self.gui = CantoCursesGui(self, self.glog_handler)
 
         # Generate initial traffic
         tag_updater.update()

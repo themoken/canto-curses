@@ -25,11 +25,21 @@ import logging
 log = logging.getLogger("GUI")
 
 class GraphicalLog(logging.Handler):
-    def __init__(self, callbacks, screen):
+
+    # We want to be able to catch logging output before the screen is actually
+    # initialized in curses, and callbacks etc. are setup
+
+    def __init__(self):
         logging.Handler.__init__(self)
+        self.deferred_logs = []
+        self.callbacks = None
+
+        rootlog = logging.getLogger()
+        rootlog.addHandler(self)
+
+    def init(self, callbacks, screen):
         self.callbacks = callbacks
         self.screen = screen
-        self.deferred_logs = []
 
     def _emit(self, var, window_type, record):
         if window_type not in self.screen.window_types:
@@ -43,7 +53,14 @@ class GraphicalLog(logging.Handler):
         self.callbacks["set_var"]("needs_refresh", True)
 
     def emit(self, record):
-        quiet = self.callbacks["get_var"]("quiet")
+
+        # If we have no callbacks, GUI isn't initialized, assume that we only
+        # want to have warns/errors displayed immediately on startup.
+
+        if self.callbacks:
+            quiet = self.callbacks["get_var"]("quiet")
+        else:
+            quiet = True
         if record.levelno == logging.INFO and quiet:
             return
         self.deferred_logs.append(record)
@@ -51,7 +68,7 @@ class GraphicalLog(logging.Handler):
     # Call with sync_lock
     def flush_deferred_logs(self):
         for record in self.deferred_logs:
-            if record.levelno == logging.INFO:
+            if record.levelno in [ logging.INFO, logging.WARN ]:
                 self._emit("info_msg", InfoBox, record)
             elif record.levelno == logging.ERROR:
                 self._emit("error_msg", ErrorBox, record)
@@ -61,7 +78,7 @@ class GuiPlugin(Plugin):
     pass
 
 class CantoCursesGui(CommandHandler):
-    def __init__(self, backend):
+    def __init__(self, backend, glog_handler):
         CommandHandler.__init__(self)
         self.plugin_class = GuiPlugin
         self.update_plugin_lookups()
@@ -106,14 +123,12 @@ class CantoCursesGui(CommandHandler):
         self.screen.refresh()
         self.screen.redraw()
 
-        self.glog_handler = GraphicalLog(self.callbacks, self.screen)
+        self.glog_handler = glog_handler
+        self.glog_handler.init(self.callbacks, self.screen)
 
         self.graphical_thread = Thread(target = self.run_gui)
         self.graphical_thread.daemon = True
         self.graphical_thread.start()
-
-        rootlog = logging.getLogger()
-        rootlog.addHandler(self.glog_handler)
 
         register_command(self, "refresh", self.cmd_refresh, [], "Refetch everything from the daemon", "Base")
         register_command(self, "update", self.cmd_update, [], "Sync with daemon", "Base")
