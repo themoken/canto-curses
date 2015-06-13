@@ -739,6 +739,7 @@ Arguments:"""),
             'cyan' : curses.COLOR_CYAN,
             'magenta' : curses.COLOR_MAGENTA,
             'pink' : curses.COLOR_MAGENTA,
+            "default" : -1,
         }
         def c(x):
             if x == '':

@@ -397,7 +397,7 @@ class CantoCursesConfig(SubThread):
                 "reader_image_link" : 5,
                 "reader_italics" : 8,
                 "enum_hints" : 8,
-                "selected" : 5,
+                "selected" : -1,
             },
 
             "kill_daemon_on_exit" : False

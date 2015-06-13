@@ -51,11 +51,10 @@ class CantoColorManager:
 
     def __call__(self, name):
         color = ""
-        style = ""
 
         if self.color_conf[name] > 8:
             color = "%[" + str(self.color_conf[name]) + "]"
-        else:
+        elif self.color_conf[name] > 0:
             color = "%" + str(self.color_conf[name])
 
         return color + self.style_conf[name]
