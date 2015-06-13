@@ -2,6 +2,9 @@
 
 # Defined as a plugin to use as a base for other themes.
 
+FORCE_COLORS = False
+FORCE_STYLE = False
+
 from canto_next.plugins import check_program
 
 check_program("canto-curses")
@@ -10,6 +13,13 @@ from canto_curses.story import StoryPlugin
 from canto_curses.tag import TagPlugin
 from canto_curses.theme import prep_for_display
 from canto_curses.color import cc
+
+cmds = []
+
+if FORCE_COLORS:
+    cmds.append("reset-config color")
+if FORCE_STYLE:
+    cmds.append("reset-config style")
 
 class CantoThemeStoryDefault(StoryPlugin):
     def __init__(self, story):
@@ -83,3 +93,21 @@ class CantoThemeTagDefault(TagPlugin):
 
         return s
 
+# Stolen from autocmd.py, but simple enough to copy instead of introducing a
+# dependency.
+
+from canto_curses.gui import GuiPlugin
+from canto_next.hooks import on_hook
+
+class AutoCmdGui(GuiPlugin):
+    def __init__(self, gui):
+        self.plugin_attrs = {}
+        self.gui = gui
+
+        on_hook("curses_start", self.do_cmds)
+
+    def do_cmds(self):
+        self.gui.callbacks["set_var"]("quiet", True)
+        for cmd in cmds:
+            self.gui.issue_cmd(cmd)
+        self.gui.callbacks["set_var"]("quiet", False)
