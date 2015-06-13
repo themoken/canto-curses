@@ -176,6 +176,8 @@ class CantoCursesConfig(SubThread):
         }
 
         self.template_config = {
+            "config_version" : CURRENT_CONFIG_VERSION,
+
             "browser" :
             {
                 "path" : "firefox",
