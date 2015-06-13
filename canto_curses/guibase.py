@@ -40,6 +40,7 @@ class GuiBase(CommandHandler):
             "url" : ("[URL]", _string),
             "help-command" : ("[help-command]: Any canto-curses command, if blank, 'any' or unknown, will display help overview", self.type_help_cmd),
             "config-option" : ("[config-option]: Any canto-curses option", self.type_config_option),
+            "config-section" : ("[config-section]: A canto-curses config section", self.type_config_section),
             "executable" : ("[executable]: A program in your PATH", self.type_executable),
         }
 
@@ -52,7 +53,7 @@ class GuiBase(CommandHandler):
             "destroy": (self.cmd_destroy, [], "Destroy this %s" % self.get_opt_name()),
             "set" : (self.cmd_set, ["config-option", "string"], "Set configuration options"),
             "set browser.path" : (lambda x : self.cmd_set("browser.path", x), ["executable"], "Set desired browser"),
-            "reset-config" : (self.cmd_reset_config, [], "Reset canto-curses config (won't touch daemon / feed settings)")
+            "reset-config" : (self.cmd_reset_config, [ "config-section" ], "Reset canto-curses config (won't touch daemon / feed settings)")
         }
 
         help_cmds = {
@@ -325,6 +326,11 @@ class GuiBase(CommandHandler):
 
         return (possibles, lambda x : (True, x))
 
+    def type_config_section(self):
+        conf = self.callbacks["get_conf"]()
+        possibles = [ "" ] + list(conf.keys())
+        return (possibles, lambda x : (x in possibles, x))
+
     def cmd_set(self, opt, val):
         log.debug("SET: %s '%s'", opt, val)
 
@@ -396,6 +402,12 @@ class GuiBase(CommandHandler):
         else:
             log.info("%s = %s" % (opt, val))
 
-    def cmd_reset_config(self):
-        log.info("Resetting to defaults")
-        self.callbacks["set_conf"](config.template_config)
+    def cmd_reset_config(self, option):
+        if option == "":
+            log.info("Resetting to defaults")
+            self.callbacks["set_conf"](config.template_config)
+        else:
+            log.info("Resetting %s to defaults", option)
+            conf = self.callbacks["get_conf"]()
+            conf[option] = config.template_config[option]
+            self.callbacks["set_conf"](conf)
