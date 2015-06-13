@@ -258,29 +258,29 @@ class Story(PluginHandler):
     def eval(self):
         s = ""
 
-        if self.selected:
-            s += cc("selected")
-
-        if self.marked:
-            s += cc("marked") + "[*]"
-
         if "read" in self.content["canto-state"]:
             s += cc("read")
         else:
             s += cc("unread")
 
+        if self.marked:
+            s += cc("marked") + "[*]"
+
+        if self.selected:
+            s += cc("selected")
+
         s += prep_for_display(self.content["title"])
+
+        if self.selected:
+            s += cc.end("selected")
+
+        if self.marked:
+            s += cc.end("marked")
 
         if "read" in self.content["canto-state"]:
             s += cc.end("read")
         else:
             s += cc.end("unread")
-
-        if self.marked:
-            s += cc.end("marked")
-
-        if self.selected:
-            s += cc.end("selected")
 
         return s
 
