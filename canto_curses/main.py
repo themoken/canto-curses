@@ -209,7 +209,6 @@ class CantoCurses(CantoClient):
         # Create Tags for each TagCore
         self.gui = CantoCursesGui(self, self.glog_handler)
         tag_updater.init(self)
-        tag_updater.update()
 
         # Initial signal setup.
         signal.signal(signal.SIGWINCH, self.winch)
