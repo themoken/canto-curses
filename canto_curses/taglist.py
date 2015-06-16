@@ -883,7 +883,7 @@ class TagList(GuiBase):
 
     def cmd_show_category(self, category):
         if category:
-            tag_updater.transform("categories", "InTags(\'" + shlex.quote(category) + "\')")
+            tag_updater.transform("categories", "InTags(\'" + shlex.quote("category:" + category) + "\')")
         else:
             tag_updater.transform("categories", "None")
         tag_updater.update()
