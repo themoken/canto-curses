@@ -56,22 +56,6 @@ class TagList(GuiBase):
         # Hold config log so we don't miss any new TagCores or get updates
         # before we're ready.
 
-        config_lock.acquire_write()
-
-        # Instantiate graphical Tag objects
-        # Keep in mind TagList may be instantiated more than once.
-
-        for tagcore in alltagcores:
-            for tagobj in alltags:
-                if tagobj.tag == tagcore.tag:
-                    break
-            else:
-                log.debug("Instantiating Tag() for %s", tagcore.tag)
-                Tag(tagcore, self.callbacks)
-
-        self.update_tag_lists()
-
-        # Hooks
         on_hook("curses_eval_tags_changed", self.on_eval_tags_changed, self)
         on_hook("curses_items_added", self.on_items_added, self)
         on_hook("curses_stories_added", self.on_stories_added, self)
@@ -80,8 +64,6 @@ class TagList(GuiBase):
         on_hook("curses_new_tagcore", self.on_new_tagcore, self)
         on_hook("curses_update_complete", self.on_update_complete, self)
         on_hook("curses_del_tagcore", self.on_del_tagcore, self)
-
-        config_lock.release_write()
 
         args = {
             "cursor-offset": ("[cursor-offset]", self.type_cursor_offset),

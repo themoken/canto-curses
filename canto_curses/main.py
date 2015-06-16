@@ -206,13 +206,9 @@ class CantoCurses(CantoClient):
         else:
             log.info("Version check passed: %s" % CANTO_PROTOCOL_COMPATIBLE)
 
-        # Make TagCores for each tag
-        tag_updater.init(self)
-
         # Create Tags for each TagCore
         self.gui = CantoCursesGui(self, self.glog_handler)
-
-        # Generate initial traffic
+        tag_updater.init(self)
         tag_updater.update()
 
         # Initial signal setup.

@@ -136,8 +136,7 @@ class TagUpdater(SubThread):
 
         self.write("WATCHTAGS", strtags)
         for tag in strtags:
-            self.prot_tagchange(tag)
-            TagCore(tag)
+            self.on_new_tag(tag)
 
         on_hook("curses_new_tag", self.on_new_tag)
         on_hook("curses_del_tag", self.on_del_tag)

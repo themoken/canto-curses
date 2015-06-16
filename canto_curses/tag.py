@@ -105,8 +105,6 @@ class Tag(PluginHandler, list):
 
         alltags.append(self)
 
-        self.sync(True)
-
         self.plugin_class = TagPlugin
         self.update_plugin_lookups()
 
