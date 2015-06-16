@@ -118,6 +118,7 @@ class CantoCursesGui(CommandHandler):
         self.alive = True
         self.sync_timer = 1
         self.sync_requested = True
+        self.tags_to_sync = []
 
         self.screen = Screen(self.callbacks)
         self.screen.refresh()
@@ -261,12 +262,22 @@ class CantoCursesGui(CommandHandler):
 
             self.glog_handler.flush_deferred_logs()
 
-            for tag in alltags:
-                if self.sync_requested or (len(tag) == 0 and len(tag.tagcore) != 0):
-                    tag.sync()
-
+            partial_sync = False
             self.working = True
-            self.sync_requested = False
+
+            if self.sync_requested:
+                self.tags_to_sync = alltags[:]
+                self.sync_requested = False
+            elif not self.tags_to_sync:
+                for tag in alltags:
+                    if (len(tag) == 0 and len(tag.tagcore) != 0):
+                        self.tags_to_sync.append(tag)
+
+            if self.tags_to_sync:
+                self.tags_to_sync[0].sync()
+                self.tags_to_sync = self.tags_to_sync[1:]
+                partial_sync = True
+
 
             needs_resize = self.callbacks["get_var"]("needs_resize") or self.winched
             needs_refresh = self.callbacks["get_var"]("needs_refresh")
@@ -278,17 +289,14 @@ class CantoCursesGui(CommandHandler):
 
             # Resize implies a refresh and redraw
             if needs_resize:
-                needs_refresh = False
-                needs_redraw = False
                 self.winched = False
                 self.screen.resize()
+            else:
+                if needs_refresh:
+                    self.screen.refresh()
 
-            elif needs_refresh:
-                self.screen.refresh()
-                needs_redraw = False
-
-            elif needs_redraw:
-                self.screen.redraw()
+                if needs_redraw:
+                    self.screen.redraw()
 
             needs_resize = self.callbacks["get_var"]("needs_resize") or self.winched
             needs_refresh = self.callbacks["get_var"]("needs_refresh")
@@ -297,7 +305,7 @@ class CantoCursesGui(CommandHandler):
             # If we weren't able to clear the condition, then
             # we'll drop locks and immediately go again.
 
-            if needs_resize or needs_refresh or needs_redraw:
+            if needs_resize or needs_refresh or needs_redraw or partial_sync:
                 self.do_gui.set()
             else:
                 self.working = False
