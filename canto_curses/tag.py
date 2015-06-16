@@ -156,8 +156,8 @@ class Tag(PluginHandler, list):
                 break
 
     def on_items_added(self, tagcore, added):
-        cur_ids = self.get_ids()
         if tagcore == self.tagcore:
+            cur_ids = self.get_ids()
             for story_id in added:
                 if story_id not in cur_ids:
                     self.updates_pending += 1
