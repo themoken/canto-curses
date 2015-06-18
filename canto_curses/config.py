@@ -660,10 +660,10 @@ class CantoCursesConfig(SubThread):
             else:
                 try:
                     pair = int(val[key])
-                    if pair >= 0 and pair <= 255:
+                    if pair >= -1 and pair <= 255:
                         r[key] = pair
                     else:
-                        log.error("color.%s must be >= 0 and <= 255 (%s)" % (key, pair))
+                        log.error("color.%s must be >= -1 and <= 255 (%s)" % (key, pair))
                         return (False, False)
                 except Exception as e:
                     log.error(e)
