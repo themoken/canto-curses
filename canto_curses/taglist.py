@@ -1086,8 +1086,8 @@ class TagList(GuiBase):
         # we'd overwrite on writing the floating header, so adjust
         # the target_offset.
 
-        if target_obj not in self.tags:
-            tag = self.tag_by_item(target_obj)
+        if not target_obj.is_tag:
+            tag = target_obj.parent_tag
             tl = tag.lines(self.width)
             if target_offset < tl:
                 target_offset = tl
