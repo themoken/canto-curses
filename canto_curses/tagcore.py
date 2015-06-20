@@ -146,6 +146,7 @@ class TagUpdater(SubThread):
         config_lock.release_read()
 
     def on_new_tag(self, tag):
+        self.write("WATCHTAGS", [ tag ])
         self.prot_tagchange(tag)
         call_hook("curses_new_tagcore", [ TagCore(tag) ])
 
