@@ -193,8 +193,9 @@ class TestScreen(Test):
         # This should have selected the first item
 
         print("Checking selection")
-        if self._summarize_object(config.vars["selected"]) != "Story(2,0)":
-            raise Exception("Failed to set selection!")
+        summ = self._summarize_object(config.vars["selected"])
+        if summ != "Story(0,0)":
+            raise Exception("Failed to set selection! Is %s" % summ)
 
     # Test :collapse by seeing if the summary of next_sel properly skips from
     # the first tag (affected by the :collapse call) to the next tag without
@@ -205,9 +206,9 @@ class TestScreen(Test):
         summ = self.summarize_taglist(taglist.first_sel, "next_sel")
 
         # Target should be tag @ 0, as should the first sel
-        if summ[0] != ("maintag:Tag(2)", 0):
+        if summ[0] != ("maintag:Tag(0)", 0):
             raise Exception("Failed to properly set target on :collapse")
-        if summ[1] != ("maintag:Tag(2)", 0):
+        if summ[1] != ("maintag:Tag(0)", 0):
             raise Exception("Failed to properly set first_sel on :collapse")
 
         # The selection after that should be the first story of the next
@@ -228,9 +229,9 @@ class TestScreen(Test):
         # Should be story since we went from first sel.
         # NOTE: This 1 is width sensitive.
 
-        if summ[0] != ("Story(2,0)", 1):
+        if summ[0] != ("Story(0,0)", 1):
             raise Exception("Failed to properly set target on :uncollapse")
-        if summ[1] != ("Story(2,0)", 1):
+        if summ[1] != ("Story(0,0)", 1):
             raise Exception("Failed to properly set first_sel on :uncollapse")
 
     def test_sel_disappear(self):
@@ -242,10 +243,10 @@ class TestScreen(Test):
 
         # Stub in an empty tag
 
-        tagcore_script["ITEMS"]["['maintag:Tag(2)']"] = [("ITEMS", {'maintag:Tag(2)': [] }), ("ITEMSDONE", {}) ]
+        tagcore_script["ITEMS"]["['maintag:Tag(0)']"] = [("ITEMS", {'maintag:Tag(0)': [] }), ("ITEMSDONE", {}) ]
 
         self.tag_backend.script = tagcore_script
-        self.tag_backend.inject("TAGCHANGE", "maintag:Tag(2)")
+        self.tag_backend.inject("TAGCHANGE", "maintag:Tag(0)")
 
         taglist = self.get_taglist()
         summ = self.summarize_taglist(taglist.first_sel, "next_sel")
@@ -253,11 +254,11 @@ class TestScreen(Test):
         # With just the items removed from the TagCores, selection and friends
         # shouldn't have changed at all.
 
-        if summ[0] != ("Story(2,0)", 1):
+        if summ[0] != ("Story(0,0)", 1):
             raise Exception("target_obj changed on ITEMS")
-        if summ[1] != ("Story(2,0)", 1):
+        if summ[1] != ("Story(0,0)", 1):
             raise Exception("sel changed on ITEMS")
-        if summ[2] != ("Story(2,1)", 2):
+        if summ[2] != ("Story(0,1)", 2):
             raise Exception("Improper follow up!")
 
         # XXX: This is a hack, but we need to yield long enough for the tagcore
@@ -281,11 +282,11 @@ class TestScreen(Test):
 
         # Now sel should still be there, but should be the only one in the tag.
 
-        if summ[0] != ("Story(2,0)", 1):
+        if summ[0] != ("Story(0,0)", 1):
             raise Exception("target_obj changed on ITEMS")
-        if summ[1] != ("Story(2,0)", 1):
+        if summ[1] != ("Story(0,0)", 1):
             raise Exception("sel changed on ITEMS")
-        if summ[2] == ("Story(2,1)", 2):
+        if summ[2] == ("Story(0,1)", 2):
             raise Exception("Improper follow up!")
 
     def post_update_oldsel_should_be_gone(self):
@@ -297,9 +298,9 @@ class TestScreen(Test):
             for story in tag:
                 print("%s" % story)
 
-        if summ[0] == ("Story(2,0)", 1):
+        if summ[0] == ("Story(0,0)", 1):
             raise Exception("Failed to be rid of dead selection (target)")
-        if summ[1] == ("Story(2,0)", 1):
+        if summ[1] == ("Story(0,0)", 1):
             raise Exception("Failed to be rid of dead selection (first_sel)")
 
     def test_color(self):
