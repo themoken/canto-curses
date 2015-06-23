@@ -98,7 +98,9 @@ class TestTagCoreFunction(Test):
             else:
                 raise Exception("Couldn't find TC for tag %s" % tag)
 
-        self.compare_flags(0)
+        self.compare_flags(NEW_TC)
+
+        self.reset_flags()
 
         # 2. Getting empty ITEMS responses should cause no events
 
