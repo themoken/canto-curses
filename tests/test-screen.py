@@ -304,8 +304,6 @@ class TestScreen(Test):
             raise Exception("Failed to be rid of dead selection (first_sel)")
 
     def test_color(self):
-        self.compare_output(self.config_backend, ('SETCONFIGS', {'CantoCurses': {'color': {'8': {'bg': 0, 'fg': 0}}}}))
-
         if curses.pairs[8] != [ 0, 0 ]:
             raise Exception("Pair not immediately honored! %s" % curses.pairs[8])
 
