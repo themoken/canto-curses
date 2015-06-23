@@ -13,7 +13,7 @@ from base import *
 from canto_curses.main import CANTO_PROTOCOL_COMPATIBLE
 from canto_curses.config import config
 from canto_curses.tagcore import tag_updater, alltagcores
-from canto_curses.gui import CantoCursesGui # to Screen to curses
+from canto_curses.gui import CantoCursesGui, GraphicalLog # to Screen to curses
 from canto_curses.locks import sync_lock
 from canto_curses.taglist import TagList
 from canto_curses.tag import alltags
@@ -44,6 +44,12 @@ class TestScreen(Test):
 
         self.tag_backend = TestBackend("tagcore", tagcore_script)
 
+        gui_script = {}
+
+        self.gui_backend = TestBackend("gui", gui_script)
+
+        self.glog = GraphicalLog()
+        self.gui = CantoCursesGui(self.gui_backend, self.glog)
         tag_updater.init(self.tag_backend)
 
         # The standard opening of c-c, the tags can be in any state, but for the
@@ -65,11 +71,7 @@ class TestScreen(Test):
         if len(alltagcores[1]) != 20:
             raise Exception("Didn't get all items in tagcore[1]")
 
-        gui_script = {}
 
-        self.gui_backend = TestBackend("gui", gui_script)
-
-        self.gui = CantoCursesGui(self.gui_backend)
         self.wait_on_update()
 
         Test.__init__(self, name)
