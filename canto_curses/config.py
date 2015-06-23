@@ -936,11 +936,13 @@ class CantoCursesConfig(SubThread):
         c = self.get_conf()
 
         # Likely the same as tags
+        changes = False
         newtags = []
 
         for tag in tags:
             if tag not in c["tagorder"]:
-                c["tagorder"] = self.config["tagorder"] + [ tag ]
+                c["tagorder"] = c["tagorder"] + [ tag ]
+                changes = True
 
             if tag not in self.vars["strtags"]:
 
@@ -953,10 +955,11 @@ class CantoCursesConfig(SubThread):
 
                 self.vars["strtags"].append(tag)
                 newtags.append(tag)
+                changes = True
 
         # If there aren't really any tags we didn't know about, no bail.
 
-        if not newtags:
+        if not changes:
             return
 
         self.set_conf(c)
