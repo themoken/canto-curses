@@ -273,6 +273,7 @@ class TagList(GuiBase):
     def on_new_tagcore(self, tagcore):
         log.debug("Instantiating Tag() for %s", tagcore.tag)
         Tag(tagcore, self.callbacks)
+        self.callbacks["set_var"]("needs_refresh", True)
 
     def on_del_tagcore(self, tagcore):
         log.debug("taglist on_del_tag")
@@ -291,9 +292,11 @@ class TagList(GuiBase):
 
     def on_eval_tags_changed(self):
         self.callbacks["force_sync"]()
+        self.callbacks["release_gui"]()
 
     def on_update_complete(self):
         self.callbacks["force_sync"]()
+        self.callbacks["release_gui"]()
 
     # Called with sync_lock, so we are unrestricted.
 
@@ -896,9 +899,6 @@ class TagList(GuiBase):
                 log.info("tag %s is not a feed tag")
 
     def update_tag_lists(self):
-        sel = self.callbacks["get_var"]("selected")
-        toffset = self.callbacks["get_var"]("target_offset")
-
         curtags = self.callbacks["get_var"]("curtags")
         self.tags = []
 
@@ -908,6 +908,21 @@ class TagList(GuiBase):
             for tagobj in alltags:
                 if tagobj.tag == tag:
                     self.tags.append(tagobj)
+
+        # If selected is stale (i.e. its tag was deleted, the item should stick
+        # around in all other cases) then unset it.
+
+        sel = self.callbacks["get_var"]("selected")
+        tobj = self.callbacks["get_var"]("target_obj")
+
+        if sel and ((sel.is_tag and sel not in self.tags) or (not sel.is_tag and sel.parent_tag == None)):
+            log.debug("Stale selection")
+            self.callbacks["set_var"]("selected", None)
+
+        if tobj and ((tobj.is_tag and tobj not in self.tags) or (not tobj.is_tag and tobj.parent_tag == None)):
+            log.debug("Stale target obj")
+            self.callbacks["set_var"]("target_obj", None)
+            self.callbacks["set_var"]("target_offset", 0)
 
         hide_empty = self.callbacks["get_opt"]("taglist.hide_empty_tags")
 

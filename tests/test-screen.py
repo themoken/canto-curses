@@ -71,7 +71,6 @@ class TestScreen(Test):
         if len(alltagcores[1]) != 20:
             raise Exception("Didn't get all items in tagcore[1]")
 
-
         self.wait_on_update()
 
         Test.__init__(self, name)
@@ -307,6 +306,11 @@ class TestScreen(Test):
         if curses.pairs[8] != [ 0, 0 ]:
             raise Exception("Pair not immediately honored! %s" % curses.pairs[8])
 
+    def test_del(self):
+        self.config_backend.inject("DELTAGS", [ "maintag:Tag(1)" ])
+        time.sleep(1)
+        self.check_taglist()
+
     def check(self):
         taglist = self.get_taglist()
 
@@ -321,6 +325,11 @@ class TestScreen(Test):
         self.test_command("color 8 black black", self.test_color)
 
         self.test_sel_disappear()
+
+        self.test_command("next-item", None, True)
+
+        # Can't test this with a command because :del requires a live remote -> daemon.
+        self.test_del()
 
         self.check_taglist()
 
