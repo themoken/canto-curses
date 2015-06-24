@@ -22,7 +22,7 @@ Enable verbose logging (debug)
 
 .TP
 \-D/--dir [directory]
-Change base directory for canto-daemon (default: ~/.canto-ng)
+Change base directory for canto-daemon (default: $XDG_CONFIG_HOME/canto)
 
 .TP
 \-\-noplugins
@@ -128,9 +128,9 @@ or available on the homepage.
 
 Plugins are packaged in <prefix>/canto/plugins (i.e. /usr/lib/canto/plugins)
 and can be enabled by copying them into your configuration directory (i.e.
-~/.canto-ng/plugins). Many of them have configuration in them, so you may want
-to open the files to make changes. Here are a few example plugins included with
-the canto-curses source.
+$XDG_CONFIG_HOME/canto/plugins). Many of them have configuration in them, so
+you may want to open the files to make changes. Here are a few example plugins
+included with the canto-curses source.
 
 .TP
 autocmd.py
@@ -162,12 +162,12 @@ A plugin that lets you define specific handlers for links based on the URL or th
 
 .SH FILES
 .TP
-.I ~/.canto-ng/curses-log
+.I $XDG_CONFIG_HOME/canto/curses-log
 
 Canto-curses log file.
 
 .TP
-.I ~/.canto-ng/plugins/
+.I $XDG_CONFIG_HOME/canto/plugins/
 
 Canto-curses enabled plugins directory
 
