@@ -62,12 +62,14 @@ def register_commands(obj, cmds, group="hidden"):
         func, args, help_text = cmds[name]
         register_command(obj, name, func, args, help_text, group)
 
-def commands():
+def commands(g=None):
     c = []
 
     for ck in cmds.keys():
         group = cmds[ck][-1].group
         if group == "hidden":
+            continue
+        if g and g != group:
             continue
 
         for ak in aliases.keys():
@@ -77,6 +79,14 @@ def commands():
         else:
                 c.append(ck)
     return c
+
+def groups():
+    g = []
+    for ck in cmds.keys():
+        grp = cmds[ck][-1].group
+        if grp != "hidden" and grp not in g:
+            g.append(grp)
+    return g
 
 def command_help(command, detailed=False):
     lookup = shlex.split(command)

@@ -10,7 +10,7 @@ from canto_next.hooks import on_hook
 from canto_next.plugins import Plugin
 from canto_next.remote import assign_to_dict, access_dict
 
-from .command import CommandHandler, register_commands, register_arg_types, unregister_all, _string, register_aliases, commands, command_help
+from .command import CommandHandler, register_commands, register_arg_types, unregister_all, _string, register_aliases, commands, command_help, groups
 from .tagcore import tag_updater
 from .theme import prep_for_display
 from .config import needs_eval, config
@@ -281,11 +281,10 @@ class GuiBase(CommandHandler):
                         log.info("%s %s" % (bindeff, cmd))
 
         elif cmd == 'commands':
-            gc = commands()
-            for group in sorted(gc.keys()):
+            for group in sorted(groups()):
                 log.info("%B" + group + "%b\n")
                 tmp = {}
-                for c in gc[group]:
+                for c in commands(group):
                     tmp[c] = command_help(c)
 
                 maxcmdl = max([ len(x) for x in tmp ])
