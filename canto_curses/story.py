@@ -315,6 +315,15 @@ class Story(PluginHandler):
                 self.lns = 1
                 return self.lns
 
+        for attr in list(self.plugin_attrs.keys()):
+            if not attr.startswith("edit_"):
+                continue
+            try:
+                getattr(self, attr)()
+            except:
+                log.error("Error running story editing plugin")
+                log.error(traceback.format_exc())
+
         self.evald_string = self.eval()
 
         taglist_conf = self.callbacks["get_opt"]("taglist")
