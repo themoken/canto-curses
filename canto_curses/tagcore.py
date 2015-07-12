@@ -104,7 +104,6 @@ class TagUpdater(SubThread):
         self.lock = RWLock("tagupdater")
 
         # Response counters
-        self.discard = 0
         self.still_updating = 0
 
         self.start_pthread()
@@ -185,7 +184,7 @@ class TagUpdater(SubThread):
             self.update()
 
     def prot_attributes(self, d):
-        if self.discard:
+        if self.still_updating > 1:
             return
 
         # Update attributes, and then notify everyone to grab new content.
@@ -207,7 +206,7 @@ class TagUpdater(SubThread):
         call_hook("curses_attributes", [ self.attributes ])
 
     def prot_items(self, updates):
-        if self.discard:
+        if self.still_updating > 1:
             return
 
         # Daemon should now only return with one tag in an items response
@@ -239,7 +238,7 @@ class TagUpdater(SubThread):
         if self.item_tag == None:
             return
 
-        if self.discard:
+        if self.still_updating > 1:
             self.item_tag = None
             self.item_buf = []
             self.item_removes = []
@@ -264,17 +263,15 @@ class TagUpdater(SubThread):
         self.item_removes = []
         self.item_adds = []
 
+    def prot_tagchange(self, tag):
+        self.write("ITEMS", [ tag ])
+
+    def prot_pong(self, args):
         if self.still_updating:
             self.still_updating -= 1
             if not self.still_updating:
                 log.debug("Calling curses_update_complete")
                 call_hook("curses_update_complete", [])
-
-    def prot_tagchange(self, tag):
-        self.write("ITEMS", [ tag ])
-
-    def prot_pong(self, args):
-        self.discard -= 1
 
     # The following is the external interface to tagupdater.
 
@@ -282,7 +279,8 @@ class TagUpdater(SubThread):
         strtags = config.get_var("strtags")
         for tag in strtags:
             self.write("ITEMS", [ tag ])
-            self.still_updating += 1
+        self.write("PING", [])
+        self.still_updating += 1
 
     def reset(self, force=False):
         if self.still_updating and not force:
@@ -291,8 +289,6 @@ class TagUpdater(SubThread):
 
         for tag in alltagcores:
             tag.reset()
-        self.discard += 1
-        self.write("PING", [])
         return True
 
     def transform(self, name, transform):
