@@ -35,6 +35,7 @@ class Story(PluginHandler):
 
         self.parent_tag = tag
         self.is_tag = False
+        self.is_dead = False
         self.id = id
         self.pad = None
 
@@ -79,7 +80,7 @@ class Story(PluginHandler):
         self.update_plugin_lookups()
 
     def die(self):
-        self.parent_tag = None
+        self.is_dead = True
         unhook_all(self)
 
     def __eq__(self, other):

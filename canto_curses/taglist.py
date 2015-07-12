@@ -908,11 +908,11 @@ class TagList(GuiBase):
         sel = self.callbacks["get_var"]("selected")
         tobj = self.callbacks["get_var"]("target_obj")
 
-        if sel and ((sel.is_tag and sel not in self.tags) or (not sel.is_tag and sel.parent_tag == None)):
+        if sel and ((sel.is_tag and sel not in self.tags) or (not sel.is_tag and sel.is_dead)):
             log.debug("Stale selection")
             self.callbacks["set_var"]("selected", None)
 
-        if tobj and ((tobj.is_tag and tobj not in self.tags) or (not tobj.is_tag and tobj.parent_tag == None)):
+        if tobj and ((tobj.is_tag and tobj not in self.tags) or (not tobj.is_tag and tobj.is_dead)):
             log.debug("Stale target obj")
             self.callbacks["set_var"]("target_obj", None)
             self.callbacks["set_var"]("target_offset", 0)
