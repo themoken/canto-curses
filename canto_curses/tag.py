@@ -348,6 +348,7 @@ class Tag(PluginHandler, list):
     def sync(self, force=False):
         if force or self.tagcore.changes:
             current_stories = []
+            current_ids = []
             added_stories = []
 
             sel = self.callbacks["get_var"]("selected")
@@ -357,7 +358,10 @@ class Tag(PluginHandler, list):
             self.tagcore.ack_changes()
 
             for story in self:
+                story.current = False
                 if story.id in self.tagcore:
+                    story.current = True
+                    current_ids.append(story.id)
                     current_stories.append((self.tagcore.index(story.id), story))
                 elif story == sel:
 
@@ -371,10 +375,12 @@ class Tag(PluginHandler, list):
                         place = max([ x[0] for x in current_stories ]) + .5
                     else:
                         place = -1
+                    current_ids.append(story.id)
                     current_stories.append((place, story))
+                    story.current = False
 
             for place, id in enumerate(self.tagcore):
-                if id not in [ x[1].id for x in current_stories ]:
+                if id not in current_ids:
                     s = Story(self, id, self.callbacks)
                     current_stories.append((place, s))
                     added_stories.append(s)
@@ -388,12 +394,10 @@ class Tag(PluginHandler, list):
                 self.tagcore.was_reset = False
                 current_stories.sort()
 
-            current_stories = [ x[1] for x in current_stories ]
-
             deleted = []
 
             for story in self:
-                if not story in current_stories:
+                if not story.current:
                     deleted.append(story)
                     story.die()
 
@@ -402,7 +406,7 @@ class Tag(PluginHandler, list):
             call_hook("curses_stories_removed", [ self, deleted ])
 
             del self[:]
-            self.extend(current_stories)
+            self.extend([ x[1] for x in current_stories])
 
             # Trigger a refresh so that classes above (i.e. TagList) will remap
             # items
