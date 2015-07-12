@@ -586,12 +586,10 @@ class TagList(GuiBase):
 
         tag = self.tag_by_obj(sel)
 
-        while sel.next_sel:
-            sel = sel.next_sel
-
-            # This will be true for stories as well as selectable tags
-            if sel not in tag:
+        while sel and self.tag_by_obj(sel) == tag:
+            if sel.next_sel == None:
                 break
+            sel = sel.next_sel
 
         self._set_cursor(sel, target_offset)
 
@@ -605,22 +603,17 @@ class TagList(GuiBase):
 
         tag = self.tag_by_obj(sel)
 
-        while sel.prev_sel:
+        while sel and self.tag_by_obj(sel) == tag:
+            if sel.prev_sel == None:
+                break
             sel = sel.prev_sel
 
-            if not sel.is_tag:
-                newtag = self.tag_by_item(sel)
-                if newtag != tag:
-
-                    # If the current cursor is an item, in a newtag, we know
-                    # the tag's next_obj is the first story, which may also be
-                    # this item.
-
-                    sel = newtag.next_obj
-                    break
+        if sel:
+            newtag = self.tag_by_obj(sel)
+            if newtag.collapsed:
+                sel = newtag
             else:
-                if sel != tag:
-                    break
+                sel = newtag[0]
 
         self._set_cursor(sel, target_offset)
 
