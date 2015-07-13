@@ -347,66 +347,78 @@ class Tag(PluginHandler, list):
 
     def sync(self, force=False):
         if force or self.tagcore.changes:
-            current_stories = []
-            current_ids = []
-            added_stories = []
-
             sel = self.callbacks["get_var"]("selected")
 
             self.tagcore.lock.acquire_read()
 
             self.tagcore.ack_changes()
 
-            for story in self:
-                story.current = False
-                if story.id in self.tagcore:
-                    story.current = True
-                    current_ids.append(story.id)
-                    current_stories.append((self.tagcore.index(story.id), story))
-                elif story == sel:
+            # Get sorted ids, along with their (unsorted) positions in the
+            # original lists.
 
-                    # If we preserve the selection in an "undead" state, then
-                    # we keep set tagcore changed so that the next sync operation
-                    # will re-evaluate it.
+            sorted_ids = [ (x, x.id, i) for (i, x) in enumerate(self) ]
+            sorted_ids.sort(key=lambda x: x[1])
 
-                    self.tagcore.changed()
+            tagcore_sorted_ids = [ x for x in enumerate(self.tagcore[:]) ]
+            tagcore_sorted_ids.sort(key=lambda x: x[1])
 
-                    if current_stories:
-                        place = max([ x[0] for x in current_stories ]) + .5
-                    else:
+            new_ids = []
+            current_stories = []
+            old_stories = []
+
+            for story, s_id, place in sorted_ids:
+                while tagcore_sorted_ids and s_id > tagcore_sorted_ids[0][1]:
+                    new_ids.append(tagcore_sorted_ids.pop(0))
+
+                if not tagcore_sorted_ids or s_id < tagcore_sorted_ids[0][1]:
+                    if s_id == sel.id:
+
+                        # If we preserve the selection in an "undead" state, then
+                        # we keep set tagcore changed so that the next sync operation
+                        # will re-evaluate it.
+
+                        self.tagcore.changed()
                         place = -1
-                    current_ids.append(story.id)
+                        current_stories.append((place, story))
+                    else:
+                        old_stories.append(story)
+                else:
+                    place = tagcore_sorted_ids.pop(0)[0]
                     current_stories.append((place, story))
-                    story.current = False
 
-            for place, id in enumerate(self.tagcore):
-                if id not in current_ids:
-                    s = Story(self, id, self.callbacks)
-                    current_stories.append((place, s))
-                    added_stories.append(s)
+            # Grab any remaining new items
+            new_ids += tagcore_sorted_ids
 
             self.tagcore.lock.release_read()
 
-            call_hook("curses_stories_added", [ self, added_stories ])
+            new_stories = [ (p, Story(self, x, self.callbacks)) for (p, x) in new_ids ]
+
+            call_hook("curses_stories_added", [ self, [ x for (p, x) in new_stories ]])
+
+            del self[:]
 
             conf = config.get_conf()
             if conf["update"]["style"] == "maintain" or self.tagcore.was_reset:
                 self.tagcore.was_reset = False
+                current_stories += new_stories
                 current_stories.sort()
+                self.extend([ x[1] for x in current_stories ])
+            else:
+                current_stories.sort()
+                new_stories.sort()
+                if conf["update"]["style"] == "append":
+                    current_stories += new_stories
+                    self.extend([ x[1] for x in current_stories ])
+                else:
+                    new_stories += current_stories
+                    self.extend([ x[1] for x in new_stories ])
 
-            deleted = []
-
-            for story in self:
-                if not story.current:
-                    deleted.append(story)
-                    story.die()
+            for story in old_stories:
+                story.die()
 
             # Properly dispose of the remaining stories
 
-            call_hook("curses_stories_removed", [ self, deleted ])
-
-            del self[:]
-            self.extend([ x[1] for x in current_stories])
+            call_hook("curses_stories_removed", [ self, old_stories ])
 
             # Trigger a refresh so that classes above (i.e. TagList) will remap
             # items

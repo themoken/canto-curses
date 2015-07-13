@@ -479,7 +479,7 @@ class CantoCursesConfig(SubThread):
         return (False, False)
 
     def validate_update_style(self, val, d):
-        if val in [ "maintain", "append" ]:
+        if val in [ "maintain", "append", "prepend" ]:
             return (True, val)
         return (False, False)
 
