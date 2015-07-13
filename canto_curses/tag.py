@@ -359,7 +359,7 @@ class Tag(PluginHandler, list):
             sorted_ids = [ (x, x.id, i) for (i, x) in enumerate(self) ]
             sorted_ids.sort(key=lambda x: x[1])
 
-            tagcore_sorted_ids = [ x for x in enumerate(self.tagcore[:]) ]
+            tagcore_sorted_ids = list(enumerate(self.tagcore))
             tagcore_sorted_ids.sort(key=lambda x: x[1])
 
             new_ids = []
@@ -371,7 +371,7 @@ class Tag(PluginHandler, list):
                     new_ids.append(tagcore_sorted_ids.pop(0))
 
                 if not tagcore_sorted_ids or s_id < tagcore_sorted_ids[0][1]:
-                    if s_id == sel.id:
+                    if sel and (not sel.is_tag) and (s_id == sel.id):
 
                         # If we preserve the selection in an "undead" state, then
                         # we keep set tagcore changed so that the next sync operation

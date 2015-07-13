@@ -39,72 +39,23 @@ class TagCore(list):
     def changed(self):
         self.changes = True
 
-    def add_items(self, ids):
+    def set_items(self, ids):
         self.lock.acquire_write()
 
-        added = []
-        for id in ids:
-            self.append(id)
-            added.append(id)
-
-        call_hook("curses_items_added", [ self, added ] )
-
-        self.changed()
-        self.lock.release_write()
-
-    def remove_items(self, ids):
-        self.lock.acquire_write()
-
-        removed = []
-
-        # Copy self so we can remove from self
-        # without screwing up iteration.
-
-        for idx, id in enumerate(self[:]):
-            if id in ids:
-                log.debug("removing: %s", id)
-
-                list.remove(self, id)
-                removed.append(id)
-
-        call_hook("curses_items_removed", [ self, removed ] )
-
-        self.changed()
-        self.lock.release_write()
-
-    # Remove all stories from this tag.
-
-    def reset(self):
-
-        # Tag should be sorted on sync if we were reset, regardless of whether
-        # a sync was done when the tag was empty, so keep track of this and
-        # the Tag object will clear it on sync.
-
-        self.was_reset = True
-
-        self.lock.acquire_write()
-
-        if len(self):
-            call_hook("curses_items_removed", [ self, self[:] ])
         del self[:]
-
+        self.extend(ids)
         self.changed()
+
         self.lock.release_write()
 
 class TagUpdater(SubThread):
     def init(self, backend):
         SubThread.init(self, backend)
 
-        self.item_tag = None
-        self.item_buf = []
-        self.item_removes = []
-        self.item_adds = []
+        self.updating = []
 
         self.attributes = {}
         self.lock = RWLock("tagupdater")
-
-        # Response counters
-        self.still_updating = 0
 
         self.start_pthread()
 
@@ -150,10 +101,15 @@ class TagUpdater(SubThread):
         call_hook("curses_new_tagcore", [ TagCore(tag) ])
 
     def on_del_tag(self, tag):
-        for tagcore in alltagcores:
+        for tagcore in alltagcores[:]:
             if tagcore.tag == tag:
-                tagcore.reset()
+                if len(tagcore):
+                    call_hook("curses_items_removed", [ tagcore, tagcore ] )
+                    tagcore.set_items([])
                 call_hook("curses_del_tagcore", [ tagcore ])
+                alltagcores.remove(tagcore)
+                while tagcore in self.updating:
+                    self.updating.remove(tagcore)
                 return
 
     # Once they've been removed from the GUI, their attributes can be forgotten
@@ -180,13 +136,9 @@ class TagUpdater(SubThread):
     def on_def_opt_change(self, defaults):
         if 'global_transform' in defaults:
             log.debug("global_transform changed, forcing reset + update")
-            self.reset(True)
             self.update()
 
     def prot_attributes(self, d):
-        if self.still_updating > 1:
-            return
-
         # Update attributes, and then notify everyone to grab new content.
         self.lock.acquire_write()
 
@@ -206,94 +158,77 @@ class TagUpdater(SubThread):
         call_hook("curses_attributes", [ self.attributes ])
 
     def prot_items(self, updates):
-        if self.still_updating > 1:
-            return
-
         # Daemon should now only return with one tag in an items response
 
         tag = list(updates.keys())[0]
 
-        if self.item_tag == None or self.item_tag.tag != tag:
-            self.item_tag = None
-            self.item_buf = []
-            self.item_removes = []
-            self.item_adds = []
-            for have_tag in alltagcores:
-                if have_tag.tag == tag:
-                    self.item_tag = have_tag
-                    break
+        for have_tag in alltagcores:
+            if have_tag.tag == tag:
+                break
+        else:
+            return
 
-            # Shouldn't happen
+        sorted_updated_ids = list(enumerate(updates[tag]))
+        sorted_updated_ids.sort(key=lambda x : x[1])
+
+        sorted_current_ids = list(enumerate(have_tag))
+        sorted_updated_ids.sort(key=lambda x : x[1])
+
+        new_ids = []
+        cur_ids = []
+        old_ids = []
+
+        for c_place, c_id in sorted_current_ids:
+            while sorted_updated_ids and c_id > sorted_updated_ids[0][1]:
+                new_ids.append(sorted_updated_ids.pop(0))
+
+            if not sorted_updated_ids or c_id < sorted_updated_ids[0][1]:
+                old_ids.append(c_id)
             else:
-                return
+                place = sorted_updated_ids.pop(0)[0]
+                cur_ids.append((place, c_id))
 
-        self.item_buf.extend(updates[tag])
+        new_ids += sorted_updated_ids
 
-        # Add new items.
-        for id in updates[tag]:
-            if id not in self.item_tag:
-                self.item_adds.append(id)
+        all_ids = new_ids + cur_ids
+        all_ids.sort()
 
-    def prot_itemsdone(self, empty):
-        if self.item_tag == None:
-            return
+        have_tag.set_items([x[1] for x in all_ids])
 
-        if self.still_updating > 1:
-            self.item_tag = None
-            self.item_buf = []
-            self.item_removes = []
-            self.item_adds = []
-            return
+        if new_ids:
+            call_hook("curses_items_added", [ have_tag, [x[1] for x in new_ids] ] )
 
-        if self.item_adds:
-            self.item_tag.add_items(self.item_adds)
+        if old_ids:
+            call_hook("curses_items_removed", [ have_tag, old_ids ] )
 
-        # Eliminate discarded items. This has to be done here, so we have
-        # access to all of the items given in the multiple ITEM responses.
+        if have_tag in self.updating:
+            have_tag.was_reset = True
+            call_hook("curses_tag_updated", [ have_tag ])
+            self.updating.remove(have_tag)
+            if self.updating == []:
+                call_hook("curses_update_complete", [])
 
-        for id in self.item_tag:
-            if id not in self.item_buf:
-                self.item_removes.append(id)
-
-        if self.item_removes:
-            self.item_tag.remove_items(self.item_removes)
-
-        self.item_tag = None
-        self.item_buf = []
-        self.item_removes = []
-        self.item_adds = []
+    def prot_itemsdone(self, tag):
+        pass
 
     def prot_tagchange(self, tag):
         self.write("ITEMS", [ tag ])
 
-    def prot_pong(self, args):
-        if self.still_updating:
-            self.still_updating -= 1
-            if not self.still_updating:
-                log.debug("Calling curses_update_complete")
-                call_hook("curses_update_complete", [])
-
     # The following is the external interface to tagupdater.
 
     def update(self):
+        self.reset()
         strtags = config.get_var("strtags")
         for tag in strtags:
             self.write("ITEMS", [ tag ])
-        self.write("PING", [])
-        self.still_updating += 1
 
-    def reset(self, force=False):
-        if self.still_updating and not force:
-            log.debug("Not initiating refresh, update still in progress")
-            return False
-
-        for tag in alltagcores:
-            tag.reset()
+    def reset(self):
+        self.updating += alltagcores
         return True
 
     def transform(self, name, transform):
         self.write("TRANSFORM", { name : transform })
-        self.reset(True)
+        self.reset()
 
     # Writes are already serialized, so in the meantime, we protect
     # self.attributes and self.needed_attrs with our lock.

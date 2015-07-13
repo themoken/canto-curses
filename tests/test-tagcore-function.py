@@ -15,6 +15,7 @@ NEW_TC = 4
 DEL_TC = 8
 ATTRIBUTES = 16
 UPDATE_COMPLETE = 32
+TAG_UPDATED = 64
 
 class FakeTag(object):
     def __init__(self, tag):
@@ -34,17 +35,18 @@ class TestTagCoreFunction(Test):
         self.oia_tcids = None
         self.new_tc = None
         self.del_tc = None
+        self.otu_tag = None
         self.attributes = None
 
     def on_items_removed(self, tagcore, removed):
         self.flags |= ITEMS_REMOVED
         self.oir_tctag = tagcore.tag
-        self.oir_tcids = removed
+        self.oir_tcids = removed[:]
 
     def on_items_added(self, tagcore, added):
         self.flags |= ITEMS_ADDED
         self.oia_tctag = tagcore.tag
-        self.oia_tcids = added
+        self.oia_tcids = added[:]
 
     def on_new_tagcore(self, tagcore):
         self.flags |= NEW_TC
@@ -60,6 +62,10 @@ class TestTagCoreFunction(Test):
 
     def on_update_complete(self):
         self.flags |= UPDATE_COMPLETE
+
+    def on_tag_updated(self, tag):
+        self.flags |= TAG_UPDATED
+        self.otu_tag = tag.tag
 
     def check(self):
         config_script = {
@@ -84,6 +90,7 @@ class TestTagCoreFunction(Test):
         on_hook("curses_del_tagcore", self.on_del_tagcore)
         on_hook("curses_attributes", self.on_attributes)
         on_hook("curses_update_complete", self.on_update_complete)
+        on_hook("curses_tag_updated", self.on_tag_updated)
 
         # 1. Previously existing tags in config should be populated on init
 
@@ -213,73 +220,21 @@ class TestTagCoreFunction(Test):
         self.compare_var("oir_tctag", "maintag:Slashdot")
         self.compare_var("oir_tcids", [ "id1" ])
 
-        # 12. Reset should empty all tagcores and ignore all traffic
-        # until it receives a PONG for every reset() PING
+        # 12. Update should cause all tags to generate a tag_update
+        # hook call on ITEMS, and update_complete when all done.
 
         self.reset_flags()
-
-        tag_updater.reset()
-
-        for tc in alltagcores:
-            if len(tc) > 0:
-                raise Exception("TC %s not empty!" % tc.tag)
-
-        tag_backend.inject("ITEMS", { "maintag:Test1" : [ "id3", "id4" ] })
-        tag_backend.inject("ITEMSDONE", {})
-        tag_backend.inject("ATTRIBUTES", { "id3" : { "test" : "test" }, "id4" : { "test" : "test" }})
-
-        self.compare_flags(0)
-        if "id3" in tag_updater.attributes:
-            raise Exception("Shouldn't have gotten id3!")
-        if "id4" in tag_updater.attributes:
-            raise Exception("Shouldn't have gotten id4!")
-
-        tag_updater.reset()
-        
-        tag_backend.inject("PONG", {})
-
-        tag_backend.inject("ITEMS", { "maintag:Test1" : [ "id3", "id4" ] })
-        tag_backend.inject("ITEMSDONE", {})
-        tag_backend.inject("ATTRIBUTES", { "id3" : { "test" : "test" }, "id4" : { "test" : "test" }})
-
-        self.compare_flags(0)
-        if "id3" in tag_updater.attributes:
-            raise Exception("Shouldn't have gotten id3!")
-        if "id4" in tag_updater.attributes:
-            raise Exception("Shouldn't have gotten id4!")
-
-        tag_backend.inject("PONG", {})
-        tag_backend.inject("ITEMS", { "maintag:Test1" : [ "id3", "id4" ] })
-        tag_backend.inject("ITEMSDONE", {})
-        tag_backend.inject("ATTRIBUTES", { "id3" : { "test" : "test" }, "id4" : { "test" : "test" }})
-
-        self.compare_flags(ITEMS_ADDED | ATTRIBUTES)
-
-        if "id3" not in tag_updater.attributes:
-            raise Exception("Should have gotten id3!")
-        if "id4" not in tag_updater.attributes:
-            raise Exception("Should have gotten id4!")
-
-        # 13. Non-force reset not allowed during update
 
         tag_updater.update()
 
-        if tag_updater.reset() != False:
-            raise Exception("Should have rejected reset()")
-
-        # 14. Update complete should trigger on receiving items from update
-        # and a subsequent reset() should work
-
-        self.reset_flags()
         tag_backend.inject("ITEMS", { "maintag:Test1" : [ "id3", "id4" ] })
         tag_backend.inject("ITEMSDONE", {})
+        tag_backend.inject("ATTRIBUTES", { "id3" : { "test" : "test" }, "id4" : { "test" : "test" }})
 
-        self.compare_flags(UPDATE_COMPLETE)
+        print(tag_updater.updating)
+        self.compare_flags(TAG_UPDATED | UPDATE_COMPLETE | ITEMS_ADDED | ATTRIBUTES)
+        self.compare_var("otu_tag", "maintag:Test1")
 
-        if tag_updater.reset() != True:
-            raise Exception("Shouldn't have rejected reset()!")
-
-        tag_backend.inject("PONG", {})
 
         return True
 

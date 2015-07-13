@@ -58,11 +58,12 @@ class TagList(GuiBase):
 
         on_hook("curses_eval_tags_changed", self.on_eval_tags_changed, self)
         on_hook("curses_items_added", self.on_items_added, self)
+        on_hook("curses_items_removed", self.on_items_removed, self)
+        on_hook("curses_tag_updated", self.on_tag_updated, self)
         on_hook("curses_stories_added", self.on_stories_added, self)
         on_hook("curses_stories_removed", self.on_stories_removed, self)
         on_hook("curses_opt_change", self.on_opt_change, self)
         on_hook("curses_new_tagcore", self.on_new_tagcore, self)
-        on_hook("curses_update_complete", self.on_update_complete, self)
         on_hook("curses_del_tagcore", self.on_del_tagcore, self)
 
         args = {
@@ -290,11 +291,13 @@ class TagList(GuiBase):
     def on_items_added(self, tagcore, items):
         self.callbacks["release_gui"]()
 
-    def on_eval_tags_changed(self):
-        self.callbacks["force_sync"]()
+    def on_items_removed(self, tagcore, items):
         self.callbacks["release_gui"]()
 
-    def on_update_complete(self):
+    def on_tag_updated(self, tagcore):
+        self.callbacks["release_gui"]()
+
+    def on_eval_tags_changed(self):
         self.callbacks["force_sync"]()
         self.callbacks["release_gui"]()
 

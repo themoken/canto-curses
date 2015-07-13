@@ -268,16 +268,16 @@ class CantoCursesGui(CommandHandler):
             if self.sync_requested:
                 self.tags_to_sync = alltags[:]
                 self.sync_requested = False
-            elif not self.tags_to_sync:
+            else:
                 for tag in alltags:
-                    if (len(tag) == 0 and len(tag.tagcore) != 0):
+                    if (tag not in self.tags_to_sync) and (tag.tagcore.was_reset or\
+                            (len(tag) == 0 and len(tag.tagcore) != 0)):
                         self.tags_to_sync.append(tag)
 
             if self.tags_to_sync:
                 self.tags_to_sync[0].sync()
                 self.tags_to_sync = self.tags_to_sync[1:]
                 partial_sync = True
-
 
             needs_resize = self.callbacks["get_var"]("needs_resize") or self.winched
             needs_refresh = self.callbacks["get_var"]("needs_refresh")
