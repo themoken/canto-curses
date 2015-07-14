@@ -51,7 +51,52 @@ class GuiBase(CommandHandler):
             "remote listfeeds" : (lambda : self.cmd_remote("listfeeds", ""), [], "List feeds"),
             "remote": (self.cmd_remote, ["remote-cmd", "string"], "Give a command to canto-remote"),
             "destroy": (self.cmd_destroy, [], "Destroy this %s" % self.get_opt_name()),
-            "set" : (self.cmd_set, ["config-option", "string"], "Set configuration options"),
+            "set" : (self.cmd_set, ["config-option", "string"],
+
+"""Set configuration options
+
+Common options:
+    %BSetting browser options%b
+
+    :set browser.path /path/to/browser
+    :set browser.text [True|False]
+        - True: text browser like elinks
+        * False: graphical browser like Firefox
+
+    %BSetting update styles%b
+
+    :set update.style [maintain|append|prepend]
+        - maintain: re-sort items into feed
+        * append: add new items to the end of feeds
+        - prepend: add new items to the top of feeds
+
+    :set update.auto.interval <seconds>
+    :set update.auto.enabled [True|False]
+        - True: interface will automatically add new items
+        * False: new items have to be requested with :update (\\\ by default)
+
+    %BChanging feed defaults%b
+
+    :set defaults.keep_time <seconds>
+        - How long items are kept after they disappear from source data
+    :set defaults.keep_unread [True|False]
+        - True: unread items will be keep forever
+        * False: unread items will be discarded if old enough
+
+    %BChanging a setting per-feed (with item selected)%b
+
+    :set feed.keep_time
+    :set feed.keep_unread
+
+    %BChanging filters/sorts%b
+
+    :set defaults.global_transform <transform>
+        - Basic transforms
+            - None (see all items all the time)
+            * filter_read (filter out read items)
+
+    :set tag.transform <transform>
+"""),
             "set browser.path" : (lambda x : self.cmd_set("browser.path", x), ["executable"], "Set desired browser"),
             "reset-config" : (self.cmd_reset_config, [ "config-section" ], "Reset canto-curses config (won't touch daemon / feed settings)")
         }
