@@ -180,7 +180,7 @@ class CantoCursesConfig(SubThread):
 
             "browser" :
             {
-                "path" : "firefox",
+                "path" : "xdg-open",
                 "text" : False
             },
 
