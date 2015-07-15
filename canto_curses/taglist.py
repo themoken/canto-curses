@@ -462,11 +462,11 @@ class TagList(GuiBase):
             # Convert window position for absolute positioning, edge
             # positioning uses given window_location.
 
-            if curstyle["type"] == "top":
+            if curstyle["type"] == "bottom":
                 window_location = 0
             elif curstyle["type"] == "middle":
                 window_location = int((self.height - 1) / 2)
-            elif curstyle["type"] == "bottom":
+            elif curstyle["type"] == "top":
                 window_location = self.height - 1
 
             # If the tag header is larger than the edge, the scroll will never

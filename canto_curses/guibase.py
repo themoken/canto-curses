@@ -75,6 +75,22 @@ Common options:
         - True: interface will automatically add new items
         * False: new items have to be requested with :update (\\\ by default)
 
+    %BTaglist cursor settings%b
+
+    :set taglist.cursor.type [edge|top|middle|bottom]
+        * edge: list scrolls near the edge of the screen
+        - top: cursor at top of screen
+        - middle: cursor at middle of the screen
+        - bottom: cursor at bottom of the screen
+
+    :set taglist.cursor.edge <lines>
+        - How close to the actual edge of the screen the cursor
+            gets before scrolling (defaults to 5)
+
+    :set taglist.cursor.scroll [scroll|page]
+        * scroll: standard scrolling
+        - page: page through items
+
     %BChanging feed defaults%b
 
     :set defaults.keep_time <seconds>
