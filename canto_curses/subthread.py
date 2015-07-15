@@ -19,9 +19,6 @@ class SubThread(object):
     def init(self, backend):
         self.backend = backend
 
-        self.wlock = Lock()
-        self.rlock = Lock()
-
         # Start up our own connection
         self.conn = backend.connect()
         self.prot_thread = None
@@ -39,15 +36,10 @@ class SubThread(object):
         log.info("%s" % info)
 
     def write(self, cmd, args):
-        self.wlock.acquire()
-        r = self.backend.do_write(self.conn, cmd, args)
-        self.wlock.release()
+        return self.backend.do_write(self.conn, cmd, args)
 
     def read(self):
-        self.rlock.acquire()
-        r = self.backend.do_read(self.conn)
-        self.rlock.release()
-        return r
+        return self.backend.do_read(self.conn)
 
     def pthread(self):
         self.alive = True
