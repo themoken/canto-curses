@@ -24,7 +24,7 @@ from canto_next.remote import assign_to_dict, access_dict
 from .locks import config_lock
 from .subthread import SubThread
 
-from threading import Thread
+from threading import Thread, Event
 import traceback
 import logging
 import curses   # Colors
@@ -437,6 +437,9 @@ class CantoCursesConfig(SubThread):
         self.start_pthread()
 
         self.version = None
+        self.wait_flag = False
+        self.processed = Event()
+        self.processed.clear()
 
         self.write("VERSION", [])
         self.write("WATCHNEWTAGS", [])
@@ -828,6 +831,20 @@ class CantoCursesConfig(SubThread):
     def prot_version(self, version):
         self.version = version
 
+    def prot_pong(self, empty):
+        self.processed.set()
+
+    def wait_write(self, cmd, args):
+        self.wait_flag = True
+        self.write(cmd, args)
+
+    def clear_wait(self):
+        if self.wait_flag:
+            self.wait_flag = False
+            self.write("PING", [])
+            self.processed.wait()
+            self.processed.clear()
+
     # configs accepts any changes, calls the opt_change hooks and if write is
     # set, sends those changes to the daemon. It's called both when receving
     # CONFIGS from the daemon and when we change opts internally (thus the
@@ -836,9 +853,12 @@ class CantoCursesConfig(SubThread):
     # Note that changes are the only ones propagated through hooks because they
     # are a superset of deletions (i.e. a deletion counts as a change).
 
-    @write_lock(config_lock)
     def prot_configs(self, given, write = False):
         log.debug("prot_configs given:\n%s\n", json.dumps(given, indent=4, sort_keys=True))
+        changes = {}
+
+        config_lock.acquire_write()
+
         if "tags" in given:
             for tag in list(given["tags"].keys()):
                 ntc = given["tags"][tag]
@@ -848,15 +868,15 @@ class CantoCursesConfig(SubThread):
                 changes, deletions =\
                         self.validate_config(ntc, tc, self.tag_validators)
 
+                if write:
+                    if changes:
+                        self.wait_write("SETCONFIGS", { "tags" : { tag : changes }})
+                    if deletions:
+                        self.wait_write("DELCONFIGS", { "tags" : { tag : deletions }})
+                        self.tag_config[tag] = ntc
+
                 if changes:
-                    self.tag_config[tag] = ntc
                     call_hook("curses_tag_opt_change", [ { tag : changes } ])
-
-                    if write:
-                        self.write("SETCONFIGS", { "tags" : { tag : changes }})
-
-                if deletions and write:
-                    self.write("DELCONFIGS", { "tags" : { tag : deletions }})
 
         if "CantoCurses" in given:
             new_config = given["CantoCurses"]
@@ -879,18 +899,18 @@ class CantoCursesConfig(SubThread):
                 changes["config_version"] = CURRENT_CONFIG_VERSION
                 self.write("SETCONFIGS", { "CantoCurses" : {"config_version" : CURRENT_CONFIG_VERSION } })
 
+            if write:
+                if changes:
+                    self.wait_write("SETCONFIGS", { "CantoCurses" : changes })
+
+                if deletions:
+                    self.wait_write("DELCONFIGS", { "CantoCurses" : deletions })
+
             if changes:
                 self.config = new_config
                 call_hook("curses_opt_change", [ changes ])
-
                 if "tags" in changes:
                     self.eval_tags()
-
-                if write:
-                    self.write("SETCONFIGS", { "CantoCurses" : changes })
-
-            if deletions and write:
-                self.write("DELCONFIGS", { "CantoCurses" : deletions })
 
         if "defaults" in given:
 
@@ -906,7 +926,7 @@ class CantoCursesConfig(SubThread):
             self.daemon_defaults.update(changes)
 
             if write:
-                self.write("SETCONFIGS", { "defaults" : self.daemon_defaults })
+                self.wait_write("SETCONFIGS", { "defaults" : self.daemon_defaults })
 
             call_hook("curses_def_opt_change", [ changes ])
 
@@ -914,11 +934,15 @@ class CantoCursesConfig(SubThread):
 
             self.daemon_feedconf = given["feeds"]
             if write:
-                self.write("SETCONFIGS", { "feeds" : self.daemon_feedconf })
+                self.wait_write("SETCONFIGS", { "feeds" : self.daemon_feedconf })
 
             call_hook("curses_feed_opt_change", [ given["feeds"] ])
 
         self.initd = True
+
+        config_lock.release_write()
+
+        self.clear_wait()
 
     # Process new tags.
 
