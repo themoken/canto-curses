@@ -889,9 +889,9 @@ class CantoCursesConfig(SubThread):
                         self.wait_write("SETCONFIGS", { "tags" : { tag : changes }})
                     if deletions:
                         self.wait_write("DELCONFIGS", { "tags" : { tag : deletions }})
-                        self.tag_config[tag] = ntc
 
                 if changes:
+                    self.tag_config[tag] = ntc
                     call_hook("curses_tag_opt_change", [ { tag : changes } ])
 
         if "CantoCurses" in given:
