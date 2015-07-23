@@ -24,7 +24,7 @@ from canto_next.remote import assign_to_dict, access_dict
 from .locks import config_lock
 from .subthread import SubThread
 
-from threading import Thread, Event
+from threading import Thread, Event, current_thread
 import traceback
 import logging
 import curses   # Colors
@@ -849,10 +849,13 @@ class CantoCursesConfig(SubThread):
         self.processed.set()
 
     def wait_write(self, cmd, args):
-        self.wait_flag = True
+        if current_thread() != self.prot_thread:
+            self.wait_flag = True
         self.write(cmd, args)
 
     def clear_wait(self):
+        if current_thread() == self.prot_thread:
+            return
         if self.wait_flag:
             self.wait_flag = False
             self.write("PING", [])
