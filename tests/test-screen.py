@@ -27,7 +27,7 @@ class TestScreen(Test):
         config_script = {
             'VERSION' : { '*' : [('VERSION', CANTO_PROTOCOL_COMPATIBLE)] },
             'CONFIGS' : { '*' : [('CONFIGS', { "CantoCurses" : config.template_config })] },
-                
+            'PING' : { '*' : [("PONG", [])]}
         }
 
         self.config_backend = TestBackend("config", config_script)
