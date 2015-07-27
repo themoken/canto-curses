@@ -274,7 +274,7 @@ Common options:
 
     def cmd_transform(self, transform):
         tag_updater.transform("user", transform)
-        tag_updater.reset(True)
+        tag_updater.reset()
         tag_updater.update()
 
     def type_unescape_command(self):
