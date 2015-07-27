@@ -70,16 +70,6 @@ story_needed_attrs = [ "title" ]
 
 CURRENT_CONFIG_VERSION = 1
 
-def write_config_wait(fn):
-    def _wcw(self, *args, **kwargs):
-        config_lock.acquire_write()
-        try:
-            return fn(self, *args, **kwargs)
-        finally:
-            if config_lock.release_write():
-                self.clear_wait()
-    return _wcw
-
 class CantoCursesConfig(SubThread):
 
     # The object init just sets up the default settings, doesn't
@@ -451,7 +441,6 @@ class CantoCursesConfig(SubThread):
         self.start_pthread()
 
         self.version = None
-        self.wait_flag = False
         self.processed = Event()
         self.processed.clear()
 
@@ -837,7 +826,7 @@ class CantoCursesConfig(SubThread):
     # We use strtags to validate tag order, and also to populate the
     # TagUpdater()
 
-    @write_config_wait
+    @write_lock(config_lock)
     def prot_listtags(self, tags):
         self.vars["strtags"] = tags
         self.config["tagorder"] = tags
@@ -849,15 +838,8 @@ class CantoCursesConfig(SubThread):
         self.processed.set()
 
     def wait_write(self, cmd, args):
-        if current_thread() != self.prot_thread:
-            self.wait_flag = True
         self.write(cmd, args)
-
-    def clear_wait(self):
-        if current_thread() == self.prot_thread:
-            return
-        if self.wait_flag:
-            self.wait_flag = False
+        if current_thread() != self.prot_thread:
             self.write("PING", [])
             self.processed.wait()
             self.processed.clear()
@@ -870,11 +852,9 @@ class CantoCursesConfig(SubThread):
     # Note that changes are the only ones propagated through hooks because they
     # are a superset of deletions (i.e. a deletion counts as a change).
 
-    @write_config_wait
+    @write_lock(config_lock)
     def prot_configs(self, given, write = False):
         log.debug("prot_configs given:\n%s\n", json.dumps(given, indent=4, sort_keys=True))
-        changes = {}
-
         if "tags" in given:
             for tag in list(given["tags"].keys()):
                 ntc = given["tags"][tag]
@@ -958,7 +938,7 @@ class CantoCursesConfig(SubThread):
 
     # Process new tags.
 
-    @write_config_wait
+    @write_lock(config_lock)
     def prot_newtags(self, tags):
 
         if not self.initd:
@@ -1006,7 +986,7 @@ class CantoCursesConfig(SubThread):
 
         self.eval_tags()
 
-    @write_config_wait
+    @write_lock(config_lock)
     def prot_deltags(self, tags):
         if not self.initd:
             for tag in tags:
@@ -1033,7 +1013,7 @@ class CantoCursesConfig(SubThread):
         if changes:
             self.set_conf(c)
 
-    @write_config_wait
+    @write_lock(config_lock)
     def eval_tags(self):
         prevtags = self.vars["curtags"]
 
@@ -1127,7 +1107,7 @@ class CantoCursesConfig(SubThread):
                 return eval(repr(f), {}, {})
         return None
 
-    @write_config_wait
+    @write_lock(config_lock)
     def set_opt(self, option, value):
         c = self.get_conf()
         assign_to_dict(c, option, value)
@@ -1141,7 +1121,7 @@ class CantoCursesConfig(SubThread):
             return None
         return value
 
-    @write_config_wait
+    @write_lock(config_lock)
     def set_tag_opt(self, tag, option, value):
         tc = self.get_tag_conf(tag)
         assign_to_dict(tc, option, value)
@@ -1155,7 +1135,7 @@ class CantoCursesConfig(SubThread):
             return None
         return value
 
-    @write_config_wait
+    @write_lock(config_lock)
     def switch_tags(self, tag1, tag2):
         c = self.get_conf()
 
