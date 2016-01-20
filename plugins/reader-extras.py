@@ -4,9 +4,23 @@
 
 # Designed to put extra interesting content in the reader output.
 
-enabled_extras = ['slashdot', 'authors']
+enabled_extras = ['datetime', 'slashdot', 'authors']
 
 hacks = {}
+
+datetime_attrs = [ 'published_parsed', 'updated_parsed' ]
+
+def datetime_extras(body, extra_content, attrs):
+    import time
+
+    if attrs['published_parsed']:
+        body = "Published: " + time.asctime(tuple(attrs['published_parsed'])) + "<br />" + body
+    elif attrs['updated_parsed']:
+        body = "Updated: " + time.asctime(tuple(attrs['updated_parsed'])) + "<br />" + body
+
+    return (body, extra_content)
+
+hacks['datetime'] = ('.*', datetime_attrs, datetime_extras)
 
 # Slashdot (example)
 
