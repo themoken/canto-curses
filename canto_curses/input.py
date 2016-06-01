@@ -47,7 +47,7 @@ class InputBox(GuiBase):
 
     def _get_prefix(self):
         buf = readline.get_line_buffer()
-        if buf[-1].isspace():
+        if (not buf) or buf[-1].isspace():
             prefix = ""
         else:
             prefix = shlex.split(buf)[-1]
