@@ -162,7 +162,8 @@ class CantoCursesGui(CommandHandler):
 
     def winch(self):
         self.winched = True
-        self.release_gui()
+        if not self.do_gui.is_set():
+            self.release_gui()
 
     def cmd_refresh(self):
         # Will trigger a hook on completion that will cause refresh
