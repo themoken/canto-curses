@@ -172,7 +172,7 @@ class TagUpdater(SubThread):
         sorted_updated_ids.sort(key=lambda x : x[1])
 
         sorted_current_ids = list(enumerate(have_tag))
-        sorted_updated_ids.sort(key=lambda x : x[1])
+        sorted_current_ids.sort(key=lambda x : x[1])
 
         new_ids = []
         cur_ids = []
@@ -185,8 +185,7 @@ class TagUpdater(SubThread):
             if not sorted_updated_ids or c_id < sorted_updated_ids[0][1]:
                 old_ids.append(c_id)
             else:
-                place = sorted_updated_ids.pop(0)[0]
-                cur_ids.append((place, c_id))
+                cur_ids.append(sorted_updated_ids.pop(0))
 
         new_ids += sorted_updated_ids
 
