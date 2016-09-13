@@ -261,9 +261,6 @@ class TagList(GuiBase):
 
         syms['all']['*'] = range(0, len(vtags))
 
-        if not deftags and self.first_sel:
-            deftags = [ self.tag_by_obj(self.first_sel) ]
-
         return (None, lambda x: _int_range("tag", domains, syms, deftags, x))
 
     # This will accept any state, but should offer some completions for sensible ones
