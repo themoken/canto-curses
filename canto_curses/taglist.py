@@ -261,6 +261,10 @@ class TagList(GuiBase):
 
         syms['all']['*'] = range(0, len(vtags))
 
+        for i, tag in enumerate(vtags):
+            if tag.tag.startswith("maintag:"):
+                syms['all'][tag.tag[8:]] = [ i ]
+
         return (None, lambda x: _int_range("tag", domains, syms, deftags, x))
 
     # This will accept any state, but should offer some completions for sensible ones
