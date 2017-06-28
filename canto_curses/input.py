@@ -39,7 +39,6 @@ class InputBox(GuiBase):
         self.pad.addstr(self.callbacks["get_var"]("input_prompt"))
         self.minx = self.pad.getyx()[1]
         self.x = self.minx
-        self.content = readline.get_line_buffer()
 
         # Part that's not considered
         self.completion_root = None
