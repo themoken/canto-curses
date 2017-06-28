@@ -354,7 +354,7 @@ def _int_range(name, itrs, syms, fallback, s):
         if fallback:
             log.debug("falling back to %s", fallback)
             return (True, fallback)
-        return (False, fallback)
+        return (True, [])
 
     slist = s.split(',')
 
@@ -421,12 +421,6 @@ def _int_range(name, itrs, syms, fallback, s):
                 rlist.append(itrs[domain][idx])
         else:
             log.warn("%s out of range of %s domain: %s idx with len %s" % (name, domain, idx, len(itrs[domain])))
-
-    # If our fallback was empty, fail it.
-    if not rlist:
-        return (False, None)
-
-    # XXX should we return (False, []) on rlist empty, or...?
 
     return (True, rlist)
 

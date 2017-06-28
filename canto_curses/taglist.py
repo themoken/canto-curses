@@ -186,6 +186,8 @@ class TagList(GuiBase):
     def type_item_list(self):
         all_items = []
         for tag in self.tags:
+            if tag.collapsed:
+                continue
             for s in tag:
                 all_items.append(s)
 
@@ -193,25 +195,24 @@ class TagList(GuiBase):
 
         syms = { 'all' : {} }
         sel = self.callbacks["get_var"]("selected")
-        if sel and not sel.is_tag:
 
+        if sel:
             # If we have a selection, we have a sensible tag domain
 
-            tag = self.tag_by_item(sel)
-            domains['tag']  = [ x for x in self.tag_by_item(sel) ]
+            tag = self.tag_by_obj(sel)
+            domains['tag']  = [ x for x in tag ]
             syms['tag'] = {}
 
             if not sel.is_tag:
                 syms['tag']['.'] = [ domains['tag'].index(sel) ]
                 syms['tag']['*'] = range(0, len(domains['tag']))
+                syms['all']['.'] = [ all_items.index(sel) ]
             elif len(sel) > 0:
                 syms['tag']['.'] = [ 0 ]
                 syms['tag']['*'] = range(0, len(sel))
             else:
                 syms['tag']['.'] = []
                 syms['tag']['*'] = []
-
-            syms['all']['.'] = [ all_items.index(sel) ]
         else:
             syms['all']['.'] = [ ]
 
@@ -220,11 +221,8 @@ class TagList(GuiBase):
         # if we have items, pass them in, otherwise pass in selected which is the implied context
 
         fallback = self.got_items[:]
-        if fallback == []:
-            if sel and not sel.is_tag:
-                fallback = [ sel ]
-            elif self.first_sel and not self.first_sel.is_tag:
-                fallback = [ self.first_sel ]
+        if fallback == [] and sel and not sel.is_tag:
+            fallback = [ sel ]
 
         return (None, lambda x: _int_range("item", domains, syms, fallback, x))
 
