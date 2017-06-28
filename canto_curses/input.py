@@ -95,6 +95,7 @@ class InputBox(GuiBase):
             pass
         self.x = self.pad.getyx()[1]
         self.pad.clrtoeol()
+        self.pad.move(0, min(maxx - 1, self.minx + get_rlpoint()))
         self.callbacks["refresh"]()
 
     def redraw(self):
