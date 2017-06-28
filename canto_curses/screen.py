@@ -57,6 +57,8 @@ class Screen(CommandHandler):
 
         self.window_types = types
 
+        self.input_box = None
+
         self.stdscr = curses.initscr()
         if self.curses_setup() < 0:
             return -1
@@ -168,7 +170,11 @@ Arguments:"""),
     # endwin() (i.e. resize).
 
     def curses_setup(self):
-        self.curs_set(0)
+        if not self.input_box:
+            self.curs_set(0)
+        else:
+            self.curs_set(1)
+            self.pseudo_input_box.keypad(0)
 
         try:
             curses.cbreak()
@@ -704,12 +710,11 @@ Arguments:"""),
         except:
             pass
 
-        self.pseudo_input_box.keypad(1)
-        self.pseudo_input_box.nodelay(1)
         self.stdscr.refresh()
 
         self.curses_setup()
         self.subwindows()
+
         self.refresh()
         self.redraw()
 
