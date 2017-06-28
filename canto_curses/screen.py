@@ -58,6 +58,9 @@ class Screen(CommandHandler):
         self.window_types = types
 
         self.input_box = None
+        self.pseudo_input_box = None
+        self.in_readline = False
+        self.in_readline_resize = False
 
         self.stdscr = curses.initscr()
         if self.curses_setup() < 0:
@@ -170,11 +173,15 @@ Arguments:"""),
     # endwin() (i.e. resize).
 
     def curses_setup(self):
-        if not self.input_box:
+        if self.in_readline:
+            self.pseudo_input_box.keypad(0)
+            self.curs_set(1)
+        elif self.pseudo_input_box:
+            self.pseudo_input_box.nodelay(1)
+            self.pseudo_input_box.keypad(1)
             self.curs_set(0)
         else:
-            self.curs_set(1)
-            self.pseudo_input_box.keypad(0)
+            self.curs_set(0)
 
         try:
             curses.cbreak()
@@ -562,7 +569,14 @@ Arguments:"""),
 
         self.pseudo_input_box.keypad(0)
 
+        self.in_readline = True
         r = raw_readline()
+        self.in_readline = False
+
+        if self.in_readline_resize:
+            self.in_readline_resize = False
+            self.resize()
+
         if not r:
             r = ""
 
@@ -660,6 +674,7 @@ Arguments:"""),
         if r == curses.KEY_BACKSPACE:
             r = ord("\b")
         elif r == curses.KEY_RESIZE:
+            self.in_readline_resize = True
             return
         elif chr(r) == '\t' and do_comp:
             self.input_box.rotate_completions()
