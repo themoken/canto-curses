@@ -26,6 +26,7 @@ class InputBox(GuiBase):
     def __init__(self):
         GuiBase.__init__(self)
         self.plugin_class = InputPlugin
+        self.pad = None
 
     def init(self, pad, callbacks):
         self.pad = pad
@@ -79,6 +80,9 @@ class InputBox(GuiBase):
         return None
 
     def refresh(self):
+        if not self.pad:
+            return
+
         self.pad.move(0, self.minx)
         maxx = self.pad.getmaxyx()[1]
 
@@ -95,7 +99,10 @@ class InputBox(GuiBase):
         self.x = self.pad.getyx()[1]
         self.pad.clrtoeol()
         self.pad.move(0, min(maxx - 1, self.minx + get_rlpoint()))
-        self.callbacks["refresh"]()
+        try:
+            self.callbacks["refresh"]()
+        except:
+            pass
 
     def redraw(self):
         pass

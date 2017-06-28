@@ -653,8 +653,9 @@ Arguments:"""),
 
         if r == curses.KEY_BACKSPACE:
             r = ord("\b")
-
-        if chr(r) == '\t' and do_comp:
+        elif r == curses.KEY_RESIZE:
+            return
+        elif chr(r) == '\t' and do_comp:
             self.input_box.rotate_completions()
             return
 
