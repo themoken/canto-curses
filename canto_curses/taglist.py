@@ -52,6 +52,7 @@ class TagList(GuiBase):
         self.last_story = None
 
         self.tags = []
+        self.spacing = callbacks["get_opt"]("taglist.spacing")
 
         # Hold config log so we don't miss any new TagCores or get updates
         # before we're ready.
@@ -313,18 +314,23 @@ class TagList(GuiBase):
         self.callbacks["set_var"]("needs_refresh", True)
 
     def on_opt_change(self, conf):
-        if "taglist" not in conf or "search_attributes" not in conf["taglist"]:
+        if "taglist" not in conf:
             return
 
-        log.info("Fetching any needed search attributes")
+        if "search_attributes" in conf["taglist"]:
+            log.info("Fetching any needed search attributes")
 
-        need_attrs = {}
-        sa = self.callbacks["get_opt"]("taglist.search_attributes")
+            need_attrs = {}
+            sa = self.callbacks["get_opt"]("taglist.search_attributes")
 
-        # Make sure that we have all attributes needed for a search.
-        for tag in alltagcores:
-            for item in tag:
-                tag_updater.need_attributes(item, sa)
+            # Make sure that we have all attributes needed for a search.
+            for tag in alltagcores:
+                for item in tag:
+                    tag_updater.need_attributes(item, sa)
+
+        if "spacing" in conf["taglist"]:
+            self.spacing = conf["taglist"]["spacing"]
+            self.callbacks["set_var"]("needs_refresh", True)
 
     def cmd_goto(self, items):
         log.debug("GOTO: %s", items)
@@ -1194,9 +1200,6 @@ class TagList(GuiBase):
             # Copy item into window
             w_offset, curpos = self._partial_render(obj, w_offset, curpos)
 
-            # If we're at the end of a list, or the next item is a tag we need
-            # to render the tag footer for the current tag.
-
             # Render floating header, if we've covered enough ground.
 
             if not rendered_header and curpos > 0:
@@ -1206,12 +1209,12 @@ class TagList(GuiBase):
                     self._partial_render(tag, 0, 0)
                     rendered_header = True
 
-            # Do this before the floating header so that if no items are going
-            # to be visible, the header is still displayed without the close.
+            # If we're at the end of a list, or the next item is a tag we need
+            # to render the tag footer for the current tag.
 
             obj.extra_lines = 0
 
-            if not obj.next_obj or obj.next_obj.is_tag:
+            if (not obj.next_obj) or obj.next_obj.is_tag:
                 if obj.is_tag:
                     tag = obj
                 else:
@@ -1227,6 +1230,10 @@ class TagList(GuiBase):
                 # broken.
 
                 rendered_header = True
+            elif (not obj.is_tag) and self.spacing:
+                curpos += self.spacing
+                w_offset += self.spacing
+                obj.extra_lines += self.spacing
 
             if w_offset >= self.height:
                 break
