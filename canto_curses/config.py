@@ -48,7 +48,7 @@ eval_settings = [\
     ".*\\.window\\.(maxwidth|maxheight|float)",
     "color\\..*", "tag.(enumerated|collapsed|extra_tags)",
     "reader.(enumerate_links|show_description|show_enclosures)",
-    "taglist.(border|tags_enumerated|tags_enumerated_absolute|hide_empty_tags|search_attributes)",
+    "taglist.(border|wrap|tags_enumerated|tags_enumerated_absolute|hide_empty_tags|search_attributes)",
     "taglist.cursor.edge",
     "story.(format_attrs|enumerated)"
 ]
@@ -143,6 +143,7 @@ class CantoCursesConfig(SubThread):
                 "search_attributes" : self.validate_string_list,
                 "cursor" : self.validate_taglist_cursor,
                 "border" : self.validate_bool,
+                "wrap" : self.validate_bool,
             },
 
             "story" :
@@ -246,6 +247,7 @@ class CantoCursesConfig(SubThread):
                 "tags_enumerated_absolute" : False,
                 "hide_empty_tags" : True,
                 "border" : False,
+                "wrap" : True,
                 "search_attributes" : [ "title" ],
 
                 "key" :

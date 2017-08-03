@@ -122,7 +122,7 @@ class Story(PluginHandler):
         self.need_redraw()
 
     def on_opt_change(self, config):
-        if "taglist" in config and "border" in config["taglist"]:
+        if "taglist" in config and ("border" in config["taglist"] or "wrap" in config["taglist"]):
             self.need_redraw()
 
         if "color" in config or "style" in config:
@@ -343,6 +343,9 @@ class Story(PluginHandler):
         self.changed = False
 
         self.lns = self.render(FakePad(width), width)
+        if (not taglist_conf["wrap"]) and self.lns:
+            self.lns = 1
+
         return self.lns
 
     def pads(self, width):
