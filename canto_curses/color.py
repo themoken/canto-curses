@@ -40,11 +40,12 @@ class CantoColorManager:
                 else:
                     if c in "12345678":
                         inverted += "%0"
+                        in_code = False
                     elif c in "BRDSU":
                         inverted += "%" + c.lower()
+                        in_code = False
                     elif c == "[":
                         long_code = True
-                    in_code = False
             elif c == "%":
                 in_code = True
         return inverted
