@@ -14,7 +14,6 @@ import traceback
 import logging
 import curses
 import shlex
-import pipes
 
 import readline
 
